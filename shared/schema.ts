@@ -10,6 +10,8 @@ export const scripts = pgTable("scripts", {
   filename: text("filename").notNull(),
   content: text("content").notNull(), // The actual script content
   icon: text("icon").notNull(), // Lucide icon name
+  compliance: text("compliance").notNull().default("ANSSI & CIS"), // Standards mention
+  features: text("features").array().notNull().default(["Scan complet", "Rapport détaillé", "Génération de graphiques", "Recommandations de corrections"]),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });
