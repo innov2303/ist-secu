@@ -5,8 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
+import logoImg from "@assets/generated_images/igs_cybersecurity_logo_dark_blue.png";
+import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 type PurchaseWithScript = Purchase & { script: Script };
 
@@ -151,7 +154,7 @@ function LoadingSkeleton() {
 }
 
 export default function Purchases() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
 
   const { data: purchases, isLoading } = useQuery<PurchaseWithScript[]>({
     queryKey: ["/api/purchases"],
@@ -160,65 +163,115 @@ export default function Purchases() {
 
   if (authLoading) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-4xl">
-        <LoadingSkeleton />
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8 px-4 max-w-4xl">
+          <LoadingSkeleton />
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto py-16 px-4 max-w-4xl text-center">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Connexion requise</h1>
-        <p className="text-muted-foreground mb-6">
-          Connectez-vous pour accéder à vos achats
-        </p>
-        <Button asChild data-testid="button-login-redirect">
-          <Link href="/">Retour à l'accueil</Link>
-        </Button>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-16 px-4 max-w-4xl text-center">
+          <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Connexion requise</h1>
+          <p className="text-muted-foreground mb-6">
+            Connectez-vous pour accéder à vos achats
+          </p>
+          <Button asChild data-testid="button-login-redirect">
+            <Link href="/">Retour à l'accueil</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" asChild data-testid="button-back-home">
-          <Link href="/">
-            <ArrowLeft className="h-5 w-5" />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1">
+            <img src={logoImg} alt="IGS Logo" className="w-10 h-10 rounded-md" />
+            <span className="font-bold hidden sm:inline">InfraGuard Security</span>
           </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Mes Achats</h1>
-          <p className="text-muted-foreground">
-            Scripts de sécurité que vous avez achetés
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "User"} />
+                <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : purchases && purchases.length > 0 ? (
-        <div className="space-y-4">
-          {purchases.map((purchase) => (
-            <PurchaseCard key={purchase.id} purchase={purchase} />
-          ))}
+      {/* Banner */}
+      <div className="relative h-32 md:h-40 w-full overflow-hidden">
+        <img 
+          src={bannerImg} 
+          alt="Security Infrastructure" 
+          className="w-full h-full object-cover brightness-[0.4]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center gap-3 px-6 py-3 bg-background/80 backdrop-blur-md rounded-xl border border-border/50">
+            <ShoppingBag className="h-6 w-6 text-primary" />
+            <h1 className="text-xl md:text-2xl font-bold">Mes Achats</h1>
+          </div>
         </div>
-      ) : (
-        <Card className="text-center py-12">
-          <CardContent>
-            <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Aucun achat</h2>
-            <p className="text-muted-foreground mb-6">
-              Vous n'avez pas encore acheté de scripts de sécurité
-            </p>
-            <Button asChild data-testid="button-browse-scripts">
-              <Link href="/">Parcourir les scripts</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      </div>
+
+      {/* Content */}
+      <div className="container mx-auto py-8 px-4 max-w-4xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="outline" size="sm" asChild data-testid="button-back-home">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Link>
+          </Button>
+          <p className="text-muted-foreground text-sm">
+            Scripts de sécurité que vous avez achetés
+          </p>
+        </div>
+
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : purchases && purchases.length > 0 ? (
+          <div className="space-y-4">
+            {purchases.map((purchase) => (
+              <PurchaseCard key={purchase.id} purchase={purchase} />
+            ))}
+          </div>
+        ) : (
+          <Card className="text-center py-12">
+            <CardContent>
+              <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-lg font-semibold mb-2">Aucun achat</h2>
+              <p className="text-muted-foreground mb-6">
+                Vous n'avez pas encore acheté de scripts de sécurité
+              </p>
+              <Button asChild data-testid="button-browse-scripts">
+                <Link href="/">Parcourir les scripts</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 py-8 mt-16">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>InfraGuard Security - Operating System Toolkit</p>
+        </div>
+      </footer>
     </div>
   );
 }
