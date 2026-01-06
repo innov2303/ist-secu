@@ -1,34 +1,40 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, Terminal, Lock } from "lucide-react";
+import { ShieldCheck, Terminal, Lock, Shield } from "lucide-react";
+import bannerImg from "@assets/stock_images/security_infrastruct_65235ec4.jpg";
 
 export function Hero() {
   return (
-    <div className="relative overflow-hidden pt-24 pb-16 md:pt-32 md:pb-24">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 z-0 cyber-grid pointer-events-none" />
-      
-      <div className="container relative z-10 px-4 mx-auto text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="inline-flex items-center justify-center px-4 py-1.5 mb-8 border rounded-full bg-primary/10 border-primary/20 text-primary font-mono text-sm"
-        >
-          <span className="relative flex h-2 w-2 mr-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-          </span>
-          System Security Verification Protocol v1.0
-        </motion.div>
+    <div className="relative overflow-hidden">
+      {/* Banner Top */}
+      <div className="relative h-64 md:h-80 w-full overflow-hidden">
+        <img 
+          src={bannerImg} 
+          alt="Security Infrastructure" 
+          className="w-full h-full object-cover brightness-[0.4]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center gap-4 px-6 py-4 bg-background/80 backdrop-blur-md rounded-xl border border-border/50 shadow-2xl">
+            <div className="p-3 bg-primary rounded-lg shadow-lg shadow-primary/20">
+              <Shield className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">InfraGuard Security</h1>
+              <p className="text-sm text-muted-foreground font-mono">Infrastructure Protection Hub</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <div className="container relative z-10 px-4 mx-auto text-center pt-12 pb-16 md:pb-24">
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60"
+          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60"
         >
           Secure Your Infrastructure<br />
-          <span className="text-primary text-glow">Verify Your Systems</span>
+          <span className="text-primary">Verify Your Systems</span>
         </motion.h1>
 
         <motion.p 
