@@ -1,14 +1,53 @@
 import { Hero } from "@/components/Hero";
 import { ScriptCard } from "@/components/ScriptCard";
 import { useScripts } from "@/hooks/use-scripts";
-import { motion } from "framer-motion";
-import { Loader2, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Home() {
   const { data: scripts, isLoading, error } = useScripts();
+  const { user, isLoading: authLoading, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Auth Header */}
+      <div className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
+        {authLoading ? (
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        ) : user ? (
+          <>
+            {user.isAdmin && (
+              <Button variant="outline" size="sm" asChild data-testid="link-admin">
+                <Link href="/admin">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Admin
+                </Link>
+              </Button>
+            )}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border">
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={user.profileImageUrl || undefined} />
+                <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <Button asChild data-testid="button-login">
+            <a href="/api/login">
+              <LogIn className="h-4 w-4 mr-2" />
+              Connexion
+            </a>
+          </Button>
+        )}
+      </div>
+
       <Hero />
 
       <main className="container mx-auto px-4 pb-24">
