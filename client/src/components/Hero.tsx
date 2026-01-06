@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, Terminal, Lock } from "lucide-react";
+import { ShieldCheck, Terminal, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/igs_cybersecurity_logo_dark_blue.png";
 
@@ -60,6 +60,53 @@ export function Hero() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
             <Lock className="w-4 h-4 text-primary" />
             <span>Zero Trust</span>
+          </div>
+        </motion.div>
+
+        {/* Reports Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-16 max-w-4xl mx-auto"
+        >
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-xl p-6 md:p-8">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 flex items-center justify-center gap-2">
+              <FileText className="w-6 h-6 text-primary" />
+              Rapports d'Audit Complets
+            </h2>
+            <p className="text-muted-foreground mb-6 text-center">
+              À la fin de chaque audit, un rapport détaillé est automatiquement généré pour vous aider à évaluer et améliorer la sécurité de votre infrastructure.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col items-center text-center p-4 rounded-lg bg-secondary/30 border border-border/50">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <FileText className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-1">Format PDF / HTML</h3>
+                <p className="text-sm text-muted-foreground">
+                  Exportez vos rapports en PDF pour l'archivage ou en HTML pour une consultation interactive.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-4 rounded-lg bg-secondary/30 border border-border/50">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <BarChart3 className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-1">Scores & Graphiques</h3>
+                <p className="text-sm text-muted-foreground">
+                  Visualisez votre niveau de conformité avec des scores détaillés et des graphiques clairs.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-4 rounded-lg bg-secondary/30 border border-border/50">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-1">Recommandations</h3>
+                <p className="text-sm text-muted-foreground">
+                  Recevez des recommandations de correction précises pour chaque point de contrôle échoué.
+                </p>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
