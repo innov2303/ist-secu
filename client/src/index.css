@@ -15,17 +15,21 @@
   --popover: 224 71% 6%;
   --popover-foreground: 213 31% 91%;
 
-  --primary: 180 100% 50%; /* Electric Cyan */
-  --primary-foreground: 224 71% 4%;
+  --primary: 262 83% 58%; /* Deep Purple */
+  --primary-foreground: 210 40% 98%;
+  
+  --background: 260 25% 4%;
+  --foreground: 210 40% 98%;
 
-  --secondary: 215 28% 17%;
-  --secondary-foreground: 210 40% 98%;
+  --card: 260 25% 6%;
+  --card-foreground: 210 40% 98%;
 
-  --muted: 215 28% 17%;
-  --muted-foreground: 215 20% 65%;
+  --border: 260 25% 12%;
+  --input: 260 25% 12%;
+  --ring: 262 83% 58%;
 
-  --accent: 180 100% 50%;
-  --accent-foreground: 224 71% 4%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 210 40% 98%;
 
   --destructive: 0 62% 30%;
   --destructive-foreground: 210 40% 98%;
