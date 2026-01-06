@@ -285,10 +285,26 @@ export async function registerRoutes(
         const existing = await storage.getActivePurchase(userId, parseInt(scriptId));
         if (!existing) {
           let expiresAt: Date | null = null;
+          let subscriptionId: string | null = null;
+          let paymentIntentId: string | null = null;
           
-          if (purchaseType === "monthly" && session.subscription) {
-            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-            expiresAt = new Date(subscription.current_period_end * 1000);
+          if (session.subscription) {
+            subscriptionId = typeof session.subscription === 'string' 
+              ? session.subscription 
+              : session.subscription.id;
+          }
+          
+          if (session.payment_intent) {
+            paymentIntentId = typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : session.payment_intent.id;
+          }
+          
+          if (purchaseType === "monthly" && subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+            if (subscription.current_period_end) {
+              expiresAt = new Date(subscription.current_period_end * 1000);
+            }
           }
 
           await storage.createPurchase({
@@ -297,8 +313,8 @@ export async function registerRoutes(
             priceCents: parseInt(priceCents || "0"),
             purchaseType,
             expiresAt,
-            stripeSubscriptionId: session.subscription as string || null,
-            stripePaymentIntentId: session.payment_intent as string || null,
+            stripeSubscriptionId: subscriptionId,
+            stripePaymentIntentId: paymentIntentId,
           });
         }
 
