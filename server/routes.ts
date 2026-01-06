@@ -4,10 +4,11 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases } from "@shared/schema";
+import { users, purchases, registerSchema, loginSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import bcrypt from "bcryptjs";
 
 // Middleware to check if user is admin
 const isAdmin = async (req: any, res: any, next: any) => {
@@ -30,6 +31,123 @@ export async function registerRoutes(
   // Setup authentication FIRST
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  // Local auth routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const result = registerSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { email, password, firstName, lastName } = result.data;
+
+      // Check if user already exists
+      const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "Un compte avec cet email existe déjà" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Check if this is the first user (make admin)
+      const allUsers = await db.select().from(users).limit(1);
+      const isFirstUser = allUsers.length === 0;
+
+      // Create user
+      const [newUser] = await db.insert(users).values({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        isAdmin: isFirstUser,
+      }).returning();
+
+      // Log user in by setting session
+      (req as any).session.userId = newUser.id;
+
+      res.status(201).json({
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        isAdmin: newUser.isAdmin,
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Erreur lors de l'inscription" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const result = loginSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { email, password } = result.data;
+
+      // Find user
+      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Email ou mot de passe incorrect" });
+      }
+
+      // Verify password
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Email ou mot de passe incorrect" });
+      }
+
+      // Log user in by setting session
+      (req as any).session.userId = user.id;
+
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isAdmin: user.isAdmin,
+        profileImageUrl: user.profileImageUrl,
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Erreur lors de la connexion" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    (req as any).session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Erreur lors de la déconnexion" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const [user] = await db.select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      isAdmin: users.isAdmin,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  });
 
   // Initialize seed data
   await storage.seed();
