@@ -19,14 +19,14 @@ export default function Home() {
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         ) : user ? (
           <>
-            <Button variant="outline" size="sm" asChild data-testid="link-purchases">
+            <Button variant="default" size="sm" asChild data-testid="link-purchases">
               <Link href="/purchases">
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 Mes Achats
               </Link>
             </Button>
             {user.isAdmin && (
-              <Button variant="outline" size="sm" asChild data-testid="link-admin">
+              <Button variant="secondary" size="sm" asChild data-testid="link-admin">
                 <Link href="/admin">
                   <Settings className="h-4 w-4 mr-2" />
                   Admin
