@@ -4,7 +4,7 @@ import { useScripts } from "@/hooks/use-scripts";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertCircle, LogIn, LogOut, Settings } from "lucide-react";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -19,6 +19,12 @@ export default function Home() {
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         ) : user ? (
           <>
+            <Button variant="outline" size="sm" asChild data-testid="link-purchases">
+              <Link href="/purchases">
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                Mes Achats
+              </Link>
+            </Button>
             {user.isAdmin && (
               <Button variant="outline" size="sm" asChild data-testid="link-admin">
                 <Link href="/admin">

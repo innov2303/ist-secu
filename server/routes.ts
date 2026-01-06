@@ -116,5 +116,54 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Purchase routes
+  app.get("/api/purchases", isAuthenticated, async (req, res) => {
+    const userId = (req as any).user?.claims?.sub;
+    const userPurchases = await storage.getPurchasesByUser(userId);
+    res.json(userPurchases);
+  });
+
+  app.post("/api/purchases", isAuthenticated, async (req, res) => {
+    const userId = (req as any).user?.claims?.sub;
+    const { scriptId } = req.body;
+
+    if (!scriptId || typeof scriptId !== "number") {
+      return res.status(400).json({ message: "Script ID is required" });
+    }
+
+    // Check if script exists
+    const script = await storage.getScript(scriptId);
+    if (!script) {
+      return res.status(404).json({ message: "Script not found" });
+    }
+
+    // Check if already purchased
+    const alreadyPurchased = await storage.hasPurchased(userId, scriptId);
+    if (alreadyPurchased) {
+      return res.status(400).json({ message: "Script already purchased" });
+    }
+
+    // Create purchase
+    const purchase = await storage.createPurchase({
+      userId,
+      scriptId,
+      priceCents: script.priceCents,
+    });
+
+    res.status(201).json(purchase);
+  });
+
+  app.get("/api/purchases/check/:scriptId", isAuthenticated, async (req, res) => {
+    const userId = (req as any).user?.claims?.sub;
+    const scriptId = parseInt(req.params.scriptId);
+
+    if (isNaN(scriptId)) {
+      return res.status(400).json({ message: "Invalid script ID" });
+    }
+
+    const hasPurchased = await storage.hasPurchased(userId, scriptId);
+    res.json({ hasPurchased });
+  });
+
   return httpServer;
 }

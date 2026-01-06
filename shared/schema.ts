@@ -1,6 +1,7 @@
-import { pgTable, text, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, varchar, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 export * from "./models/auth";
 
@@ -12,11 +13,33 @@ export const scripts = pgTable("scripts", {
   filename: text("filename").notNull(),
   content: text("content").notNull(),
   icon: text("icon").notNull(),
-  compliance: text("compliance").notNull(), // "ANSSI", "CIS", "ANSSI & CIS"
-  features: text("features").array().notNull(), // List of features like "Génération de rapport", "Graphiques de score"
+  compliance: text("compliance").notNull(),
+  features: text("features").array().notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });
 
 export type Script = typeof scripts.$inferSelect;
 export type InsertScript = z.infer<typeof insertScriptSchema>;
+
+// Purchases table - tracks which users have bought which scripts
+export const purchases = pgTable("purchases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  scriptId: integer("script_id").notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+});
+
+export const purchasesRelations = relations(purchases, ({ one }) => ({
+  script: one(scripts, {
+    fields: [purchases.scriptId],
+    references: [scripts.id],
+  }),
+}));
+
+export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, purchasedAt: true });
+
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;

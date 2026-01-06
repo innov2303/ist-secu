@@ -1,12 +1,16 @@
-import { scripts, type Script, type InsertScript } from "@shared/schema";
+import { scripts, purchases, type Script, type InsertScript, type Purchase, type InsertPurchase } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   getScripts(): Promise<Script[]>;
   getScript(id: number): Promise<Script | undefined>;
   createScript(script: InsertScript): Promise<Script>;
   seed(): Promise<void>;
+  // Purchase methods
+  getPurchasesByUser(userId: string): Promise<(Purchase & { script: Script })[]>;
+  createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  hasPurchased(userId: string, scriptId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -24,6 +28,32 @@ export class DatabaseStorage implements IStorage {
     return newScript;
   }
 
+  async getPurchasesByUser(userId: string): Promise<(Purchase & { script: Script })[]> {
+    const userPurchases = await db
+      .select()
+      .from(purchases)
+      .innerJoin(scripts, eq(purchases.scriptId, scripts.id))
+      .where(eq(purchases.userId, userId));
+
+    return userPurchases.map(row => ({
+      ...row.purchases,
+      script: row.scripts,
+    }));
+  }
+
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
+    return newPurchase;
+  }
+
+  async hasPurchased(userId: string, scriptId: number): Promise<boolean> {
+    const [existing] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.userId, userId), eq(purchases.scriptId, scriptId)));
+    return !!existing;
+  }
+
   async seed(): Promise<void> {
     const existing = await this.getScripts();
     if (existing.length > 0) return;
@@ -37,7 +67,8 @@ export class DatabaseStorage implements IStorage {
         icon: "Monitor",
         compliance: "ANSSI & CIS",
         features: ["Génération de rapport PDF", "Graphiques de score", "Recommandations de correction"],
-        content: `# Windows Security Audit\nWrite-Host "Audit basé sur ANSSI/CIS..."`
+        content: `# Windows Security Audit\nWrite-Host "Audit basé sur ANSSI/CIS..."`,
+        priceCents: 4900, // 49€
       },
       {
         os: "Linux",
@@ -47,7 +78,8 @@ export class DatabaseStorage implements IStorage {
         icon: "Terminal",
         compliance: "ANSSI & CIS",
         features: ["Génération de rapport HTML", "Graphiques de score", "Recommandations de correction"],
-        content: `#!/bin/bash\necho "Audit basé sur ANSSI/CIS..."`
+        content: `#!/bin/bash\necho "Audit basé sur ANSSI/CIS..."`,
+        priceCents: 4900,
       },
       {
         os: "VMware",
@@ -57,7 +89,8 @@ export class DatabaseStorage implements IStorage {
         icon: "Server",
         compliance: "CIS",
         features: ["Génération de rapport", "Recommandations de correction"],
-        content: `#!/usr/bin/env python3\nprint("Audit basé sur CIS...")`
+        content: `#!/usr/bin/env python3\nprint("Audit basé sur CIS...")`,
+        priceCents: 5900,
       },
       {
         os: "Docker",
@@ -67,7 +100,8 @@ export class DatabaseStorage implements IStorage {
         icon: "Container",
         compliance: "CIS",
         features: ["Génération de rapport", "Graphiques de score", "Recommandations de correction"],
-        content: `#!/bin/bash\necho "Audit basé sur CIS..."`
+        content: `#!/bin/bash\necho "Audit basé sur CIS..."`,
+        priceCents: 3900,
       }
     ];
 
