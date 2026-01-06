@@ -4,7 +4,7 @@ import { useScripts } from "@/hooks/use-scripts";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag } from "lucide-react";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, User } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -33,13 +33,13 @@ export default function Home() {
                 </Link>
               </Button>
             )}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border">
+            <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border hover-elevate cursor-pointer" data-testid="link-profile">
               <Avatar className="h-7 w-7">
                 <AvatarImage src={user.profileImageUrl || undefined} />
                 <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
-            </div>
+            </Link>
             <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
               <LogOut className="h-4 w-4" />
             </Button>

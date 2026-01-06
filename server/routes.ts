@@ -9,6 +9,8 @@ import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
+import crypto from "crypto";
 
 // Middleware to check if user is admin
 const isAdmin = async (req: any, res: any, next: any) => {
@@ -186,6 +188,177 @@ export async function registerRoutes(
     }
 
     res.json(user);
+  });
+
+  // Profile update routes
+  const updateProfileSchema = z.object({
+    firstName: z.string().min(1, "Prénom requis").optional(),
+    lastName: z.string().optional(),
+  });
+
+  app.patch("/api/profile", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
+      const result = updateProfileSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { firstName, lastName } = result.data;
+      
+      const [updated] = await db
+        .update(users)
+        .set({ 
+          ...(firstName !== undefined && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          isAdmin: users.isAdmin,
+        });
+
+      if (!updated) {
+        return res.status(404).json({ message: "Utilisateur non trouvé" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour du profil" });
+    }
+  });
+
+  const requestEmailChangeSchema = z.object({
+    newEmail: z.string().email("Email invalide"),
+    password: z.string().min(1, "Mot de passe requis pour changer l'email"),
+  });
+
+  app.post("/api/profile/request-email-change", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
+      const result = requestEmailChangeSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { newEmail, password } = result.data;
+
+      // Get current user
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Utilisateur non trouvé" });
+      }
+
+      // Check if user has a password (local auth only)
+      if (!user.password) {
+        return res.status(400).json({ message: "Le changement d'email n'est pas disponible pour les comptes Replit" });
+      }
+
+      // Verify current password
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Mot de passe incorrect" });
+      }
+
+      // Check if new email is already in use
+      const [existingUser] = await db.select().from(users).where(eq(users.email, newEmail)).limit(1);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ message: "Cet email est déjà utilisé" });
+      }
+
+      // Generate verification token
+      const token = crypto.randomUUID();
+      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Save pending email change
+      await db
+        .update(users)
+        .set({ 
+          pendingEmail: newEmail,
+          pendingEmailToken: token,
+          pendingEmailExpires: expires,
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId));
+
+      // TODO: Send verification email when email service is configured
+      // For now, just return success with a note
+      res.json({ 
+        message: "Demande de changement d'email enregistrée. La vérification par email sera disponible prochainement.",
+        pendingEmail: newEmail,
+        emailServiceConfigured: false
+      });
+    } catch (error) {
+      console.error("Email change request error:", error);
+      res.status(500).json({ message: "Erreur lors de la demande de changement d'email" });
+    }
+  });
+
+  const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, "Mot de passe actuel requis"),
+    newPassword: z.string().min(6, "Le nouveau mot de passe doit contenir au moins 6 caractères"),
+  });
+
+  app.post("/api/profile/change-password", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
+      const result = changePasswordSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { currentPassword, newPassword } = result.data;
+
+      // Get current user
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Utilisateur non trouvé" });
+      }
+
+      // Check if user has a password (local auth only)
+      if (!user.password) {
+        return res.status(400).json({ message: "Le changement de mot de passe n'est pas disponible pour les comptes Replit" });
+      }
+
+      // Verify current password
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Mot de passe actuel incorrect" });
+      }
+
+      // Hash and save new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await db
+        .update(users)
+        .set({ 
+          password: hashedPassword,
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId));
+
+      res.json({ message: "Mot de passe modifié avec succès" });
+    } catch (error) {
+      console.error("Password change error:", error);
+      res.status(500).json({ message: "Erreur lors du changement de mot de passe" });
+    }
   });
 
   // Initialize seed data

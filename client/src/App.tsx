@@ -10,6 +10,7 @@ import Purchases from "@/pages/purchases";
 import CheckoutSuccess from "@/pages/checkout-success";
 import CheckoutCancel from "@/pages/checkout-cancel";
 import AuthPage from "@/pages/auth";
+import Profile from "@/pages/profile";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/purchases" component={Purchases} />
+      <Route path="/profile" component={Profile} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route component={NotFound} />
