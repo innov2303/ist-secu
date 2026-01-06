@@ -68,7 +68,7 @@ export default function Home() {
             </p>
           </div>
           <div className="text-xs font-mono text-primary/80 bg-primary/5 px-3 py-1 rounded border border-primary/20">
-            SECURE CONNECTION ESTABLISHED
+            Operating System Toolkit
           </div>
         </div>
 
