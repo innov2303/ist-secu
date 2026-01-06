@@ -24,7 +24,7 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const isReplitUser = user && !user.email?.includes("@");
+  const isLocalUser = (user as any)?.isLocalAuth === true;
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName?: string; lastName?: string }) => {
@@ -208,7 +208,7 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {isReplitUser ? (
+        {!isLocalUser ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>

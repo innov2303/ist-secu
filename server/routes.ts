@@ -170,6 +170,7 @@ export async function registerRoutes(
 
   app.get("/api/auth/me", async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const isLocalAuth = !!(req as any).session?.isLocalAuth;
     if (!userId) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -187,7 +188,7 @@ export async function registerRoutes(
       return res.status(401).json({ message: "User not found" });
     }
 
-    res.json(user);
+    res.json({ ...user, isLocalAuth });
   });
 
   // Profile update routes

@@ -37,10 +37,13 @@ Preferred communication style: Simple, everyday language.
   - `purchases` - User purchase records with subscription tracking
 
 ### Authentication Flow
-- Replit Auth via OIDC (OpenID Connect)
+- Dual authentication: Replit Auth via OIDC and local email/password
+- Local auth uses bcrypt for password hashing with session regeneration for security
 - First registered user automatically becomes admin
 - Session-based authentication with PostgreSQL session store
 - Protected routes use `isAuthenticated` middleware
+- Profile page at /profile for updating name/email/password (local users only)
+- **TODO**: Email verification for email changes requires Resend integration to be configured
 
 ### Payment Integration
 - **Provider**: Stripe (via Replit Connector)
