@@ -121,34 +121,36 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           <Badge variant="outline" className="mr-2">{script.compliance}</Badge>
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-4 mb-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Achat direct</p>
-              <p className="text-lg font-bold text-primary" data-testid={`text-price-direct-${script.id}`}>
-                {formatPrice(script.priceCents)}
+        {user && (
+          <div className="bg-muted/50 rounded-lg p-4 mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Achat direct</p>
+                <p className="text-lg font-bold text-primary" data-testid={`text-price-direct-${script.id}`}>
+                  {formatPrice(script.priceCents)}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-[120px] text-right">
+                Licence permanente
               </p>
             </div>
-            <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-              Licence permanente
-            </p>
-          </div>
-          <div className="border-t border-border/50" />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" />
-                Abonnement mensuel
-              </p>
-              <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
-                {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground">/mois</span>
+            <div className="border-t border-border/50" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />
+                  Abonnement mensuel
+                </p>
+                <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
+                  {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground">/mois</span>
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-[120px] text-right">
+                Mises à jour incluses
               </p>
             </div>
-            <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-              Mises à jour incluses
-            </p>
           </div>
-        </div>
+        )}
 
         <div className="mt-auto space-y-2">
           {!user && (
