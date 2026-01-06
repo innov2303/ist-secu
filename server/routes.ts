@@ -4,9 +4,10 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users } from "@shared/schema";
+import { users, purchases } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 // Middleware to check if user is admin
 const isAdmin = async (req: any, res: any, next: any) => {
@@ -175,6 +176,140 @@ export async function registerRoutes(
       purchaseType: activePurchase?.purchaseType || null,
       expiresAt: activePurchase?.expiresAt || null,
     });
+  });
+
+  // Stripe checkout routes
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (error) {
+      res.status(500).json({ message: "Stripe not configured" });
+    }
+  });
+
+  app.post("/api/checkout", isAuthenticated, async (req, res) => {
+    const userId = (req as any).user?.claims?.sub;
+    const { scriptId, purchaseType } = req.body;
+
+    if (!scriptId || !purchaseType) {
+      return res.status(400).json({ message: "Script ID and purchase type are required" });
+    }
+
+    const script = await storage.getScript(scriptId);
+    if (!script) {
+      return res.status(404).json({ message: "Script not found" });
+    }
+
+    const existingPurchase = await storage.getActivePurchase(userId, scriptId);
+    if (existingPurchase) {
+      return res.status(400).json({ message: "You already have an active purchase for this script" });
+    }
+
+    try {
+      const stripe = await getUncachableStripeClient();
+      const user = await authStorage.getUser(userId);
+
+      let customerId = user?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user?.email || undefined,
+          metadata: { userId },
+        });
+        customerId = customer.id;
+
+        await db
+          .update(users)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(users.id, userId));
+      }
+
+      const stripePrices = await storage.getStripePricesForProduct(script.name);
+      const priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
+      
+      if (!priceId) {
+        console.error(`No Stripe price found for ${script.name} (${purchaseType})`);
+        return res.status(500).json({ message: "Prix Stripe non configuré" });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const mode = purchaseType === "monthly" ? "subscription" : "payment";
+      const priceAmount = purchaseType === "monthly" ? script.monthlyPriceCents : script.priceCents;
+
+      const sessionParams: any = {
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{
+          price: priceId,
+          quantity: 1,
+        }],
+        mode,
+        success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/checkout/cancel`,
+        metadata: {
+          userId,
+          scriptId: script.id.toString(),
+          purchaseType,
+          priceCents: priceAmount.toString(),
+        },
+      };
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      res.status(500).json({ message: "Error creating checkout session" });
+    }
+  });
+
+  app.get("/api/checkout/success", isAuthenticated, async (req, res) => {
+    const sessionId = req.query.session_id as string;
+    const userId = (req as any).user?.claims?.sub;
+
+    if (!sessionId) {
+      return res.status(400).json({ message: "Session ID required" });
+    }
+
+    try {
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.metadata?.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized session" });
+      }
+
+      if (session.payment_status === "paid" && session.metadata) {
+        const { scriptId, purchaseType, priceCents } = session.metadata;
+        
+        const existing = await storage.getActivePurchase(userId, parseInt(scriptId));
+        if (!existing) {
+          let expiresAt: Date | null = null;
+          
+          if (purchaseType === "monthly" && session.subscription) {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+            expiresAt = new Date(subscription.current_period_end * 1000);
+          }
+
+          await storage.createPurchase({
+            userId,
+            scriptId: parseInt(scriptId),
+            priceCents: parseInt(priceCents || "0"),
+            purchaseType,
+            expiresAt,
+            stripeSubscriptionId: session.subscription as string || null,
+            stripePaymentIntentId: session.payment_intent as string || null,
+          });
+        }
+
+        res.json({ success: true, scriptId: parseInt(scriptId) });
+      } else {
+        res.status(400).json({ message: "Payment not completed" });
+      }
+    } catch (error) {
+      console.error('Checkout success error:', error);
+      res.status(500).json({ message: "Error verifying payment" });
+    }
   });
 
   return httpServer;

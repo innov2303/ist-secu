@@ -47,23 +47,21 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
     enabled: !!user,
   });
 
-  const purchaseMutation = useMutation({
-    mutationFn: (purchaseType: "direct" | "monthly") => 
-      apiRequest("POST", "/api/purchases", { scriptId: script.id, purchaseType }).then(r => r.json()),
-    onSuccess: (_, purchaseType) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases/check", script.id] });
-      const typeLabel = purchaseType === "direct" ? "Achat direct" : "Abonnement mensuel";
-      toast({
-        title: "Achat réussi",
-        description: `${script.name} - ${typeLabel}`,
-      });
+  const checkoutMutation = useMutation({
+    mutationFn: async (purchaseType: "direct" | "monthly") => {
+      const response = await apiRequest("POST", "/api/checkout", { scriptId: script.id, purchaseType });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
     },
     onError: () => {
       toast({
         variant: "destructive",
-        title: "Erreur d'achat",
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        title: "Erreur",
+        description: "Impossible de créer la session de paiement. Veuillez réessayer.",
       });
     },
   });
@@ -164,12 +162,12 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           {user && !hasPurchased && !checkingPurchase && (
             <>
               <Button
-                onClick={() => purchaseMutation.mutate("direct")}
-                disabled={purchaseMutation.isPending}
+                onClick={() => checkoutMutation.mutate("direct")}
+                disabled={checkoutMutation.isPending}
                 className="w-full"
                 data-testid={`button-purchase-direct-${script.id}`}
               >
-                {purchaseMutation.isPending ? (
+                {checkoutMutation.isPending ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <ShoppingCart className="w-4 h-4 mr-2" />
@@ -177,8 +175,8 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 Acheter {formatPrice(script.priceCents)}
               </Button>
               <Button
-                onClick={() => purchaseMutation.mutate("monthly")}
-                disabled={purchaseMutation.isPending}
+                onClick={() => checkoutMutation.mutate("monthly")}
+                disabled={checkoutMutation.isPending}
                 variant="outline"
                 className="w-full"
                 data-testid={`button-purchase-monthly-${script.id}`}

@@ -1,6 +1,6 @@
 import { scripts, purchases, type Script, type InsertScript, type Purchase, type InsertPurchase } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getScripts(): Promise<Script[]>;
@@ -69,6 +69,43 @@ export class DatabaseStorage implements IStorage {
     }
     
     return null;
+  }
+
+  async getStripePricesForProduct(productName: string): Promise<{oneTimePrice: string | null, recurringPrice: string | null}> {
+    const result = await db.execute(sql`
+      SELECT pr.id, pr.recurring
+      FROM stripe.products p
+      JOIN stripe.prices pr ON pr.product = p.id
+      WHERE p.name = ${productName} AND p.active = true AND pr.active = true
+    `);
+    
+    let oneTimePrice: string | null = null;
+    let recurringPrice: string | null = null;
+    
+    for (const row of result.rows as any[]) {
+      if (row.recurring) {
+        recurringPrice = row.id;
+      } else {
+        oneTimePrice = row.id;
+      }
+    }
+    
+    return { oneTimePrice, recurringPrice };
+  }
+
+  async updatePurchaseSubscription(subscriptionId: string, expiresAt: Date | null): Promise<void> {
+    await db
+      .update(purchases)
+      .set({ expiresAt })
+      .where(eq(purchases.stripeSubscriptionId, subscriptionId));
+  }
+
+  async getPurchaseBySubscriptionId(subscriptionId: string): Promise<Purchase | null> {
+    const [purchase] = await db
+      .select()
+      .from(purchases)
+      .where(eq(purchases.stripeSubscriptionId, subscriptionId));
+    return purchase || null;
   }
 
   async seed(): Promise<void> {

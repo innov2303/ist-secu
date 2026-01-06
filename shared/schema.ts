@@ -33,6 +33,8 @@ export const purchases = pgTable("purchases", {
   priceCents: integer("price_cents").notNull().default(0),
   purchaseType: text("purchase_type").notNull().default("direct"),
   expiresAt: timestamp("expires_at"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
 });
 
 export const purchasesRelations = relations(purchases, ({ one }) => ({
