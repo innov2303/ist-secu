@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ShieldCheck, Terminal, Lock, Shield } from "lucide-react";
-import bannerImg from "@assets/stock_images/modern_server_data_c_a5733689.jpg";
+import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 export function Hero() {
   return (
