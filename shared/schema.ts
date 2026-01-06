@@ -15,7 +15,8 @@ export const scripts = pgTable("scripts", {
   icon: text("icon").notNull(),
   compliance: text("compliance").notNull(),
   features: text("features").array().notNull(),
-  priceCents: integer("price_cents").notNull().default(0),
+  priceCents: integer("price_cents").notNull().default(50000),
+  monthlyPriceCents: integer("monthly_price_cents").notNull().default(10000),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });
@@ -30,6 +31,8 @@ export const purchases = pgTable("purchases", {
   scriptId: integer("script_id").notNull(),
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
   priceCents: integer("price_cents").notNull().default(0),
+  purchaseType: text("purchase_type").notNull().default("direct"),
+  expiresAt: timestamp("expires_at"),
 });
 
 export const purchasesRelations = relations(purchases, ({ one }) => ({

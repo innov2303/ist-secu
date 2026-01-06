@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
 
 type PurchaseWithScript = Purchase & { script: Script };
@@ -32,8 +32,15 @@ function formatPrice(cents: number) {
   }).format(cents / 100);
 }
 
+function isExpired(purchase: PurchaseWithScript): boolean {
+  if (purchase.purchaseType === "direct") return false;
+  if (!purchase.expiresAt) return false;
+  return new Date(purchase.expiresAt) < new Date();
+}
+
 function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   const Icon = iconMap[purchase.script.icon] || Monitor;
+  const expired = isExpired(purchase);
 
   return (
     <Card data-testid={`card-purchase-${purchase.id}`}>
@@ -47,9 +54,23 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
             <CardDescription className="mt-1">{purchase.script.os}</CardDescription>
           </div>
         </div>
-        <Badge variant="secondary" className="shrink-0">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Acheté
+        <Badge variant={expired ? "destructive" : "secondary"} className="shrink-0">
+          {purchase.purchaseType === "direct" ? (
+            <>
+              <Infinity className="h-3 w-3 mr-1" />
+              Permanent
+            </>
+          ) : expired ? (
+            <>
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Expiré
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Abonnement
+            </>
+          )}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -64,18 +85,38 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>{formatDate(purchase.purchasedAt)}</span>
-            <span className="mx-2">-</span>
+        <div className="flex items-center justify-between pt-2 border-t gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span>{formatDate(purchase.purchasedAt)}</span>
+            </div>
+            <span className="hidden sm:inline mx-1">-</span>
             <span className="font-medium">{formatPrice(purchase.priceCents)}</span>
+            {purchase.purchaseType === "monthly" && purchase.expiresAt && (
+              <span className="text-xs text-orange-600 dark:text-orange-400">
+                Expire le {formatDate(purchase.expiresAt)}
+              </span>
+            )}
           </div>
-          <Button size="sm" asChild data-testid={`button-download-${purchase.id}`}>
-            <a href={`/api/scripts/${purchase.script.id}/download`} download>
-              <Download className="h-4 w-4 mr-2" />
-              Télécharger
-            </a>
+          <Button 
+            size="sm" 
+            asChild={!expired}
+            disabled={expired}
+            variant={expired ? "secondary" : "default"}
+            data-testid={`button-download-${purchase.id}`}
+          >
+            {expired ? (
+              <span>
+                <Download className="h-4 w-4 mr-2" />
+                Renouveler
+              </span>
+            ) : (
+              <a href={`/api/scripts/${purchase.script.id}/download`} download>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger
+              </a>
+            )}
           </Button>
         </div>
       </CardContent>

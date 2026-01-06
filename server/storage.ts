@@ -54,6 +54,23 @@ export class DatabaseStorage implements IStorage {
     return !!existing;
   }
 
+  async getActivePurchase(userId: string, scriptId: number): Promise<Purchase | null> {
+    const [existing] = await db
+      .select()
+      .from(purchases)
+      .where(and(eq(purchases.userId, userId), eq(purchases.scriptId, scriptId)));
+    
+    if (!existing) return null;
+    
+    if (existing.purchaseType === "direct") return existing;
+    
+    if (existing.expiresAt && new Date(existing.expiresAt) > new Date()) {
+      return existing;
+    }
+    
+    return null;
+  }
+
   async seed(): Promise<void> {
     const existing = await this.getScripts();
     if (existing.length > 0) return;

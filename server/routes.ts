@@ -125,29 +125,37 @@ export async function registerRoutes(
 
   app.post("/api/purchases", isAuthenticated, async (req, res) => {
     const userId = (req as any).user?.claims?.sub;
-    const { scriptId } = req.body;
+    const { scriptId, purchaseType } = req.body;
 
     if (!scriptId || typeof scriptId !== "number") {
       return res.status(400).json({ message: "Script ID is required" });
     }
 
-    // Check if script exists
+    if (!purchaseType || !["direct", "monthly"].includes(purchaseType)) {
+      return res.status(400).json({ message: "Purchase type must be 'direct' or 'monthly'" });
+    }
+
     const script = await storage.getScript(scriptId);
     if (!script) {
       return res.status(404).json({ message: "Script not found" });
     }
 
-    // Check if already purchased
-    const alreadyPurchased = await storage.hasPurchased(userId, scriptId);
-    if (alreadyPurchased) {
-      return res.status(400).json({ message: "Script already purchased" });
+    const existingPurchase = await storage.getActivePurchase(userId, scriptId);
+    if (existingPurchase) {
+      return res.status(400).json({ message: "You already have an active purchase for this script" });
     }
 
-    // Create purchase
+    const priceCents = purchaseType === "direct" ? script.priceCents : script.monthlyPriceCents;
+    const expiresAt = purchaseType === "monthly" 
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      : null;
+
     const purchase = await storage.createPurchase({
       userId,
       scriptId,
-      priceCents: script.priceCents,
+      priceCents,
+      purchaseType,
+      expiresAt,
     });
 
     res.status(201).json(purchase);
@@ -161,8 +169,12 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Invalid script ID" });
     }
 
-    const hasPurchased = await storage.hasPurchased(userId, scriptId);
-    res.json({ hasPurchased });
+    const activePurchase = await storage.getActivePurchase(userId, scriptId);
+    res.json({ 
+      hasPurchased: !!activePurchase,
+      purchaseType: activePurchase?.purchaseType || null,
+      expiresAt: activePurchase?.expiresAt || null,
+    });
   });
 
   return httpServer;
