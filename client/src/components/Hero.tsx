@@ -71,13 +71,10 @@ export function Hero() {
           className="mt-16 max-w-4xl mx-auto"
         >
           <div className="bg-card/80 backdrop-blur-sm border border-border rounded-xl p-6 md:p-8">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 flex items-center justify-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold mb-6 flex items-center justify-center gap-2">
               <FileText className="w-6 h-6 text-primary" />
               Rapports d'Audit Complets
             </h2>
-            <p className="text-muted-foreground mb-6 text-center">
-              À la fin de chaque audit, un rapport détaillé est automatiquement généré pour vous aider à évaluer et améliorer la sécurité de votre infrastructure.
-            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col items-center text-center p-4 rounded-lg bg-secondary/30 border border-border/50">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
