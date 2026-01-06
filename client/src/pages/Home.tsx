@@ -46,10 +46,10 @@ export default function Home() {
           </>
         ) : (
           <Button asChild data-testid="button-login">
-            <a href="/api/login">
+            <Link href="/auth">
               <LogIn className="h-4 w-4 mr-2" />
               Connexion
-            </a>
+            </Link>
           </Button>
         )}
       </div>

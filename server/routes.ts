@@ -64,15 +64,33 @@ export async function registerRoutes(
         isAdmin: isFirstUser,
       }).returning();
 
-      // Log user in by setting session
-      (req as any).session.userId = newUser.id;
-
-      res.status(201).json({
-        id: newUser.id,
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        isAdmin: newUser.isAdmin,
+      // Regenerate session to prevent session fixation attacks
+      const session = req.session as any;
+      session.regenerate((err: any) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Erreur lors de l'inscription" });
+        }
+        
+        // Set userId on regenerated session
+        (req as any).session.userId = newUser.id;
+        (req as any).session.isLocalAuth = true;
+        
+        // Save session explicitly
+        (req as any).session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Erreur lors de l'inscription" });
+          }
+          
+          res.status(201).json({
+            id: newUser.id,
+            email: newUser.email,
+            firstName: newUser.firstName,
+            lastName: newUser.lastName,
+            isAdmin: newUser.isAdmin,
+          });
+        });
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -101,16 +119,34 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Email ou mot de passe incorrect" });
       }
 
-      // Log user in by setting session
-      (req as any).session.userId = user.id;
-
-      res.json({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        isAdmin: user.isAdmin,
-        profileImageUrl: user.profileImageUrl,
+      // Regenerate session to prevent session fixation attacks
+      const session = req.session as any;
+      session.regenerate((err: any) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Erreur lors de la connexion" });
+        }
+        
+        // Set userId on regenerated session
+        (req as any).session.userId = user.id;
+        (req as any).session.isLocalAuth = true;
+        
+        // Save session explicitly
+        (req as any).session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Erreur lors de la connexion" });
+          }
+          
+          res.json({
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            isAdmin: user.isAdmin,
+            profileImageUrl: user.profileImageUrl,
+          });
+        });
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -119,11 +155,14 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/logout", (req, res) => {
+    const isLocalAuth = (req as any).session?.isLocalAuth;
     (req as any).session.destroy((err: any) => {
       if (err) {
         return res.status(500).json({ message: "Erreur lors de la déconnexion" });
       }
-      res.json({ success: true });
+      // Clear the session cookie
+      res.clearCookie('connect.sid');
+      res.json({ success: true, isLocalAuth });
     });
   });
 

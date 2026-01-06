@@ -9,11 +9,13 @@ import AdminPage from "@/pages/admin";
 import Purchases from "@/pages/purchases";
 import CheckoutSuccess from "@/pages/checkout-success";
 import CheckoutCancel from "@/pages/checkout-cancel";
+import AuthPage from "@/pages/auth";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/auth" component={AuthPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/purchases" component={Purchases} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
