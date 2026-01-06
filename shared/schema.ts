@@ -4,14 +4,14 @@ import { z } from "zod";
 
 export const scripts = pgTable("scripts", {
   id: serial("id").primaryKey(),
-  os: text("os").notNull(), // e.g., 'windows', 'linux', 'vmware', 'docker'
+  os: text("os").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull(),
   filename: text("filename").notNull(),
-  content: text("content").notNull(), // The actual script content
-  icon: text("icon").notNull(), // Lucide icon name
-  compliance: text("compliance").notNull().default("ANSSI & CIS"), // Standards mention
-  features: text("features").array().notNull().default(["Scan complet", "Rapport détaillé", "Génération de graphiques", "Recommandations de corrections"]),
+  content: text("content").notNull(),
+  icon: text("icon").notNull(),
+  compliance: text("compliance").notNull(), // "ANSSI", "CIS", "ANSSI & CIS"
+  features: text("features").array().notNull(), // List of features like "Génération de rapport", "Graphiques de score"
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });
