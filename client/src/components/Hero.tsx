@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ShieldCheck, Terminal, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/igs_logo_on_black_background.png";
+import logoImg from "@assets/generated_images/igs_shield_logo_black_background.png";
 
 export function Hero() {
   return (
