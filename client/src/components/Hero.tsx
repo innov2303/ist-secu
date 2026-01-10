@@ -16,7 +16,7 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         <div className="absolute inset-0 flex items-start justify-start p-6">
           <div className="flex items-center gap-4">
-            <img src={logoImg} alt="IGS Logo" className="w-40 h-40 drop-shadow-lg mix-blend-screen" />
+            <img src={logoImg} alt="IGS Logo" className="w-56 h-56 drop-shadow-lg mix-blend-screen" />
             <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-lg">InfraGuard Security</h1>
           </div>
         </div>
