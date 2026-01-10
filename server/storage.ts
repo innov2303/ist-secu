@@ -217,13 +217,13 @@ export class DatabaseStorage implements IStorage {
     const defaultScripts: InsertScript[] = [
       {
         os: "Windows",
-        name: "Windows Security Audit",
+        name: "Windows Compliance Toolkit",
         description: "Audit complet basé sur les guides ANSSI et benchmarks CIS pour environnements Windows. Vérifie la configuration système, les comptes utilisateurs, les services, le pare-feu et génère un rapport détaillé.",
         filename: "windows-security-audit-anssi.ps1",
         icon: "Monitor",
         compliance: "ANSSI & CIS",
         features: ["Génération de rapport PDF/JSON", "Score de conformité", "40+ contrôles de sécurité", "Recommandations de correction détaillées"],
-        content: `# Windows Security Audit - ANSSI\n# Script complet à venir`,
+        content: `# Windows Compliance Toolkit - ANSSI\n# Script complet à venir`,
         priceCents: 50000,
         monthlyPriceCents: 10000,
       },

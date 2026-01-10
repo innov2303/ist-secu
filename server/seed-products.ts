@@ -11,7 +11,7 @@ async function createProducts() {
 
   const scriptsToCreate = [
     {
-      name: 'Windows Security Audit',
+      name: 'Windows Compliance Toolkit',
       description: 'Audit complet basé sur les guides ANSSI et benchmarks CIS pour environnements Windows. Mise à jour et support inclus.',
       metadata: { os: 'Windows', compliance: 'ANSSI & CIS' },
       monthlyPriceCents: 30000,
