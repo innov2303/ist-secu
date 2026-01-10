@@ -171,7 +171,7 @@ audit_system_config() {
     local mount_issues=()
     
     if mountpoint -q /tmp 2>/dev/null; then
-        local tmp_opts=$(mount | grep " /tmp " | grep -oP '\(.*\)')
+        local tmp_opts=$(mount | grep " /tmp " | sed 's/.*(\(.*\))/\1/' 2>/dev/null || echo "")
         if [[ ! "$tmp_opts" =~ "noexec" ]]; then
             mount_issues+=("/tmp sans noexec")
         fi
