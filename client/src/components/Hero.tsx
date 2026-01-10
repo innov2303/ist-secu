@@ -32,11 +32,11 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
-          <Card className="overflow-hidden" data-testid="card-integrity-check">
+          <Card className="overflow-hidden" data-testid="card-audit-conformite">
             <div className="relative h-40 overflow-hidden">
               <img 
                 src={integrityImg} 
-                alt="Integrity Check" 
+                alt="Audit & Conformité" 
                 className="w-full h-full object-cover brightness-[0.6]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
@@ -44,12 +44,12 @@ export function Hero() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-primary" />
-                Integrity Check
+                Audit & Conformité
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Analyse cryptographique et vérification d'intégrité des scripts avant exécution. Validation automatique des signatures et des checksums.
+                Audit de sécurité complet et vérification de conformité des configurations selon les standards ANSSI-BP-028 et CIS Benchmark.
               </p>
             </CardContent>
           </Card>
