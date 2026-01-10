@@ -2,7 +2,7 @@
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité Linux (RENFORCÉ)
 # Basé sur les recommandations ANSSI-BP-028 + CIS Benchmark Level 2
-# Version: 2.0.0
+# Version: 1.0.0
 # Niveau: RENFORCÉ (~100 contrôles complets)
 # 
 # Ce script effectue un audit de sécurité complet d'un système Linux
@@ -33,7 +33,7 @@ set -euo pipefail
 # Configuration par défaut
 OUTPUT_FILE="audit_enhanced_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
-VERSION="2.0.0"
+VERSION="1.0.0"
 SCRIPT_NAME="InfraGuard Linux Compliance Audit - ENHANCED (ANSSI-BP-028 + CIS L2)"
 AUDIT_LEVEL="ENHANCED"
 

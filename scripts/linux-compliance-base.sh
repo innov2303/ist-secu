@@ -2,7 +2,7 @@
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité Linux (BASE)
 # Basé sur les recommandations ANSSI-BP-028 + CIS Benchmark Level 1
-# Version: 2.0.0
+# Version: 1.0.0
 # Niveau: BASE (~55 contrôles essentiels)
 # 
 # Ce script effectue un audit de sécurité de base d'un système Linux
@@ -22,7 +22,7 @@ set -euo pipefail
 # Configuration par défaut
 OUTPUT_FILE="audit_base_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
-VERSION="2.0.0"
+VERSION="1.0.0"
 SCRIPT_NAME="InfraGuard Linux Compliance Audit - BASE (ANSSI-BP-028 + CIS L1)"
 AUDIT_LEVEL="BASE"
 
