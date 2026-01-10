@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
-import logoImg from "@assets/generated_images/dark_blue_igs_on_black.png";
+import logoImg from "@assets/téléchargé_1768070085350.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 type PurchaseWithScript = Purchase & { script: Script };

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ShieldCheck, Terminal, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/dark_blue_igs_on_black.png";
+import logoImg from "@assets/téléchargé_1768070085350.png";
 
 export function Hero() {
   return (
@@ -16,7 +16,9 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         <div className="absolute inset-0 flex items-start justify-start p-6">
           <div className="flex items-center gap-4">
-            <img src={logoImg} alt="IGS Logo" className="w-40 h-40 drop-shadow-lg mix-blend-screen" />
+            <div className="bg-white/90 rounded-lg p-2">
+              <img src={logoImg} alt="IGS Logo" className="w-36 h-36" />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-lg">InfraGuard Security</h1>
           </div>
         </div>
