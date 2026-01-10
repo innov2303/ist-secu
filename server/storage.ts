@@ -1,12 +1,14 @@
 import { scripts, purchases, type Script, type InsertScript, type Purchase, type InsertPurchase } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, ne, inArray } from "drizzle-orm";
 import * as fs from "fs";
 import * as path from "path";
 
 export interface IStorage {
   getScripts(): Promise<Script[]>;
+  getVisibleScripts(): Promise<Script[]>;
   getScript(id: number): Promise<Script | undefined>;
+  getBundledScripts(bundleId: number): Promise<Script[]>;
   createScript(script: InsertScript): Promise<Script>;
   updateScriptContent(id: number, content: string): Promise<void>;
   updateScriptsFromFiles(): Promise<void>;
@@ -14,6 +16,7 @@ export interface IStorage {
   // Purchase methods
   getPurchasesByUser(userId: string): Promise<(Purchase & { script: Script })[]>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  createPurchasesForBundle(userId: string, bundleScript: Script, purchaseType: string, priceCents: number, expiresAt: Date | null, stripePaymentIntentId?: string, stripeSubscriptionId?: string): Promise<void>;
   hasPurchased(userId: string, scriptId: number): Promise<boolean>;
   getActivePurchase(userId: string, scriptId: number): Promise<Purchase | null>;
 }
@@ -21,6 +24,18 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getScripts(): Promise<Script[]> {
     return await db.select().from(scripts);
+  }
+
+  async getVisibleScripts(): Promise<Script[]> {
+    return await db.select().from(scripts).where(eq(scripts.isHidden, 0));
+  }
+
+  async getBundledScripts(bundleId: number): Promise<Script[]> {
+    const bundle = await this.getScript(bundleId);
+    if (!bundle || !bundle.bundledScriptIds || bundle.bundledScriptIds.length === 0) {
+      return [];
+    }
+    return await db.select().from(scripts).where(inArray(scripts.id, bundle.bundledScriptIds));
   }
 
   async getScript(id: number): Promise<Script | undefined> {
@@ -53,6 +68,48 @@ export class DatabaseStorage implements IStorage {
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
     const [newPurchase] = await db.insert(purchases).values(purchase).returning();
     return newPurchase;
+  }
+
+  async createPurchasesForBundle(
+    userId: string, 
+    bundleScript: Script, 
+    purchaseType: string, 
+    priceCents: number, 
+    expiresAt: Date | null,
+    stripePaymentIntentId?: string, 
+    stripeSubscriptionId?: string
+  ): Promise<void> {
+    const scriptIds = bundleScript.bundledScriptIds || [];
+
+    // Create purchase for the bundle script itself to prevent duplicate purchases
+    const existingBundle = await this.getActivePurchase(userId, bundleScript.id);
+    if (!existingBundle) {
+      await this.createPurchase({
+        userId,
+        scriptId: bundleScript.id,
+        priceCents,
+        purchaseType,
+        expiresAt,
+        stripePaymentIntentId,
+        stripeSubscriptionId,
+      });
+    }
+
+    // Create purchases for all bundled scripts
+    for (const scriptId of scriptIds) {
+      const existing = await this.getActivePurchase(userId, scriptId);
+      if (!existing) {
+        await this.createPurchase({
+          userId,
+          scriptId,
+          priceCents: 0,
+          purchaseType,
+          expiresAt,
+          stripePaymentIntentId,
+          stripeSubscriptionId,
+        });
+      }
+    }
   }
 
   async hasPurchased(userId: string, scriptId: number): Promise<boolean> {

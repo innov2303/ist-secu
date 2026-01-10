@@ -17,6 +17,8 @@ export const scripts = pgTable("scripts", {
   features: text("features").array().notNull(),
   priceCents: integer("price_cents").notNull().default(50000),
   monthlyPriceCents: integer("monthly_price_cents").notNull().default(10000),
+  bundledScriptIds: integer("bundled_script_ids").array(),
+  isHidden: integer("is_hidden").default(0),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });

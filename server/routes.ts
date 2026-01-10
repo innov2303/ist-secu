@@ -368,7 +368,7 @@ export async function registerRoutes(
 
   // Public routes
   app.get(api.scripts.list.path, async (req, res) => {
-    const scripts = await storage.getScripts();
+    const scripts = await storage.getVisibleScripts();
     res.json(scripts);
   });
 
@@ -624,41 +624,62 @@ export async function registerRoutes(
 
       if (session.payment_status === "paid" && session.metadata) {
         const { scriptId, purchaseType, priceCents } = session.metadata;
+        const script = await storage.getScript(parseInt(scriptId));
         
-        const existing = await storage.getActivePurchase(userId, parseInt(scriptId));
-        if (!existing) {
-          let expiresAt: Date | null = null;
-          let subscriptionId: string | null = null;
-          let paymentIntentId: string | null = null;
-          
-          if (session.subscription) {
-            subscriptionId = typeof session.subscription === 'string' 
-              ? session.subscription 
-              : session.subscription.id;
-          }
-          
-          if (session.payment_intent) {
-            paymentIntentId = typeof session.payment_intent === 'string'
-              ? session.payment_intent
-              : session.payment_intent.id;
-          }
-          
-          if (purchaseType === "monthly" && subscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
-            if (subscription.current_period_end) {
-              expiresAt = new Date(subscription.current_period_end * 1000);
-            }
-          }
+        if (!script) {
+          return res.status(404).json({ message: "Script not found" });
+        }
+        
+        let subscriptionId: string | null = null;
+        let paymentIntentId: string | null = null;
+        
+        if (session.subscription) {
+          subscriptionId = typeof session.subscription === 'string' 
+            ? session.subscription 
+            : session.subscription.id;
+        }
+        
+        if (session.payment_intent) {
+          paymentIntentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent.id;
+        }
 
-          await storage.createPurchase({
+        // Get expiresAt for monthly subscriptions
+        let expiresAt: Date | null = null;
+        if (purchaseType === "monthly" && subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+          if (subscription.current_period_end) {
+            expiresAt = new Date(subscription.current_period_end * 1000);
+          }
+        }
+
+        // Check if this is a bundle (has bundled script IDs)
+        if (script.bundledScriptIds && script.bundledScriptIds.length > 0) {
+          // Create purchases for all bundled scripts
+          await storage.createPurchasesForBundle(
             userId,
-            scriptId: parseInt(scriptId),
-            priceCents: parseInt(priceCents || "0"),
+            script,
             purchaseType,
+            parseInt(priceCents || "0"),
             expiresAt,
-            stripeSubscriptionId: subscriptionId,
-            stripePaymentIntentId: paymentIntentId,
-          });
+            paymentIntentId || undefined,
+            subscriptionId || undefined
+          );
+        } else {
+          // Single script purchase
+          const existing = await storage.getActivePurchase(userId, parseInt(scriptId));
+          if (!existing) {
+            await storage.createPurchase({
+              userId,
+              scriptId: parseInt(scriptId),
+              priceCents: parseInt(priceCents || "0"),
+              purchaseType,
+              expiresAt,
+              stripeSubscriptionId: subscriptionId,
+              stripePaymentIntentId: paymentIntentId,
+            });
+          }
         }
 
         res.json({ success: true, scriptId: parseInt(scriptId) });
