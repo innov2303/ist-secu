@@ -76,7 +76,7 @@ export function Hero() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Durcissement automatique des configurations sensibles et surveillance continue des dérives de sécurité sur vos systèmes.
+                Durcissement par vos soins des configurations sensibles selon les recommendations.
               </p>
             </CardContent>
           </Card>
