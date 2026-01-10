@@ -8,7 +8,7 @@
 # Ce script effectue un audit de sécurité de base d'un système Linux
 # en suivant les recommandations ANSSI-BP-028 et CIS Benchmark Level 1
 #
-# Usage: sudo ./linux-security-base-anssi.sh [options]
+# Usage: sudo ./linux-compliance-base.sh [options]
 # Options:
 #   -o, --output <fichier>  Fichier de sortie JSON (défaut: audit_results.json)
 #   -v, --verbose           Mode verbeux
@@ -23,7 +23,7 @@ set -euo pipefail
 OUTPUT_FILE="audit_base_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
 VERSION="2.0.0"
-SCRIPT_NAME="InfraGuard Linux Security Audit - BASE (ANSSI + CIS L1)"
+SCRIPT_NAME="InfraGuard Linux Compliance Audit - BASE (ANSSI-BP-028 + CIS L1)"
 AUDIT_LEVEL="BASE"
 
 # Couleurs pour l'affichage

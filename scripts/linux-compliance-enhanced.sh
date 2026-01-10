@@ -19,7 +19,7 @@
 # - Règles auditd avancées
 # - Configuration TLS/SSL
 #
-# Usage: sudo ./linux-security-enhanced-anssi.sh [options]
+# Usage: sudo ./linux-compliance-enhanced.sh [options]
 # Options:
 #   -o, --output <fichier>  Fichier de sortie JSON (défaut: audit_results.json)
 #   -v, --verbose           Mode verbeux
@@ -34,7 +34,7 @@ set -euo pipefail
 OUTPUT_FILE="audit_enhanced_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
 VERSION="2.0.0"
-SCRIPT_NAME="InfraGuard Linux Security Audit - RENFORCÉ (ANSSI + CIS L2)"
+SCRIPT_NAME="InfraGuard Linux Compliance Audit - ENHANCED (ANSSI-BP-028 + CIS L2)"
 AUDIT_LEVEL="ENHANCED"
 
 # Couleurs pour l'affichage

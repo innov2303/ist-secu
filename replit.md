@@ -6,12 +6,12 @@ InfraGuard Security is a web application for selling and distributing security v
 
 ## Security Scripts
 
-### Linux Security Scripts (ANSSI-BP-028 + CIS Benchmark)
-- **Base Script** (~55 controls): ANSSI-BP-028 + CIS Level 1 - Essential security checks
-- **Enhanced Script** (~100 controls): ANSSI-BP-028 + CIS Level 2 - Comprehensive hardening
+### Linux Compliance Toolkit (ANSSI-BP-028 + CIS Benchmark)
+- **Base Script** (~55 controls): Based on ANSSI-BP-028 + CIS Level 1 recommendations
+- **Enhanced Script** (~100 controls): Based on ANSSI-BP-028 + CIS Level 2 recommendations  
 - **Toolkit Bundle**: Both scripts bundled together at 30% discount
 
-Scripts generate HTML/JSON reports with scores, grades, and remediation recommendations.
+Scripts generate HTML/JSON reports with scores, grades, and remediation recommendations based on ANSSI and CIS compliance standards.
 
 ## User Preferences
 
