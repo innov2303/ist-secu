@@ -219,30 +219,26 @@ export default function Purchases() {
       </div>
 
       {/* Hero Banner - Same style as Home page */}
-      <div className="relative w-full h-[50vh] min-h-[400px] overflow-hidden">
+      <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <img 
           src={bannerImg} 
           alt="Security Infrastructure" 
-          className="absolute inset-0 w-full h-full object-cover brightness-[0.3]"
+          className="w-full h-full object-cover brightness-[0.4]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-        
-        <div className="relative z-10 container mx-auto px-4 h-full flex items-center">
-          <div className="flex items-center gap-6">
+        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-0 flex items-start justify-start p-6">
+          <div className="flex items-center gap-4">
             <Link href="/">
               <img 
                 src={logoImg} 
                 alt="IGS Logo" 
-                className="w-32 h-32 md:w-56 md:h-56 drop-shadow-lg mix-blend-screen"
+                className="w-56 h-56 drop-shadow-lg mix-blend-screen"
               />
             </Link>
             <div>
-              <h1 className="text-3xl md:text-5xl font-bold font-mono text-white mb-2">
+              <h1 className="text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>
                 Mes produits
               </h1>
-              <p className="text-lg text-white/70">
-                Scripts de sécurité que vous avez achetés
-              </p>
             </div>
           </div>
         </div>
