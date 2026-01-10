@@ -2,8 +2,6 @@ import { motion } from "framer-motion";
 import { ShieldCheck, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
-import integrityImg from "@assets/stock_images/security_infrastruct_65235ec4.jpg";
-import secureImg from "@assets/stock_images/modern_server_data_c_a5733689.jpg";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Hero() {
@@ -33,13 +31,8 @@ export function Hero() {
           className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
           <Card className="overflow-hidden" data-testid="card-audit-conformite">
-            <div className="relative h-40 overflow-hidden">
-              <img 
-                src={integrityImg} 
-                alt="Audit & Conformité" 
-                className="w-full h-full object-cover brightness-[0.6]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            <div className="flex items-center justify-center h-32 bg-primary/10">
+              <ShieldCheck className="w-16 h-16 text-primary" />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
@@ -55,13 +48,8 @@ export function Hero() {
           </Card>
 
           <Card className="overflow-hidden" data-testid="card-secure">
-            <div className="relative h-40 overflow-hidden">
-              <img 
-                src={secureImg} 
-                alt="Secure" 
-                className="w-full h-full object-cover brightness-[0.6]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            <div className="flex items-center justify-center h-32 bg-primary/10">
+              <Lock className="w-16 h-16 text-primary" />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
@@ -77,13 +65,8 @@ export function Hero() {
           </Card>
 
           <Card className="overflow-hidden" data-testid="card-rapport">
-            <div className="relative h-40 overflow-hidden">
-              <img 
-                src={bannerImg} 
-                alt="Rapport & Recommendations" 
-                className="w-full h-full object-cover brightness-[0.6]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            <div className="flex items-center justify-center h-32 bg-primary/10">
+              <FileText className="w-16 h-16 text-primary" />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
