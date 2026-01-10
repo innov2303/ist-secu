@@ -19,8 +19,8 @@ async function createProducts() {
     },
     {
       name: 'Linux Security Toolkit ANSSI',
-      description: 'Pack complet d\'audit de sécurité Linux incluant les versions Base (~40 contrôles) et Renforcée (~80 contrôles).',
-      metadata: { os: 'Linux', compliance: 'ANSSI-BP-028 v2.0' },
+      description: 'Pack complet d\'audit de sécurité Linux incluant les versions Base (~55 contrôles ANSSI + CIS L1) et Renforcée (~100 contrôles ANSSI + CIS L2).',
+      metadata: { os: 'Linux', compliance: 'ANSSI-BP-028 + CIS L1/L2' },
       priceCents: 80000,
       monthlyPriceCents: 15000,
     },

@@ -4,6 +4,15 @@
 
 InfraGuard Security is a web application for selling and distributing security verification scripts for various operating systems (Windows, Linux, VMware ESXi, Docker). Users can browse available scripts, purchase them via Stripe payments (one-time or subscription), and download purchased scripts. The application features Replit Auth for authentication and includes an admin panel for user management.
 
+## Security Scripts
+
+### Linux Security Scripts (ANSSI-BP-028 + CIS Benchmark)
+- **Base Script** (~55 controls): ANSSI-BP-028 + CIS Level 1 - Essential security checks
+- **Enhanced Script** (~100 controls): ANSSI-BP-028 + CIS Level 2 - Comprehensive hardening
+- **Toolkit Bundle**: Both scripts bundled together at 30% discount
+
+Scripts generate HTML/JSON reports with scores, grades, and remediation recommendations.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

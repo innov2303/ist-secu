@@ -1,12 +1,12 @@
 #!/bin/bash
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité Linux (RENFORCÉ)
-# Basé sur les recommandations ANSSI (Agence nationale de la sécurité des SI)
-# Version: 1.0.0
-# Niveau: RENFORCÉ (~80 contrôles complets ANSSI-BP-028)
+# Basé sur les recommandations ANSSI-BP-028 + CIS Benchmark Level 2
+# Version: 2.0.0
+# Niveau: RENFORCÉ (~100 contrôles complets)
 # 
 # Ce script effectue un audit de sécurité complet d'un système Linux
-# en suivant l'intégralité des recommandations du guide ANSSI-BP-028 v2.0
+# en suivant les recommandations ANSSI-BP-028 v2.0 et CIS Benchmark Level 2
 #
 # Contrôles additionnels (par rapport à la version BASE):
 # - Kernel hardening (sysctl, modules)
@@ -33,8 +33,8 @@ set -euo pipefail
 # Configuration par défaut
 OUTPUT_FILE="audit_enhanced_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
-VERSION="1.0.0"
-SCRIPT_NAME="InfraGuard Linux Security Audit - RENFORCÉ"
+VERSION="2.0.0"
+SCRIPT_NAME="InfraGuard Linux Security Audit - RENFORCÉ (ANSSI + CIS L2)"
 AUDIT_LEVEL="ENHANCED"
 
 # Couleurs pour l'affichage
@@ -79,8 +79,9 @@ print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                                                                    ║"
-    echo "║   InfraGuard Security - Audit Linux ANSSI v${VERSION} (RENFORCÉ)      ║"
-    echo "║              ~80 contrôles complets ANSSI-BP-028                   ║"
+    echo "║   InfraGuard Security - Audit Linux v${VERSION} (RENFORCÉ)           ║"
+    echo "║          ANSSI-BP-028 + CIS Benchmark Level 2                      ║"
+    echo "║              ~100 contrôles complets                               ║"
     echo "║                                                                    ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     echo ""
@@ -1945,6 +1946,298 @@ audit_miscellaneous() {
 }
 
 #===============================================================================
+# Catégorie 10: Contrôles CIS Benchmark Level 2
+#===============================================================================
+
+audit_cis_level2() {
+    print_section "10. CONTRÔLES CIS BENCHMARK LEVEL 2"
+    
+    # CIS 1.4.1: Synchronisation temps
+    log_info "Vérification synchronisation temps..."
+    local time_sync=false
+    if systemctl is-active chronyd &>/dev/null || systemctl is-active chrony &>/dev/null; then
+        time_sync=true
+        add_result "CIS-001" "CIS L2" "Synchronisation temps" "PASS" "medium" \
+            "chrony est actif" "" "CIS 1.4.1"
+    elif systemctl is-active systemd-timesyncd &>/dev/null; then
+        time_sync=true
+        add_result "CIS-001" "CIS L2" "Synchronisation temps" "PASS" "medium" \
+            "systemd-timesyncd est actif" "" "CIS 1.4.1"
+    fi
+    if [[ "$time_sync" == false ]]; then
+        add_result "CIS-001" "CIS L2" "Synchronisation temps" "FAIL" "medium" \
+            "Aucun service de synchronisation temps actif" \
+            "Installer chrony" "CIS 1.4.1"
+    fi
+    
+    # CIS 1.5.1: Core dumps
+    log_info "Vérification core dumps..."
+    local core_sysctl=$(cat /proc/sys/fs/suid_dumpable 2>/dev/null || echo "2")
+    local core_limit_conf=0
+    if [[ -f /etc/security/limits.conf ]]; then
+        core_limit_conf=$(grep -E "^\*.*hard.*core.*0" /etc/security/limits.conf 2>/dev/null | wc -l || echo "0")
+    fi
+    if [[ -d /etc/security/limits.d ]]; then
+        core_limit_conf=$((core_limit_conf + $(grep -rE "^\*.*hard.*core.*0" /etc/security/limits.d/ 2>/dev/null | wc -l || echo "0")))
+    fi
+    
+    if [[ "$core_sysctl" == "0" ]] && [[ "$core_limit_conf" -gt 0 ]]; then
+        log_success "Core dumps entièrement restreints"
+        add_result "CIS-002" "CIS L2" "Core dumps" "PASS" "high" \
+            "Core dumps désactivés (sysctl + limits)" "" "CIS 1.5.1"
+    else
+        log_warning "Core dumps partiellement restreints"
+        add_result "CIS-002" "CIS L2" "Core dumps" "WARN" "high" \
+            "Core dumps non entièrement désactivés" \
+            "Ajouter '* hard core 0' dans limits.conf et fs.suid_dumpable=0" "CIS 1.5.1"
+    fi
+    
+    # CIS 1.6.1: Prelink désactivé
+    log_info "Vérification prelink..."
+    if ! command -v prelink &>/dev/null; then
+        log_success "prelink non installé"
+        add_result "CIS-003" "CIS L2" "Prelink" "PASS" "medium" \
+            "prelink n'est pas installé (sécurisé)" "" "CIS 1.6.1"
+    else
+        log_warning "prelink installé"
+        add_result "CIS-003" "CIS L2" "Prelink" "WARN" "medium" \
+            "prelink est installé (affaiblit ASLR)" \
+            "Désinstaller prelink: apt remove prelink" "CIS 1.6.1"
+    fi
+    
+    # CIS 2.2.5: DHCP Server
+    log_info "Vérification serveur DHCP..."
+    if ! systemctl is-active isc-dhcp-server &>/dev/null && ! systemctl is-active dhcpd &>/dev/null; then
+        log_success "Serveur DHCP non actif"
+        add_result "CIS-004" "CIS L2" "Serveur DHCP" "PASS" "medium" \
+            "Aucun serveur DHCP actif" "" "CIS 2.2.5"
+    else
+        log_warning "Serveur DHCP actif"
+        add_result "CIS-004" "CIS L2" "Serveur DHCP" "WARN" "medium" \
+            "Un serveur DHCP est actif" \
+            "Désactiver si non nécessaire" "CIS 2.2.5"
+    fi
+    
+    # CIS 2.2.6: LDAP Server
+    log_info "Vérification serveur LDAP..."
+    if ! systemctl is-active slapd &>/dev/null; then
+        log_success "Serveur LDAP non actif"
+        add_result "CIS-005" "CIS L2" "Serveur LDAP" "PASS" "medium" \
+            "slapd n'est pas actif" "" "CIS 2.2.6"
+    else
+        log_info "Serveur LDAP actif"
+        add_result "CIS-005" "CIS L2" "Serveur LDAP" "WARN" "medium" \
+            "Serveur LDAP (slapd) actif" \
+            "Sécuriser ou désactiver si non nécessaire" "CIS 2.2.6"
+    fi
+    
+    # CIS 2.2.7: NFS Server
+    log_info "Vérification serveur NFS..."
+    if ! systemctl is-active nfs-server &>/dev/null && ! systemctl is-active nfs-kernel-server &>/dev/null; then
+        log_success "Serveur NFS non actif"
+        add_result "CIS-006" "CIS L2" "Serveur NFS" "PASS" "medium" \
+            "Aucun serveur NFS actif" "" "CIS 2.2.7"
+    else
+        log_warning "Serveur NFS actif"
+        add_result "CIS-006" "CIS L2" "Serveur NFS" "WARN" "medium" \
+            "Serveur NFS actif (risque réseau)" \
+            "Sécuriser ou désactiver" "CIS 2.2.7"
+    fi
+    
+    # CIS 2.2.8: DNS Server
+    log_info "Vérification serveur DNS..."
+    if ! systemctl is-active named &>/dev/null && ! systemctl is-active bind9 &>/dev/null; then
+        log_success "Serveur DNS non actif"
+        add_result "CIS-007" "CIS L2" "Serveur DNS" "PASS" "medium" \
+            "Aucun serveur DNS local actif" "" "CIS 2.2.8"
+    else
+        log_info "Serveur DNS actif"
+        add_result "CIS-007" "CIS L2" "Serveur DNS" "WARN" "medium" \
+            "Serveur DNS (BIND) actif" \
+            "Sécuriser la configuration BIND" "CIS 2.2.8"
+    fi
+    
+    # CIS 2.2.9: FTP Server
+    log_info "Vérification serveur FTP..."
+    if ! systemctl is-active vsftpd &>/dev/null && ! systemctl is-active proftpd &>/dev/null; then
+        log_success "Serveur FTP non actif"
+        add_result "CIS-008" "CIS L2" "Serveur FTP" "PASS" "high" \
+            "Aucun serveur FTP actif" "" "CIS 2.2.9"
+    else
+        log_warning "Serveur FTP actif (protocole non sécurisé)"
+        add_result "CIS-008" "CIS L2" "Serveur FTP" "WARN" "high" \
+            "Serveur FTP actif - protocole non chiffré" \
+            "Utiliser SFTP/SCP à la place" "CIS 2.2.9"
+    fi
+    
+    # CIS 2.2.10: HTTP Server
+    log_info "Vérification serveur HTTP..."
+    if ! systemctl is-active apache2 &>/dev/null && ! systemctl is-active httpd &>/dev/null && ! systemctl is-active nginx &>/dev/null; then
+        log_success "Serveur HTTP non actif"
+        add_result "CIS-009" "CIS L2" "Serveur HTTP" "PASS" "low" \
+            "Aucun serveur web actif" "" "CIS 2.2.10"
+    else
+        log_info "Serveur HTTP actif"
+        add_result "CIS-009" "CIS L2" "Serveur HTTP" "WARN" "low" \
+            "Serveur web actif - vérifier la sécurisation" \
+            "Configurer TLS, headers de sécurité" "CIS 2.2.10"
+    fi
+    
+    # CIS 2.2.11: IMAP/POP3 Server
+    log_info "Vérification serveur mail..."
+    if ! systemctl is-active dovecot &>/dev/null && ! systemctl is-active courier-imap &>/dev/null; then
+        log_success "Serveur IMAP/POP3 non actif"
+        add_result "CIS-010" "CIS L2" "Serveur Mail" "PASS" "medium" \
+            "Aucun serveur IMAP/POP3 actif" "" "CIS 2.2.11"
+    else
+        log_info "Serveur mail actif"
+        add_result "CIS-010" "CIS L2" "Serveur Mail" "WARN" "medium" \
+            "Serveur IMAP/POP3 actif" \
+            "Vérifier la configuration TLS" "CIS 2.2.11"
+    fi
+    
+    # CIS 2.2.12: Samba
+    log_info "Vérification Samba..."
+    if ! systemctl is-active smbd &>/dev/null; then
+        log_success "Samba non actif"
+        add_result "CIS-011" "CIS L2" "Samba" "PASS" "medium" \
+            "Samba (smbd) n'est pas actif" "" "CIS 2.2.12"
+    else
+        log_warning "Samba actif"
+        add_result "CIS-011" "CIS L2" "Samba" "WARN" "medium" \
+            "Samba est actif" \
+            "Vérifier les partages et la sécurité SMB" "CIS 2.2.12"
+    fi
+    
+    # CIS 2.2.14: SNMP Server
+    log_info "Vérification SNMP..."
+    if ! systemctl is-active snmpd &>/dev/null; then
+        log_success "SNMP non actif"
+        add_result "CIS-012" "CIS L2" "SNMP" "PASS" "medium" \
+            "Service SNMP non actif" "" "CIS 2.2.14"
+    else
+        log_warning "SNMP actif"
+        add_result "CIS-012" "CIS L2" "SNMP" "WARN" "medium" \
+            "SNMP est actif - vérifier communautés" \
+            "Utiliser SNMPv3 avec authentification" "CIS 2.2.14"
+    fi
+    
+    # CIS 2.2.16: rsync
+    log_info "Vérification rsync daemon..."
+    if ! systemctl is-active rsync &>/dev/null && ! systemctl is-active rsyncd &>/dev/null; then
+        log_success "rsync daemon non actif"
+        add_result "CIS-013" "CIS L2" "rsync daemon" "PASS" "medium" \
+            "rsync daemon n'est pas actif" "" "CIS 2.2.16"
+    else
+        log_warning "rsync daemon actif"
+        add_result "CIS-013" "CIS L2" "rsync daemon" "WARN" "medium" \
+            "rsync daemon est actif" \
+            "Désactiver si non nécessaire" "CIS 2.2.16"
+    fi
+    
+    # CIS 2.3.1: NIS Client
+    log_info "Vérification client NIS..."
+    local nis_installed=false
+    if command -v dpkg &>/dev/null && dpkg -l nis 2>/dev/null | grep -q "^ii"; then
+        nis_installed=true
+    fi
+    if command -v rpm &>/dev/null && rpm -q ypbind &>/dev/null 2>&1; then
+        nis_installed=true
+    fi
+    
+    if [[ "$nis_installed" == false ]]; then
+        log_success "Client NIS non installé"
+        add_result "CIS-014" "CIS L2" "Client NIS" "PASS" "high" \
+            "Client NIS (ypbind) non installé" "" "CIS 2.3.1"
+    else
+        log_error "Client NIS installé (obsolète)"
+        add_result "CIS-014" "CIS L2" "Client NIS" "FAIL" "high" \
+            "Client NIS installé - protocole non sécurisé" \
+            "Retirer le client NIS et utiliser LDAP/Kerberos" "CIS 2.3.1"
+    fi
+    
+    # CIS 2.3.2: rsh Client
+    log_info "Vérification client rsh..."
+    if ! command -v rsh &>/dev/null && ! command -v rlogin &>/dev/null; then
+        log_success "Client rsh non installé"
+        add_result "CIS-015" "CIS L2" "Client rsh" "PASS" "high" \
+            "Clients rsh/rlogin non installés" "" "CIS 2.3.2"
+    else
+        log_error "Client rsh installé (non sécurisé)"
+        add_result "CIS-015" "CIS L2" "Client rsh" "FAIL" "high" \
+            "rsh/rlogin installé - protocole non chiffré" \
+            "Désinstaller et utiliser SSH" "CIS 2.3.2"
+    fi
+    
+    # CIS 2.3.3: talk Client
+    log_info "Vérification talk..."
+    if ! command -v talk &>/dev/null; then
+        log_success "talk non installé"
+        add_result "CIS-016" "CIS L2" "talk" "PASS" "low" \
+            "Client talk non installé" "" "CIS 2.3.3"
+    else
+        log_warning "talk installé"
+        add_result "CIS-016" "CIS L2" "talk" "WARN" "low" \
+            "Client talk installé (obsolète)" \
+            "Désinstaller talk" "CIS 2.3.3"
+    fi
+    
+    # CIS 2.3.4: telnet Client
+    log_info "Vérification telnet..."
+    if ! command -v telnet &>/dev/null; then
+        log_success "telnet non installé"
+        add_result "CIS-017" "CIS L2" "telnet" "PASS" "high" \
+            "Client telnet non installé" "" "CIS 2.3.4"
+    else
+        log_warning "telnet installé"
+        add_result "CIS-017" "CIS L2" "telnet" "WARN" "high" \
+            "telnet installé - protocole non chiffré" \
+            "Utiliser SSH à la place" "CIS 2.3.4"
+    fi
+    
+    # CIS 4.1.1.2: auditd activé au boot
+    log_info "Vérification auditd au démarrage..."
+    if systemctl is-enabled auditd &>/dev/null; then
+        log_success "auditd activé au boot"
+        add_result "CIS-018" "CIS L2" "auditd boot" "PASS" "high" \
+            "auditd est activé au démarrage" "" "CIS 4.1.1.2"
+    else
+        log_error "auditd non activé au boot"
+        add_result "CIS-018" "CIS L2" "auditd boot" "FAIL" "high" \
+            "auditd n'est pas activé au démarrage" \
+            "systemctl enable auditd" "CIS 4.1.1.2"
+    fi
+    
+    # CIS 5.2.4: SSH MaxAuthTries
+    log_info "Vérification SSH MaxAuthTries..."
+    local max_auth=$(grep -E "^MaxAuthTries" /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}' || echo "6")
+    if [[ "$max_auth" -le 4 ]]; then
+        log_success "SSH MaxAuthTries configuré ($max_auth)"
+        add_result "CIS-019" "CIS L2" "SSH MaxAuthTries" "PASS" "medium" \
+            "MaxAuthTries = $max_auth" "" "CIS 5.2.4"
+    else
+        log_warning "SSH MaxAuthTries trop élevé"
+        add_result "CIS-019" "CIS L2" "SSH MaxAuthTries" "WARN" "medium" \
+            "MaxAuthTries = $max_auth (recommandé: 4)" \
+            "Ajouter 'MaxAuthTries 4' dans sshd_config" "CIS 5.2.4"
+    fi
+    
+    # CIS 5.2.5: SSH IgnoreRhosts
+    log_info "Vérification SSH IgnoreRhosts..."
+    local ignore_rhosts=$(grep -E "^IgnoreRhosts" /etc/ssh/sshd_config 2>/dev/null | awk '{print $2}' || echo "yes")
+    if [[ "$ignore_rhosts" == "yes" ]]; then
+        log_success "SSH IgnoreRhosts activé"
+        add_result "CIS-020" "CIS L2" "SSH IgnoreRhosts" "PASS" "high" \
+            "IgnoreRhosts = yes" "" "CIS 5.2.5"
+    else
+        log_error "SSH IgnoreRhosts désactivé"
+        add_result "CIS-020" "CIS L2" "SSH IgnoreRhosts" "FAIL" "high" \
+            "IgnoreRhosts non configuré" \
+            "Ajouter 'IgnoreRhosts yes' dans sshd_config" "CIS 5.2.5"
+    fi
+}
+
+#===============================================================================
 # Génération du rapport
 #===============================================================================
 
@@ -2182,7 +2475,7 @@ generate_report() {
     cat > "$OUTPUT_FILE" << JSONREPORT
 {
     "report_type": "linux_security_audit",
-    "framework": "ANSSI",
+    "framework": "ANSSI-BP-028 + CIS Benchmark L2",
     "system_info": {
         "hostname": "${hostname_val}",
         "os": "${os_val}",
@@ -2256,11 +2549,11 @@ main() {
     # Affichage du header
     print_header
     
-    echo "Démarrage de l'audit de sécurité RENFORCÉ (~80 contrôles)..."
+    echo "Démarrage de l'audit de sécurité RENFORCÉ (~100 contrôles)..."
     echo "Fichier de sortie: $OUTPUT_FILE"
     echo ""
     
-    # Exécution des audits BASE
+    # Exécution des audits ANSSI BASE
     audit_system_config
     audit_accounts
     audit_ssh
@@ -2270,7 +2563,7 @@ main() {
     audit_logging
     audit_security_tools
     
-    # Exécution des audits RENFORCÉS
+    # Exécution des audits ANSSI RENFORCÉS
     audit_kernel_hardening
     audit_mandatory_access_control
     audit_pam_advanced
@@ -2280,6 +2573,9 @@ main() {
     audit_network_advanced
     audit_containers
     audit_miscellaneous
+    
+    # Exécution des audits CIS Level 2
+    audit_cis_level2
     
     # Génération du rapport
     generate_report

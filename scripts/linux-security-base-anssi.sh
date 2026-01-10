@@ -1,12 +1,12 @@
 #!/bin/bash
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité Linux (BASE)
-# Basé sur les recommandations ANSSI (Agence nationale de la sécurité des SI)
-# Version: 1.0.0
-# Niveau: BASE (~40 contrôles essentiels)
+# Basé sur les recommandations ANSSI-BP-028 + CIS Benchmark Level 1
+# Version: 2.0.0
+# Niveau: BASE (~55 contrôles essentiels)
 # 
 # Ce script effectue un audit de sécurité de base d'un système Linux
-# en suivant les recommandations essentielles du guide ANSSI-BP-028
+# en suivant les recommandations ANSSI-BP-028 et CIS Benchmark Level 1
 #
 # Usage: sudo ./linux-security-base-anssi.sh [options]
 # Options:
@@ -22,8 +22,8 @@ set -euo pipefail
 # Configuration par défaut
 OUTPUT_FILE="audit_base_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
-VERSION="1.0.0"
-SCRIPT_NAME="InfraGuard Linux Security Audit - BASE"
+VERSION="2.0.0"
+SCRIPT_NAME="InfraGuard Linux Security Audit - BASE (ANSSI + CIS L1)"
 AUDIT_LEVEL="BASE"
 
 # Couleurs pour l'affichage
@@ -68,8 +68,9 @@ print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                                                                    ║"
-    echo "║     InfraGuard Security - Audit Linux ANSSI v${VERSION} (BASE)        ║"
-    echo "║                   ~40 contrôles essentiels                         ║"
+    echo "║   InfraGuard Security - Audit Linux v${VERSION} (BASE)               ║"
+    echo "║          ANSSI-BP-028 + CIS Benchmark Level 1                      ║"
+    echo "║               ~55 contrôles essentiels                             ║"
     echo "║                                                                    ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     echo ""
@@ -1092,6 +1093,293 @@ audit_security_tools() {
 }
 
 #===============================================================================
+# Catégorie 9: Contrôles CIS Benchmark Level 1
+#===============================================================================
+
+audit_cis_level1() {
+    print_section "9. CONTRÔLES CIS BENCHMARK LEVEL 1"
+    
+    # CIS 1.4.1: Synchronisation temps (chrony/NTP)
+    log_info "Vérification synchronisation temps..."
+    
+    local time_sync=false
+    if systemctl is-active chronyd &>/dev/null || systemctl is-active chrony &>/dev/null; then
+        time_sync=true
+        log_success "Synchronisation temps active (chrony)"
+        add_result "CIS-001" "CIS L1" "Synchronisation temps" "PASS" "medium" \
+            "chrony est actif pour la synchronisation NTP" \
+            "" "CIS 1.4.1"
+    elif systemctl is-active ntpd &>/dev/null || systemctl is-active ntp &>/dev/null; then
+        time_sync=true
+        log_success "Synchronisation temps active (NTP)"
+        add_result "CIS-001" "CIS L1" "Synchronisation temps" "PASS" "medium" \
+            "ntpd est actif pour la synchronisation temps" \
+            "" "CIS 1.4.1"
+    elif systemctl is-active systemd-timesyncd &>/dev/null; then
+        time_sync=true
+        log_success "Synchronisation temps active (systemd-timesyncd)"
+        add_result "CIS-001" "CIS L1" "Synchronisation temps" "PASS" "medium" \
+            "systemd-timesyncd est actif" \
+            "" "CIS 1.4.1"
+    fi
+    
+    if [[ "$time_sync" == false ]]; then
+        log_error "Aucune synchronisation temps configurée"
+        add_result "CIS-001" "CIS L1" "Synchronisation temps" "FAIL" "medium" \
+            "Aucun service de synchronisation temps actif" \
+            "Installer chrony: apt install chrony && systemctl enable chrony" "CIS 1.4.1"
+    fi
+    
+    # CIS 1.5.1: Restriction core dumps
+    log_info "Vérification restriction core dumps..."
+    
+    local core_limit=$(ulimit -c 2>/dev/null || echo "unlimited")
+    local core_sysctl=$(cat /proc/sys/fs/suid_dumpable 2>/dev/null || echo "2")
+    
+    if [[ "$core_sysctl" == "0" ]]; then
+        log_success "Core dumps restreints (suid_dumpable=0)"
+        add_result "CIS-002" "CIS L1" "Core dumps" "PASS" "medium" \
+            "fs.suid_dumpable = 0 - core dumps SUID désactivés" \
+            "" "CIS 1.5.1"
+    else
+        log_warning "Core dumps SUID non restreints"
+        add_result "CIS-002" "CIS L1" "Core dumps" "WARN" "medium" \
+            "fs.suid_dumpable = $core_sysctl (devrait être 0)" \
+            "Ajouter fs.suid_dumpable=0 dans /etc/sysctl.conf" "CIS 1.5.1"
+    fi
+    
+    # CIS 1.7.1-1.7.6: Bannières de connexion
+    log_info "Vérification bannières de connexion..."
+    
+    local banner_ok=true
+    if [[ ! -s /etc/issue ]]; then
+        banner_ok=false
+    fi
+    
+    if [[ "$banner_ok" == true ]]; then
+        log_success "Bannière de connexion configurée"
+        add_result "CIS-003" "CIS L1" "Bannière connexion" "PASS" "low" \
+            "/etc/issue contient un message d'avertissement" \
+            "" "CIS 1.7.1"
+    else
+        log_warning "Bannière de connexion absente"
+        add_result "CIS-003" "CIS L1" "Bannière connexion" "WARN" "low" \
+            "/etc/issue est vide ou absent" \
+            "Configurer un message d'avertissement légal dans /etc/issue" "CIS 1.7.1"
+    fi
+    
+    # CIS 2.1.1: Désactivation xinetd
+    log_info "Vérification xinetd..."
+    
+    if ! systemctl is-enabled xinetd &>/dev/null 2>&1; then
+        log_success "xinetd désactivé ou non installé"
+        add_result "CIS-004" "CIS L1" "xinetd" "PASS" "medium" \
+            "xinetd n'est pas activé" \
+            "" "CIS 2.1.1"
+    else
+        log_warning "xinetd est activé"
+        add_result "CIS-004" "CIS L1" "xinetd" "WARN" "medium" \
+            "xinetd est activé (services legacy)" \
+            "Désactiver: systemctl disable xinetd" "CIS 2.1.1"
+    fi
+    
+    # CIS 2.2.2: Serveur X Window
+    log_info "Vérification X Window..."
+    
+    if ! command -v X &>/dev/null && ! command -v Xorg &>/dev/null; then
+        log_success "X Window non installé (serveur)"
+        add_result "CIS-005" "CIS L1" "X Window Server" "PASS" "low" \
+            "X Window Server n'est pas installé" \
+            "" "CIS 2.2.2"
+    else
+        log_info "X Window installé"
+        add_result "CIS-005" "CIS L1" "X Window Server" "WARN" "low" \
+            "X Window est installé (normal pour desktop)" \
+            "Retirer si serveur sans GUI: apt remove xserver-xorg" "CIS 2.2.2"
+    fi
+    
+    # CIS 2.2.3: Service Avahi
+    log_info "Vérification Avahi daemon..."
+    
+    if ! systemctl is-active avahi-daemon &>/dev/null; then
+        log_success "Avahi daemon désactivé"
+        add_result "CIS-006" "CIS L1" "Avahi daemon" "PASS" "medium" \
+            "avahi-daemon n'est pas actif" \
+            "" "CIS 2.2.3"
+    else
+        log_warning "Avahi daemon actif"
+        add_result "CIS-006" "CIS L1" "Avahi daemon" "WARN" "medium" \
+            "avahi-daemon est actif (mDNS/Bonjour)" \
+            "Désactiver si non nécessaire: systemctl disable avahi-daemon" "CIS 2.2.3"
+    fi
+    
+    # CIS 2.2.4: Service CUPS
+    log_info "Vérification CUPS..."
+    
+    if ! systemctl is-active cups &>/dev/null; then
+        log_success "CUPS désactivé"
+        add_result "CIS-007" "CIS L1" "CUPS" "PASS" "low" \
+            "Service d'impression CUPS non actif" \
+            "" "CIS 2.2.4"
+    else
+        log_info "CUPS actif"
+        add_result "CIS-007" "CIS L1" "CUPS" "WARN" "low" \
+            "CUPS est actif (service d'impression)" \
+            "Désactiver si non nécessaire: systemctl disable cups" "CIS 2.2.4"
+    fi
+    
+    # CIS 3.1.1: Désactivation IPv6 si non utilisé
+    log_info "Vérification IPv6..."
+    
+    local ipv6_disable=$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null || echo "0")
+    
+    if [[ "$ipv6_disable" == "1" ]]; then
+        log_success "IPv6 désactivé"
+        add_result "CIS-008" "CIS L1" "IPv6" "PASS" "low" \
+            "IPv6 est désactivé sur ce système" \
+            "" "CIS 3.1.1"
+    else
+        log_info "IPv6 activé"
+        add_result "CIS-008" "CIS L1" "IPv6" "WARN" "low" \
+            "IPv6 est activé - vérifier si nécessaire" \
+            "Si non utilisé: net.ipv6.conf.all.disable_ipv6=1" "CIS 3.1.1"
+    fi
+    
+    # CIS 3.1.2: Désactivation interfaces wireless
+    log_info "Vérification interfaces wireless..."
+    
+    local wireless_if=$(ip link show 2>/dev/null | grep -E "wlan|wlp" | wc -l)
+    
+    if [[ "$wireless_if" -eq 0 ]]; then
+        log_success "Aucune interface wireless active"
+        add_result "CIS-009" "CIS L1" "Wireless" "PASS" "medium" \
+            "Aucune interface wireless détectée" \
+            "" "CIS 3.1.2"
+    else
+        log_warning "$wireless_if interface(s) wireless détectée(s)"
+        add_result "CIS-009" "CIS L1" "Wireless" "WARN" "medium" \
+            "$wireless_if interface(s) wireless active(s)" \
+            "Désactiver si serveur: nmcli radio wifi off" "CIS 3.1.2"
+    fi
+    
+    # CIS 4.1.1.1: auditd installé
+    log_info "Vérification auditd..."
+    
+    if command -v auditd &>/dev/null || command -v auditctl &>/dev/null; then
+        if systemctl is-active auditd &>/dev/null; then
+            log_success "auditd installé et actif"
+            add_result "CIS-010" "CIS L1" "Audit daemon" "PASS" "high" \
+                "auditd est installé et en cours d'exécution" \
+                "" "CIS 4.1.1.1"
+        else
+            log_warning "auditd installé mais inactif"
+            add_result "CIS-010" "CIS L1" "Audit daemon" "WARN" "high" \
+                "auditd est installé mais non actif" \
+                "Activer: systemctl enable --now auditd" "CIS 4.1.1.1"
+        fi
+    else
+        log_error "auditd non installé"
+        add_result "CIS-010" "CIS L1" "Audit daemon" "FAIL" "high" \
+            "auditd n'est pas installé" \
+            "Installer: apt install auditd && systemctl enable auditd" "CIS 4.1.1.1"
+    fi
+    
+    # CIS 5.2.1: Permissions /etc/ssh/sshd_config
+    log_info "Vérification permissions sshd_config..."
+    
+    if [[ -f /etc/ssh/sshd_config ]]; then
+        local sshd_perms=$(stat -c "%a" /etc/ssh/sshd_config 2>/dev/null || echo "777")
+        if [[ "$sshd_perms" == "600" || "$sshd_perms" == "640" ]]; then
+            log_success "Permissions sshd_config correctes ($sshd_perms)"
+            add_result "CIS-011" "CIS L1" "Permissions sshd_config" "PASS" "high" \
+                "/etc/ssh/sshd_config a les permissions $sshd_perms" \
+                "" "CIS 5.2.1"
+        else
+            log_warning "Permissions sshd_config trop permissives"
+            add_result "CIS-011" "CIS L1" "Permissions sshd_config" "WARN" "high" \
+                "/etc/ssh/sshd_config permissions: $sshd_perms (recommandé: 600)" \
+                "chmod 600 /etc/ssh/sshd_config" "CIS 5.2.1"
+        fi
+    fi
+    
+    # CIS 5.3.1: Permissions /etc/passwd
+    log_info "Vérification permissions /etc/passwd..."
+    
+    local passwd_perms=$(stat -c "%a" /etc/passwd 2>/dev/null || echo "777")
+    if [[ "$passwd_perms" == "644" ]]; then
+        log_success "Permissions /etc/passwd correctes"
+        add_result "CIS-012" "CIS L1" "Permissions passwd" "PASS" "critical" \
+            "/etc/passwd a les permissions 644" \
+            "" "CIS 5.3.1"
+    else
+        log_error "Permissions /etc/passwd incorrectes"
+        add_result "CIS-012" "CIS L1" "Permissions passwd" "FAIL" "critical" \
+            "/etc/passwd permissions: $passwd_perms (devrait être 644)" \
+            "chmod 644 /etc/passwd" "CIS 5.3.1"
+    fi
+    
+    # CIS 5.3.2: Permissions /etc/shadow
+    log_info "Vérification permissions /etc/shadow..."
+    
+    local shadow_perms=$(stat -c "%a" /etc/shadow 2>/dev/null || echo "777")
+    if [[ "$shadow_perms" == "640" || "$shadow_perms" == "600" || "$shadow_perms" == "000" ]]; then
+        log_success "Permissions /etc/shadow correctes"
+        add_result "CIS-013" "CIS L1" "Permissions shadow" "PASS" "critical" \
+            "/etc/shadow a les permissions $shadow_perms" \
+            "" "CIS 5.3.2"
+    else
+        log_error "Permissions /etc/shadow incorrectes"
+        add_result "CIS-013" "CIS L1" "Permissions shadow" "FAIL" "critical" \
+            "/etc/shadow permissions: $shadow_perms (devrait être 640 ou moins)" \
+            "chmod 640 /etc/shadow" "CIS 5.3.2"
+    fi
+    
+    # CIS 5.4.1: Délai d'expiration session
+    log_info "Vérification timeout session..."
+    
+    local tmout_set=false
+    if grep -qE "^TMOUT=" /etc/profile 2>/dev/null; then
+        tmout_set=true
+    fi
+    if [[ -d /etc/profile.d ]] && grep -qE "^TMOUT=" /etc/profile.d/*.sh 2>/dev/null; then
+        tmout_set=true
+    fi
+    if grep -qE "^export TMOUT=" /etc/bash.bashrc /etc/bashrc 2>/dev/null; then
+        tmout_set=true
+    fi
+    
+    if [[ "$tmout_set" == true ]]; then
+        log_success "Timeout session configuré"
+        add_result "CIS-014" "CIS L1" "Session timeout" "PASS" "medium" \
+            "TMOUT est configuré pour déconnexion automatique" \
+            "" "CIS 5.4.1"
+    else
+        log_warning "Timeout session non configuré"
+        add_result "CIS-014" "CIS L1" "Session timeout" "WARN" "medium" \
+            "TMOUT non configuré - sessions restent ouvertes" \
+            "Ajouter 'export TMOUT=900' dans /etc/profile" "CIS 5.4.1"
+    fi
+    
+    # CIS 6.1.1: Permissions /etc/crontab
+    log_info "Vérification permissions crontab..."
+    
+    if [[ -f /etc/crontab ]]; then
+        local cron_perms=$(stat -c "%a" /etc/crontab 2>/dev/null || echo "777")
+        if [[ "$cron_perms" == "600" || "$cron_perms" == "700" ]]; then
+            log_success "Permissions /etc/crontab correctes"
+            add_result "CIS-015" "CIS L1" "Permissions crontab" "PASS" "medium" \
+                "/etc/crontab a les permissions $cron_perms" \
+                "" "CIS 6.1.1"
+        else
+            log_warning "Permissions /etc/crontab trop permissives"
+            add_result "CIS-015" "CIS L1" "Permissions crontab" "WARN" "medium" \
+                "/etc/crontab permissions: $cron_perms (recommandé: 600)" \
+                "chmod 600 /etc/crontab" "CIS 6.1.1"
+        fi
+    fi
+}
+
+#===============================================================================
 # Génération du rapport
 #===============================================================================
 
@@ -1329,7 +1617,7 @@ generate_report() {
     cat > "$OUTPUT_FILE" << JSONREPORT
 {
     "report_type": "linux_security_audit",
-    "framework": "ANSSI",
+    "framework": "ANSSI-BP-028 + CIS Benchmark L1",
     "system_info": {
         "hostname": "${hostname_val}",
         "os": "${os_val}",
@@ -1407,7 +1695,7 @@ main() {
     echo "Fichier de sortie: $OUTPUT_FILE"
     echo ""
     
-    # Exécution des audits
+    # Exécution des audits ANSSI
     audit_system_config
     audit_accounts
     audit_ssh
@@ -1416,6 +1704,9 @@ main() {
     audit_services
     audit_logging
     audit_security_tools
+    
+    # Exécution des audits CIS Level 1
+    audit_cis_level1
     
     # Génération du rapport
     generate_report
