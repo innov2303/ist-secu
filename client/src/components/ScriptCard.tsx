@@ -1,5 +1,5 @@
 import { Script } from "@shared/schema";
-import { Monitor, Terminal, Server, Container, Download, FileCode, ShoppingCart, Check, Loader2, RefreshCw } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, FileCode, Check, Loader2, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { downloadScript } from "@/hooks/use-scripts";
@@ -122,19 +122,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
         </div>
 
         {user && (
-          <div className="bg-muted/50 rounded-lg p-4 mb-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Achat direct</p>
-                <p className="text-lg font-bold text-primary" data-testid={`text-price-direct-${script.id}`}>
-                  {formatPrice(script.priceCents)}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-                Licence permanente
-              </p>
-            </div>
-            <div className="border-t border-border/50" />
+          <div className="bg-muted/50 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -146,7 +134,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 </p>
               </div>
               <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-                Mises à jour incluses
+                Mises à jour régulières incluses
               </p>
             </div>
           </div>
@@ -162,31 +150,19 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           )}
 
           {user && !hasPurchased && !checkingPurchase && (
-            <>
-              <Button
-                onClick={() => checkoutMutation.mutate("direct")}
-                disabled={checkoutMutation.isPending}
-                className="w-full"
-                data-testid={`button-purchase-direct-${script.id}`}
-              >
-                {checkoutMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                )}
-                Acheter {formatPrice(script.priceCents)}
-              </Button>
-              <Button
-                onClick={() => checkoutMutation.mutate("monthly")}
-                disabled={checkoutMutation.isPending}
-                variant="outline"
-                className="w-full"
-                data-testid={`button-purchase-monthly-${script.id}`}
-              >
+            <Button
+              onClick={() => checkoutMutation.mutate("monthly")}
+              disabled={checkoutMutation.isPending}
+              className="w-full"
+              data-testid={`button-purchase-monthly-${script.id}`}
+            >
+              {checkoutMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
-                S'abonner {formatPrice(script.monthlyPriceCents)}/mois
-              </Button>
-            </>
+              )}
+              S'abonner {formatPrice(script.monthlyPriceCents)}/mois
+            </Button>
           )}
 
           {hasPurchased && (
