@@ -59,7 +59,7 @@ export function Hero() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Synthèse PDF/HTML avec scores de conformité détaillés et plan d'actions priorisé pour remédier aux vulnérabilités détectées.
+                Synthèse HTML/PDF avec scores de conformité détaillés et remédiations proposées par niveau de gravité.
               </p>
             </CardContent>
           </Card>
