@@ -93,7 +93,8 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
 
   const hasPurchased = purchaseStatus?.hasPurchased || false;
   const purchaseType = purchaseStatus?.purchaseType;
-  const canDownload = hasPurchased;
+  const isAdmin = user?.isAdmin || false;
+  const canDownload = hasPurchased || isAdmin;
   const isInDevelopment = script.description.includes("En développement");
 
   return (
@@ -131,7 +132,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           )}
         </div>
 
-        {user && !isInDevelopment && (
+        {user && !isInDevelopment && !isAdmin && (
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -159,7 +160,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             </Button>
           )}
 
-          {user && !hasPurchased && !checkingPurchase && !isInDevelopment && (
+          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && (
             <Button
               onClick={() => checkoutMutation.mutate("monthly")}
               disabled={checkoutMutation.isPending}
@@ -179,6 +180,33 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             <div className="text-center py-3 text-sm text-muted-foreground">
               Disponible prochainement
             </div>
+          )}
+
+          {isAdmin && !hasPurchased && !isInDevelopment && (
+            <>
+              <div className="flex items-center justify-center gap-2 text-sm text-primary py-2">
+                <Check className="w-4 h-4" />
+                <span>Accès Admin</span>
+              </div>
+              <Button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="w-full"
+                data-testid={`button-download-${script.id}`}
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Téléchargement...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Télécharger
+                  </>
+                )}
+              </Button>
+            </>
           )}
 
           {hasPurchased && (

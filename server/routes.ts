@@ -388,10 +388,14 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Script non trouvé" });
     }
 
-    // Check if user has an active purchase
-    const activePurchase = await storage.getActivePurchase(userId, id);
-    if (!activePurchase) {
-      return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
+    // Check if user is admin - admins have free access to all products
+    const user = await authStorage.getUser(userId);
+    if (!user?.isAdmin) {
+      // Check if user has an active purchase
+      const activePurchase = await storage.getActivePurchase(userId, id);
+      if (!activePurchase) {
+        return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
+      }
     }
 
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
