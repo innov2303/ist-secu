@@ -17,7 +17,7 @@ export function Hero() {
         <div className="absolute inset-0 flex items-start justify-start p-6">
           <div className="flex items-center gap-4">
             <img src={logoImg} alt="IGS Logo" className="w-56 h-56 drop-shadow-lg mix-blend-screen" />
-            <h1 className="text-2xl font-bold tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>InfraGuard Security</h1>
+            <h1 className="text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>InfraGuard Security</h1>
           </div>
         </div>
       </div>
