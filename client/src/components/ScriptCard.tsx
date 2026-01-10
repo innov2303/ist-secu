@@ -113,7 +113,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           {script.name}
         </h3>
         
-        <p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow">
+        <p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow whitespace-pre-line">
           {script.description}
         </p>
 

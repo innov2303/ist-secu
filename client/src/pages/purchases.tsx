@@ -77,7 +77,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{purchase.script.description}</p>
+        <p className="text-sm text-muted-foreground whitespace-pre-line">{purchase.script.description}</p>
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{purchase.script.compliance}</Badge>
