@@ -24,9 +24,13 @@ interface PurchaseStatus {
 
 const IconMap: Record<string, any> = {
   windows: Monitor,
+  monitor: Monitor,
   linux: SiLinux,
+  terminal: SiLinux,
   vmware: Server,
+  server: Server,
   docker: Container,
+  container: Container,
 };
 
 function formatPrice(cents: number) {
