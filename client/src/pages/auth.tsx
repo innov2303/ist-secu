@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, Mail, Lock, User } from "lucide-react";
 import { Link } from "wouter";
-import logoImg from "@assets/generated_images/igs_cybersecurity_logo_dark_blue.png";
+import logoImg from "@assets/generated_images/igs_logo_no_frame.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 export default function AuthPage() {
