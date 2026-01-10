@@ -47,23 +47,6 @@ export function Hero() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden" data-testid="card-secure">
-            <div className="flex items-center justify-center h-32 bg-primary/10">
-              <Lock className="w-16 h-16 text-primary" />
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-primary" />
-                Secure
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Durcissement automatique des configurations sensibles et surveillance continue des dérives de sécurité sur vos systèmes.
-              </p>
-            </CardContent>
-          </Card>
-
           <Card className="overflow-hidden" data-testid="card-rapport">
             <div className="flex items-center justify-center h-32 bg-primary/10">
               <FileText className="w-16 h-16 text-primary" />
@@ -77,6 +60,23 @@ export function Hero() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Synthèse PDF/HTML avec scores de conformité détaillés et plan d'actions priorisé pour remédier aux vulnérabilités détectées.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden" data-testid="card-secure">
+            <div className="flex items-center justify-center h-32 bg-primary/10">
+              <Lock className="w-16 h-16 text-primary" />
+            </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-primary" />
+                Secure
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Durcissement automatique des configurations sensibles et surveillance continue des dérives de sécurité sur vos systèmes.
               </p>
             </CardContent>
           </Card>
