@@ -1972,18 +1972,16 @@ audit_cis_level2() {
     
     # CIS 1.5.1: Core dumps
     log_info "Vérification core dumps..."
-    local core_sysctl
-    core_sysctl=$(cat /proc/sys/fs/suid_dumpable 2>/dev/null || echo "2")
-    local core_limit_conf=0
-    if [[ -f /etc/security/limits.conf ]]; then
-        local count1
-        count1=$(grep -cE "^\*.*hard.*core.*0" /etc/security/limits.conf 2>/dev/null) || count1=0
-        core_limit_conf=$count1
+    local core_sysctl="2"
+    if [[ -f /proc/sys/fs/suid_dumpable ]]; then
+        core_sysctl=$(cat /proc/sys/fs/suid_dumpable) || true
     fi
-    if [[ -d /etc/security/limits.d ]]; then
-        local count2
-        count2=$(grep -rcE "^\*.*hard.*core.*0" /etc/security/limits.d/ 2>/dev/null | awk -F: '{s+=$2} END {print s+0}') || count2=0
-        core_limit_conf=$((core_limit_conf + count2))
+    local core_limit_conf=0
+    if [[ -f /etc/security/limits.conf ]] && grep -qE "^\*.*hard.*core.*0" /etc/security/limits.conf 2>/dev/null; then
+        core_limit_conf=1
+    fi
+    if [[ -d /etc/security/limits.d ]] && grep -rqE "^\*.*hard.*core.*0" /etc/security/limits.d/ 2>/dev/null; then
+        core_limit_conf=1
     fi
     
     if [[ "$core_sysctl" == "0" ]] && [[ "$core_limit_conf" -gt 0 ]]; then
