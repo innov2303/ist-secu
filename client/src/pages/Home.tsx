@@ -61,7 +61,7 @@ export default function Home() {
         <div className="mb-12 text-center md:text-left border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold font-mono mb-2">
-              Available Environments
+              Compliance Toolkit list
             </h2>
             <p className="text-muted-foreground">
               Select the compliance toolkit corresponding to your operating system.
