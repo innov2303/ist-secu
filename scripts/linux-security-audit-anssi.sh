@@ -1092,6 +1092,186 @@ audit_security_tools() {
 # Génération du rapport
 #===============================================================================
 
+generate_html_report() {
+    local score="$1"
+    local grade="$2"
+    local html_file="${OUTPUT_FILE%.json}.html"
+    
+    local hostname_val
+    hostname_val=$(hostname)
+    local os_val
+    os_val=$(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'Unknown')
+    local kernel_val
+    kernel_val=$(uname -r)
+    local arch_val
+    arch_val=$(uname -m)
+    local date_val
+    date_val=$(date "+%d/%m/%Y %H:%M:%S")
+    
+    local grade_color=""
+    case "$grade" in
+        "A") grade_color="#22c55e" ;;
+        "B") grade_color="#84cc16" ;;
+        "C") grade_color="#eab308" ;;
+        "D") grade_color="#f97316" ;;
+        "F") grade_color="#ef4444" ;;
+    esac
+    
+    cat > "$html_file" << 'HTMLHEAD'
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapport d'Audit Sécurité Linux - InfraGuard Security</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header .subtitle { opacity: 0.8; font-size: 16px; }
+        .header .framework { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 15px; font-size: 14px; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .score-card { text-align: center; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 20px; }
+        .score-value { font-size: 48px; font-weight: bold; color: white; }
+        .score-label { font-size: 14px; color: rgba(255,255,255,0.8); }
+        .grade { font-size: 24px; font-weight: bold; margin-top: 10px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+        .stat { text-align: center; padding: 15px; border-radius: 8px; }
+        .stat.pass { background: #dcfce7; color: #166534; }
+        .stat.warn { background: #fef9c3; color: #854d0e; }
+        .stat.fail { background: #fee2e2; color: #991b1b; }
+        .stat-value { font-size: 32px; font-weight: bold; }
+        .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+        .info-label { color: #64748b; }
+        .info-value { font-weight: 500; }
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+        .result-item { background: white; border-radius: 8px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: grid; grid-template-columns: auto 1fr auto; gap: 15px; align-items: start; }
+        .result-status { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 14px; }
+        .result-status.pass { background: #22c55e; }
+        .result-status.warn { background: #eab308; }
+        .result-status.fail { background: #ef4444; }
+        .result-content h4 { font-size: 15px; margin-bottom: 4px; }
+        .result-content p { font-size: 13px; color: #64748b; }
+        .result-meta { text-align: right; }
+        .result-category { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .result-severity { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f1f5f9; color: #475569; }
+        .remediation { margin-top: 8px; padding: 10px; background: #fef3c7; border-radius: 6px; font-size: 13px; color: #92400e; }
+        .footer { text-align: center; padding: 30px; color: #64748b; font-size: 14px; }
+        @media print { body { background: white; } .container { max-width: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+HTMLHEAD
+
+    cat >> "$html_file" << HTMLHEADER
+        <div class="header">
+            <h1>Rapport d'Audit de Sécurité Linux</h1>
+            <div class="subtitle">Généré par InfraGuard Security</div>
+            <div class="framework">Référentiel ANSSI</div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="card score-card">
+                <div class="score-circle" style="background: ${grade_color};">
+                    <div class="score-value">${score}%</div>
+                    <div class="score-label">Score</div>
+                </div>
+                <div class="grade" style="color: ${grade_color};">Note: ${grade}</div>
+                <div class="stats">
+                    <div class="stat pass">
+                        <div class="stat-value">${PASSED_CHECKS}</div>
+                        <div class="stat-label">Réussis</div>
+                    </div>
+                    <div class="stat warn">
+                        <div class="stat-value">${WARNING_CHECKS}</div>
+                        <div class="stat-label">Alertes</div>
+                    </div>
+                    <div class="stat fail">
+                        <div class="stat-value">${FAILED_CHECKS}</div>
+                        <div class="stat-label">Échecs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 15px;">Informations Système</h3>
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">Hostname</span><span class="info-value">${hostname_val}</span></div>
+                    <div class="info-item"><span class="info-label">Date</span><span class="info-value">${date_val}</span></div>
+                    <div class="info-item"><span class="info-label">Système</span><span class="info-value">${os_val}</span></div>
+                    <div class="info-item"><span class="info-label">Noyau</span><span class="info-value">${kernel_val}</span></div>
+                    <div class="info-item"><span class="info-label">Architecture</span><span class="info-value">${arch_val}</span></div>
+                    <div class="info-item"><span class="info-label">Version Script</span><span class="info-value">${VERSION}</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Résultats Détaillés</h2>
+HTMLHEADER
+
+    for result in "${RESULTS[@]}"; do
+        local id title status severity category description remediation
+        id=$(echo "$result" | sed 's/.*"id":"\([^"]*\)".*/\1/')
+        title=$(echo "$result" | sed 's/.*"title":"\([^"]*\)".*/\1/')
+        status=$(echo "$result" | sed 's/.*"status":"\([^"]*\)".*/\1/')
+        severity=$(echo "$result" | sed 's/.*"severity":"\([^"]*\)".*/\1/')
+        category=$(echo "$result" | sed 's/.*"category":"\([^"]*\)".*/\1/')
+        description=$(echo "$result" | sed 's/.*"description":"\([^"]*\)".*/\1/')
+        remediation=$(echo "$result" | sed 's/.*"remediation":"\([^"]*\)".*/\1/')
+        
+        local status_class
+        case "$status" in
+            "PASS") status_class="pass"; status_icon="✓" ;;
+            "WARN") status_class="warn"; status_icon="!" ;;
+            "FAIL") status_class="fail"; status_icon="✗" ;;
+        esac
+        
+        cat >> "$html_file" << HTMLRESULT
+            <div class="result-item">
+                <div class="result-status ${status_class}">${status_icon}</div>
+                <div class="result-content">
+                    <h4>${title}</h4>
+                    <p>${description}</p>
+HTMLRESULT
+        
+        if [[ -n "$remediation" && "$status" != "PASS" ]]; then
+            echo "                    <div class=\"remediation\"><strong>Recommandation:</strong> ${remediation}</div>" >> "$html_file"
+        fi
+        
+        cat >> "$html_file" << HTMLRESULTEND
+                </div>
+                <div class="result-meta">
+                    <div class="result-category">${category}</div>
+                    <div class="result-severity">${severity}</div>
+                </div>
+            </div>
+HTMLRESULTEND
+    done
+
+    cat >> "$html_file" << 'HTMLFOOTER'
+        </div>
+
+        <div class="footer">
+            <p>Rapport généré par <strong>InfraGuard Security</strong></p>
+            <p>Basé sur les recommandations ANSSI pour la sécurisation des systèmes GNU/Linux</p>
+        </div>
+    </div>
+</body>
+</html>
+HTMLFOOTER
+
+    echo -e "${GREEN}[OK]${NC} Rapport HTML généré: $html_file"
+}
+
 generate_report() {
     print_section "GÉNÉRATION DU RAPPORT"
     
@@ -1120,32 +1300,17 @@ generate_report() {
     printf "║  Total:                  %-3d                                      ║\n" "$TOTAL_CHECKS"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     
-    # Construction du JSON
-    local system_info=$(cat <<EOF
-{
-    "hostname": "$(hostname)",
-    "os": "$(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'Unknown')",
-    "kernel": "$(uname -r)",
-    "architecture": "$(uname -m)",
-    "audit_date": "$(date -Iseconds)",
-    "script_version": "$VERSION"
-}
-EOF
-)
+    local hostname_val
+    hostname_val=$(hostname)
+    local os_val
+    os_val=$(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2 || echo 'Unknown')
+    local kernel_val
+    kernel_val=$(uname -r)
+    local arch_val
+    arch_val=$(uname -m)
+    local date_val
+    date_val=$(date -Iseconds 2>/dev/null || date "+%Y-%m-%dT%H:%M:%S")
     
-    local summary=$(cat <<EOF
-{
-    "total_checks": $TOTAL_CHECKS,
-    "passed": $PASSED_CHECKS,
-    "warnings": $WARNING_CHECKS,
-    "failed": $FAILED_CHECKS,
-    "score": $score,
-    "grade": "$grade"
-}
-EOF
-)
-    
-    # Assembler les résultats
     local results_json="["
     local first=true
     for result in "${RESULTS[@]}"; do
@@ -1158,24 +1323,36 @@ EOF
     done
     results_json+="]"
     
-    # Rapport final
-    local report=$(cat <<EOF
+    cat > "$OUTPUT_FILE" << JSONREPORT
 {
     "report_type": "linux_security_audit",
     "framework": "ANSSI",
-    "system_info": $system_info,
-    "summary": $summary,
-    "results": $results_json
+    "system_info": {
+        "hostname": "${hostname_val}",
+        "os": "${os_val}",
+        "kernel": "${kernel_val}",
+        "architecture": "${arch_val}",
+        "audit_date": "${date_val}",
+        "script_version": "${VERSION}"
+    },
+    "summary": {
+        "total_checks": ${TOTAL_CHECKS},
+        "passed": ${PASSED_CHECKS},
+        "warnings": ${WARNING_CHECKS},
+        "failed": ${FAILED_CHECKS},
+        "score": ${score},
+        "grade": "${grade}"
+    },
+    "results": ${results_json}
 }
-EOF
-)
-    
-    echo "$report" > "$OUTPUT_FILE"
+JSONREPORT
     
     echo ""
-    echo "Rapport généré: $OUTPUT_FILE"
-    echo ""
+    echo -e "${GREEN}[OK]${NC} Rapport JSON généré: $OUTPUT_FILE"
     
+    generate_html_report "$score" "$grade"
+    
+    echo ""
     if [[ $FAILED_CHECKS -gt 0 ]]; then
         echo -e "${RED}[ATTENTION]${NC} $FAILED_CHECKS contrôles critiques nécessitent une action immédiate."
     fi
@@ -1185,7 +1362,8 @@ EOF
     fi
     
     echo ""
-    echo "Pour générer un rapport PDF/HTML, utilisez les outils InfraGuard Security."
+    echo "Ouvrez le fichier HTML dans un navigateur pour visualiser le rapport."
+    echo "Pour créer un PDF: Fichier > Imprimer > Enregistrer en PDF"
 }
 
 #===============================================================================
