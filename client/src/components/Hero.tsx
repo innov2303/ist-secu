@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Lock, FileText, BarChart3, CheckCircle2, FileCode } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,11 +32,11 @@ export function Hero() {
         >
           <Card className="overflow-hidden border-transparent" data-testid="card-audit-conformite">
             <div className="flex items-center justify-center h-32 bg-primary/10">
-              <ShieldCheck className="w-16 h-16 text-primary" />
+              <FileCode className="w-16 h-16 text-primary" />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-primary" />
+                <FileCode className="w-5 h-5 text-primary" />
                 Audit & Conformité
               </CardTitle>
             </CardHeader>
