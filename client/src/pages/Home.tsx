@@ -64,7 +64,7 @@ export default function Home() {
               Available Environments
             </h2>
             <p className="text-muted-foreground">
-              Select your operating system to download the corresponding verification toolkit.
+              Select the compliance toolkit corresponding to your operating system.
             </p>
           </div>
           <div className="text-xs font-mono text-primary/80 bg-primary/5 px-3 py-1 rounded border border-primary/20">
