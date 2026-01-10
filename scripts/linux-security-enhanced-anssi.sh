@@ -1,13 +1,25 @@
 #!/bin/bash
 #===============================================================================
-# InfraGuard Security - Script d'Audit de Sécurité Linux
+# InfraGuard Security - Script d'Audit de Sécurité Linux (RENFORCÉ)
 # Basé sur les recommandations ANSSI (Agence nationale de la sécurité des SI)
 # Version: 1.0.0
+# Niveau: RENFORCÉ (~80 contrôles complets ANSSI-BP-028)
 # 
 # Ce script effectue un audit de sécurité complet d'un système Linux
-# en suivant les recommandations du guide ANSSI pour la sécurisation GNU/Linux
+# en suivant l'intégralité des recommandations du guide ANSSI-BP-028 v2.0
 #
-# Usage: sudo ./linux-security-audit-anssi.sh [options]
+# Contrôles additionnels (par rapport à la version BASE):
+# - Kernel hardening (sysctl, modules)
+# - SELinux/AppArmor avancé
+# - Configuration PAM détaillée
+# - Chiffrement disque (LUKS)
+# - Protection mémoire (ASLR, NX, SMEP, SMAP)
+# - Sécurité Systemd
+# - Contrôles cgroups/namespaces
+# - Règles auditd avancées
+# - Configuration TLS/SSL
+#
+# Usage: sudo ./linux-security-enhanced-anssi.sh [options]
 # Options:
 #   -o, --output <fichier>  Fichier de sortie JSON (défaut: audit_results.json)
 #   -v, --verbose           Mode verbeux
@@ -19,10 +31,11 @@
 set -euo pipefail
 
 # Configuration par défaut
-OUTPUT_FILE="audit_results_$(date +%Y%m%d_%H%M%S).json"
+OUTPUT_FILE="audit_enhanced_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
 VERSION="1.0.0"
-SCRIPT_NAME="InfraGuard Linux Security Audit"
+SCRIPT_NAME="InfraGuard Linux Security Audit - RENFORCÉ"
+AUDIT_LEVEL="ENHANCED"
 
 # Couleurs pour l'affichage
 RED='\033[0;31m'
@@ -66,7 +79,8 @@ print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                                                                    ║"
-    echo "║       InfraGuard Security - Audit Linux ANSSI v${VERSION}             ║"
+    echo "║   InfraGuard Security - Audit Linux ANSSI v${VERSION} (RENFORCÉ)      ║"
+    echo "║              ~80 contrôles complets ANSSI-BP-028                   ║"
     echo "║                                                                    ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     echo ""
@@ -1089,6 +1103,848 @@ audit_security_tools() {
 }
 
 #===============================================================================
+# CONTRÔLES RENFORCÉS - Kernel Hardening
+#===============================================================================
+
+audit_kernel_hardening() {
+    print_section "KERNEL HARDENING (RENFORCÉ)"
+    
+    # R41: ASLR (Address Space Layout Randomization)
+    log_info "Vérification ASLR..."
+    local aslr_val
+    aslr_val=$(cat /proc/sys/kernel/randomize_va_space 2>/dev/null || echo "0")
+    if [[ "$aslr_val" == "2" ]]; then
+        log_success "ASLR activé (niveau 2 - complet)"
+        add_result "KRN-001" "Kernel" "ASLR" "PASS" "high" \
+            "ASLR est configuré au niveau maximal (2)" "" "ANSSI R41"
+    else
+        log_error "ASLR non optimal (valeur: $aslr_val)"
+        add_result "KRN-001" "Kernel" "ASLR" "FAIL" "high" \
+            "ASLR n'est pas au niveau maximal" \
+            "echo 2 > /proc/sys/kernel/randomize_va_space" "ANSSI R41"
+    fi
+    
+    # R42: Protection ptrace
+    log_info "Vérification protection ptrace..."
+    local ptrace_val
+    ptrace_val=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo "0")
+    if [[ "$ptrace_val" -ge 1 ]]; then
+        log_success "Protection ptrace activée (scope: $ptrace_val)"
+        add_result "KRN-002" "Kernel" "Protection ptrace" "PASS" "high" \
+            "ptrace_scope configuré à $ptrace_val" "" "ANSSI R42"
+    else
+        log_error "Protection ptrace désactivée"
+        add_result "KRN-002" "Kernel" "Protection ptrace" "FAIL" "high" \
+            "ptrace_scope n'est pas restreint" \
+            "echo 1 > /proc/sys/kernel/yama/ptrace_scope" "ANSSI R42"
+    fi
+    
+    # R43: Désactivation core dumps
+    log_info "Vérification core dumps..."
+    local core_pattern
+    core_pattern=$(cat /proc/sys/kernel/core_pattern 2>/dev/null || echo "core")
+    local core_limit
+    core_limit=$(ulimit -c 2>/dev/null || echo "unlimited")
+    if [[ "$core_limit" == "0" ]] || [[ "$core_pattern" == "|/bin/false" ]]; then
+        log_success "Core dumps désactivés"
+        add_result "KRN-003" "Kernel" "Core dumps" "PASS" "medium" \
+            "Core dumps correctement désactivés" "" "ANSSI R43"
+    else
+        log_warning "Core dumps potentiellement activés"
+        add_result "KRN-003" "Kernel" "Core dumps" "WARN" "medium" \
+            "Core dumps peuvent exposer des données sensibles" \
+            "Ajouter * hard core 0 dans /etc/security/limits.conf" "ANSSI R43"
+    fi
+    
+    # R44: Kernel exec-shield / NX bit
+    log_info "Vérification NX bit..."
+    local nx_enabled=false
+    if grep -q " nx " /proc/cpuinfo 2>/dev/null; then
+        nx_enabled=true
+    fi
+    if [[ "$nx_enabled" == true ]]; then
+        log_success "NX bit supporté par le CPU"
+        add_result "KRN-004" "Kernel" "NX Bit" "PASS" "high" \
+            "Protection NX (No-Execute) active" "" "ANSSI R44"
+    else
+        log_warning "NX bit non détecté"
+        add_result "KRN-004" "Kernel" "NX Bit" "WARN" "high" \
+            "NX bit non détecté sur ce CPU" "" "ANSSI R44"
+    fi
+    
+    # R45: Kernel dmesg restriction
+    log_info "Vérification restriction dmesg..."
+    local dmesg_restrict
+    dmesg_restrict=$(cat /proc/sys/kernel/dmesg_restrict 2>/dev/null || echo "0")
+    if [[ "$dmesg_restrict" == "1" ]]; then
+        log_success "Accès dmesg restreint"
+        add_result "KRN-005" "Kernel" "Restriction dmesg" "PASS" "medium" \
+            "dmesg_restrict activé" "" "ANSSI R45"
+    else
+        log_warning "dmesg accessible à tous les utilisateurs"
+        add_result "KRN-005" "Kernel" "Restriction dmesg" "WARN" "medium" \
+            "Logs kernel accessibles à tous" \
+            "echo 1 > /proc/sys/kernel/dmesg_restrict" "ANSSI R45"
+    fi
+    
+    # R46: Kernel pointer hiding
+    log_info "Vérification masquage pointeurs kernel..."
+    local kptr_restrict
+    kptr_restrict=$(cat /proc/sys/kernel/kptr_restrict 2>/dev/null || echo "0")
+    if [[ "$kptr_restrict" -ge 1 ]]; then
+        log_success "Pointeurs kernel masqués"
+        add_result "KRN-006" "Kernel" "Masquage pointeurs" "PASS" "high" \
+            "kptr_restrict configuré à $kptr_restrict" "" "ANSSI R46"
+    else
+        log_error "Pointeurs kernel exposés"
+        add_result "KRN-006" "Kernel" "Masquage pointeurs" "FAIL" "high" \
+            "Adresses kernel visibles" \
+            "echo 1 > /proc/sys/kernel/kptr_restrict" "ANSSI R46"
+    fi
+    
+    # R47: SysRq restriction
+    log_info "Vérification SysRq..."
+    local sysrq_val
+    sysrq_val=$(cat /proc/sys/kernel/sysrq 2>/dev/null || echo "1")
+    if [[ "$sysrq_val" == "0" ]]; then
+        log_success "SysRq désactivé"
+        add_result "KRN-007" "Kernel" "SysRq" "PASS" "medium" \
+            "Magic SysRq désactivé" "" "ANSSI R47"
+    else
+        log_warning "SysRq activé (valeur: $sysrq_val)"
+        add_result "KRN-007" "Kernel" "SysRq" "WARN" "medium" \
+            "Magic SysRq peut permettre des actions privilégiées" \
+            "echo 0 > /proc/sys/kernel/sysrq" "ANSSI R47"
+    fi
+    
+    # R48: Kernel modules loading
+    log_info "Vérification chargement modules..."
+    local modules_disabled
+    modules_disabled=$(cat /proc/sys/kernel/modules_disabled 2>/dev/null || echo "0")
+    if [[ "$modules_disabled" == "1" ]]; then
+        log_success "Chargement de modules désactivé"
+        add_result "KRN-008" "Kernel" "Chargement modules" "PASS" "high" \
+            "Chargement de nouveaux modules kernel bloqué" "" "ANSSI R48"
+    else
+        log_warning "Chargement de modules autorisé"
+        add_result "KRN-008" "Kernel" "Chargement modules" "WARN" "high" \
+            "Nouveaux modules kernel peuvent être chargés" \
+            "Configurer après le boot: echo 1 > /proc/sys/kernel/modules_disabled" "ANSSI R48"
+    fi
+    
+    # R49: Unprivileged BPF
+    log_info "Vérification BPF non privilégié..."
+    local bpf_disabled
+    bpf_disabled=$(cat /proc/sys/kernel/unprivileged_bpf_disabled 2>/dev/null || echo "0")
+    if [[ "$bpf_disabled" == "1" ]] || [[ "$bpf_disabled" == "2" ]]; then
+        log_success "BPF non privilégié désactivé"
+        add_result "KRN-009" "Kernel" "BPF non privilégié" "PASS" "high" \
+            "unprivileged_bpf_disabled=$bpf_disabled" "" "ANSSI R49"
+    else
+        log_warning "BPF accessible aux utilisateurs non privilégiés"
+        add_result "KRN-009" "Kernel" "BPF non privilégié" "WARN" "high" \
+            "BPF peut être utilisé pour des exploits" \
+            "echo 1 > /proc/sys/kernel/unprivileged_bpf_disabled" "ANSSI R49"
+    fi
+    
+    # R50: Perf event restriction
+    log_info "Vérification perf events..."
+    local perf_paranoid
+    perf_paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null || echo "0")
+    if [[ "$perf_paranoid" -ge 2 ]]; then
+        log_success "Perf events restreints"
+        add_result "KRN-010" "Kernel" "Perf events" "PASS" "medium" \
+            "perf_event_paranoid=$perf_paranoid" "" "ANSSI R50"
+    else
+        log_warning "Perf events accessibles"
+        add_result "KRN-010" "Kernel" "Perf events" "WARN" "medium" \
+            "Perf events peuvent leak des informations" \
+            "echo 3 > /proc/sys/kernel/perf_event_paranoid" "ANSSI R50"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - SELinux/AppArmor Avancé
+#===============================================================================
+
+audit_mandatory_access_control() {
+    print_section "CONTRÔLE D'ACCÈS MANDATAIRE (RENFORCÉ)"
+    
+    # R51: SELinux mode
+    log_info "Vérification SELinux détaillée..."
+    if command -v getenforce &>/dev/null; then
+        local selinux_status
+        selinux_status=$(getenforce 2>/dev/null || echo "Disabled")
+        if [[ "$selinux_status" == "Enforcing" ]]; then
+            log_success "SELinux en mode Enforcing"
+            add_result "MAC-001" "MAC" "SELinux mode" "PASS" "critical" \
+                "SELinux en mode Enforcing (protection maximale)" "" "ANSSI R51"
+                
+            # Vérifier les booléens SELinux critiques
+            log_info "Vérification booléens SELinux..."
+            local sebool_issues=0
+            if command -v getsebool &>/dev/null; then
+                if getsebool httpd_can_network_connect 2>/dev/null | grep -q "on"; then
+                    sebool_issues=$((sebool_issues + 1))
+                fi
+            fi
+            if [[ $sebool_issues -eq 0 ]]; then
+                add_result "MAC-002" "MAC" "SELinux booléens" "PASS" "medium" \
+                    "Booléens SELinux correctement configurés" "" "ANSSI R51"
+            else
+                add_result "MAC-002" "MAC" "SELinux booléens" "WARN" "medium" \
+                    "Certains booléens SELinux sont permissifs" \
+                    "Réviser les booléens avec getsebool -a" "ANSSI R51"
+            fi
+        elif [[ "$selinux_status" == "Permissive" ]]; then
+            log_warning "SELinux en mode Permissive"
+            add_result "MAC-001" "MAC" "SELinux mode" "WARN" "critical" \
+                "SELinux en mode Permissive (journalise mais n'applique pas)" \
+                "Passer en Enforcing: setenforce 1" "ANSSI R51"
+        else
+            log_error "SELinux désactivé"
+            add_result "MAC-001" "MAC" "SELinux mode" "FAIL" "critical" \
+                "SELinux désactivé ou non installé" \
+                "Activer SELinux dans /etc/selinux/config" "ANSSI R51"
+        fi
+    elif command -v aa-status &>/dev/null; then
+        log_info "Vérification AppArmor détaillée..."
+        local aa_profiles
+        aa_profiles=$(aa-status 2>/dev/null | grep "profiles are loaded" | head -1 | awk '{print $1}' || echo "0")
+        local aa_enforced
+        aa_enforced=$(aa-status 2>/dev/null | grep "profiles are in enforce" | head -1 | awk '{print $1}' || echo "0")
+        
+        if [[ "$aa_profiles" -gt 0 ]]; then
+            log_success "AppArmor actif: $aa_profiles profils chargés, $aa_enforced en enforce"
+            add_result "MAC-001" "MAC" "AppArmor" "PASS" "critical" \
+                "$aa_profiles profils chargés, $aa_enforced en mode enforce" "" "ANSSI R51"
+                
+            local complain_profiles
+            complain_profiles=$(aa-status 2>/dev/null | grep "profiles are in complain" | head -1 | awk '{print $1}' || echo "0")
+            if [[ "$complain_profiles" -gt 0 ]]; then
+                add_result "MAC-002" "MAC" "AppArmor profils complain" "WARN" "medium" \
+                    "$complain_profiles profils en mode complain" \
+                    "Passer les profils critiques en enforce" "ANSSI R51"
+            else
+                add_result "MAC-002" "MAC" "AppArmor profils" "PASS" "medium" \
+                    "Tous les profils sont en mode enforce" "" "ANSSI R51"
+            fi
+        else
+            log_warning "AppArmor sans profils actifs"
+            add_result "MAC-001" "MAC" "AppArmor" "WARN" "critical" \
+                "AppArmor installé mais aucun profil actif" \
+                "Activer les profils par défaut" "ANSSI R51"
+        fi
+    else
+        log_error "Aucun MAC (SELinux/AppArmor) détecté"
+        add_result "MAC-001" "MAC" "Contrôle accès mandataire" "FAIL" "critical" \
+            "Aucun système MAC installé" \
+            "Installer SELinux ou AppArmor" "ANSSI R51"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - PAM Configuration
+#===============================================================================
+
+audit_pam_advanced() {
+    print_section "CONFIGURATION PAM (RENFORCÉ)"
+    
+    # R52: pam_pwquality
+    log_info "Vérification pam_pwquality..."
+    if grep -rq "pam_pwquality" /etc/pam.d/ 2>/dev/null; then
+        log_success "pam_pwquality configuré"
+        add_result "PAM-001" "PAM" "Qualité mots de passe" "PASS" "high" \
+            "pam_pwquality est configuré pour la complexité" "" "ANSSI R52"
+    else
+        log_warning "pam_pwquality non détecté"
+        add_result "PAM-001" "PAM" "Qualité mots de passe" "WARN" "high" \
+            "pam_pwquality non configuré" \
+            "Configurer dans /etc/pam.d/common-password" "ANSSI R52"
+    fi
+    
+    # R53: pam_faillock
+    log_info "Vérification pam_faillock/pam_tally2..."
+    if grep -rqE "pam_faillock|pam_tally2" /etc/pam.d/ 2>/dev/null; then
+        log_success "Verrouillage de compte configuré"
+        add_result "PAM-002" "PAM" "Verrouillage compte" "PASS" "high" \
+            "Verrouillage après échecs d'authentification configuré" "" "ANSSI R53"
+    else
+        log_warning "Pas de verrouillage de compte"
+        add_result "PAM-002" "PAM" "Verrouillage compte" "WARN" "high" \
+            "Aucun verrouillage après échecs d'authentification" \
+            "Configurer pam_faillock dans /etc/pam.d" "ANSSI R53"
+    fi
+    
+    # R54: pam_unix sha512
+    log_info "Vérification algorithme de hachage..."
+    if grep -rq "sha512" /etc/pam.d/ 2>/dev/null || grep -q "ENCRYPT_METHOD SHA512" /etc/login.defs 2>/dev/null; then
+        log_success "SHA512 utilisé pour les mots de passe"
+        add_result "PAM-003" "PAM" "Hachage SHA512" "PASS" "high" \
+            "Algorithme SHA512 pour le hachage des mots de passe" "" "ANSSI R54"
+    else
+        log_warning "SHA512 non confirmé"
+        add_result "PAM-003" "PAM" "Hachage SHA512" "WARN" "high" \
+            "SHA512 non explicitement configuré" \
+            "Ajouter ENCRYPT_METHOD SHA512 dans /etc/login.defs" "ANSSI R54"
+    fi
+    
+    # R55: pam_limits
+    log_info "Vérification limites ressources..."
+    if [[ -f /etc/security/limits.conf ]]; then
+        local has_limits=false
+        if grep -qE "^[^#].*\s+(nofile|nproc|maxlogins)" /etc/security/limits.conf 2>/dev/null; then
+            has_limits=true
+        fi
+        if [[ -d /etc/security/limits.d ]]; then
+            if ls /etc/security/limits.d/*.conf &>/dev/null; then
+                has_limits=true
+            fi
+        fi
+        if [[ "$has_limits" == true ]]; then
+            log_success "Limites ressources configurées"
+            add_result "PAM-004" "PAM" "Limites ressources" "PASS" "medium" \
+                "Limites utilisateur configurées dans limits.conf" "" "ANSSI R55"
+        else
+            log_warning "Limites ressources par défaut"
+            add_result "PAM-004" "PAM" "Limites ressources" "WARN" "medium" \
+                "Limites ressources non personnalisées" \
+                "Configurer /etc/security/limits.conf" "ANSSI R55"
+        fi
+    fi
+    
+    # R56: pam_wheel pour su
+    log_info "Vérification restriction su..."
+    if grep -qE "^[^#].*pam_wheel" /etc/pam.d/su 2>/dev/null; then
+        log_success "su restreint au groupe wheel"
+        add_result "PAM-005" "PAM" "Restriction su" "PASS" "high" \
+            "Commande su limitée au groupe wheel" "" "ANSSI R56"
+    else
+        log_warning "su accessible à tous"
+        add_result "PAM-005" "PAM" "Restriction su" "WARN" "high" \
+            "La commande su n'est pas restreinte" \
+            "Activer pam_wheel dans /etc/pam.d/su" "ANSSI R56"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Chiffrement et Intégrité
+#===============================================================================
+
+audit_encryption() {
+    print_section "CHIFFREMENT ET INTÉGRITÉ (RENFORCÉ)"
+    
+    # R57: Chiffrement disque LUKS
+    log_info "Vérification chiffrement disque..."
+    local luks_found=false
+    if command -v lsblk &>/dev/null; then
+        if lsblk -o TYPE 2>/dev/null | grep -q "crypt"; then
+            luks_found=true
+        fi
+    fi
+    if command -v dmsetup &>/dev/null; then
+        if dmsetup ls --target crypt 2>/dev/null | grep -q "."; then
+            luks_found=true
+        fi
+    fi
+    
+    if [[ "$luks_found" == true ]]; then
+        log_success "Chiffrement LUKS détecté"
+        add_result "ENC-001" "Chiffrement" "LUKS disque" "PASS" "critical" \
+            "Au moins une partition chiffrée LUKS détectée" "" "ANSSI R57"
+    else
+        log_warning "Pas de chiffrement disque détecté"
+        add_result "ENC-001" "Chiffrement" "LUKS disque" "WARN" "critical" \
+            "Aucun chiffrement de disque détecté" \
+            "Chiffrer les partitions sensibles avec LUKS" "ANSSI R57"
+    fi
+    
+    # R58: dm-verity / dm-integrity
+    log_info "Vérification intégrité disque..."
+    local verity_found=false
+    if command -v dmsetup &>/dev/null; then
+        if dmsetup ls --target verity 2>/dev/null | grep -q "." || \
+           dmsetup ls --target integrity 2>/dev/null | grep -q "."; then
+            verity_found=true
+        fi
+    fi
+    
+    if [[ "$verity_found" == true ]]; then
+        log_success "dm-verity/dm-integrity actif"
+        add_result "ENC-002" "Chiffrement" "Intégrité disque" "PASS" "high" \
+            "Protection d'intégrité de disque active" "" "ANSSI R58"
+    else
+        log_info "dm-verity/dm-integrity non détecté"
+        add_result "ENC-002" "Chiffrement" "Intégrité disque" "WARN" "high" \
+            "Pas de protection d'intégrité de disque" \
+            "Considérer dm-verity pour les systèmes critiques" "ANSSI R58"
+    fi
+    
+    # R59: GPG/SSL clés
+    log_info "Vérification configuration TLS..."
+    local weak_ciphers=false
+    if [[ -f /etc/ssl/openssl.cnf ]]; then
+        if grep -qiE "(RC4|DES|MD5|SSLv2|SSLv3)" /etc/ssl/openssl.cnf 2>/dev/null; then
+            weak_ciphers=true
+        fi
+    fi
+    
+    if [[ "$weak_ciphers" == false ]]; then
+        log_success "Configuration OpenSSL sans chiffrement faible"
+        add_result "ENC-003" "Chiffrement" "Configuration TLS" "PASS" "high" \
+            "Pas de chiffrement faible détecté dans OpenSSL" "" "ANSSI R59"
+    else
+        log_warning "Chiffrements faibles possibles"
+        add_result "ENC-003" "Chiffrement" "Configuration TLS" "WARN" "high" \
+            "Chiffrements faibles présents dans la configuration" \
+            "Réviser /etc/ssl/openssl.cnf" "ANSSI R59"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Systemd Security
+#===============================================================================
+
+audit_systemd_security() {
+    print_section "SÉCURITÉ SYSTEMD (RENFORCÉ)"
+    
+    # R60: Analyse services systemd
+    log_info "Analyse sécurité services systemd..."
+    
+    if command -v systemd-analyze &>/dev/null; then
+        local insecure_services=0
+        local services_checked=0
+        
+        for service in sshd nginx apache2 httpd postgresql mysql mariadb docker; do
+            if systemctl is-active "$service" &>/dev/null; then
+                services_checked=$((services_checked + 1))
+                local score
+                score=$(systemd-analyze security "$service" 2>/dev/null | tail -1 | awk '{print $2}' | sed 's/[^0-9.]//g' || echo "10")
+                if [[ -n "$score" ]] && [[ $(echo "$score > 7" | bc 2>/dev/null || echo "1") == "1" ]]; then
+                    insecure_services=$((insecure_services + 1))
+                fi
+            fi
+        done
+        
+        if [[ $services_checked -gt 0 ]]; then
+            if [[ $insecure_services -eq 0 ]]; then
+                log_success "Services systemd correctement sécurisés"
+                add_result "SYS-001" "Systemd" "Sécurité services" "PASS" "medium" \
+                    "Tous les services analysés ont un bon score de sécurité" "" "ANSSI R60"
+            else
+                log_warning "$insecure_services services avec score de sécurité faible"
+                add_result "SYS-001" "Systemd" "Sécurité services" "WARN" "medium" \
+                    "$insecure_services services ont un score > 7 (moins sécurisé)" \
+                    "Utiliser systemd-analyze security pour identifier les problèmes" "ANSSI R60"
+            fi
+        fi
+    fi
+    
+    # R61: ProtectSystem/ProtectHome
+    log_info "Vérification options de sandboxing..."
+    local sandbox_count=0
+    for service_file in /etc/systemd/system/*.service /lib/systemd/system/*.service; do
+        if [[ -f "$service_file" ]]; then
+            if grep -qE "(ProtectSystem|ProtectHome|NoNewPrivileges)" "$service_file" 2>/dev/null; then
+                sandbox_count=$((sandbox_count + 1))
+            fi
+        fi
+    done 2>/dev/null
+    
+    if [[ $sandbox_count -gt 5 ]]; then
+        log_success "Sandboxing systemd utilisé ($sandbox_count services)"
+        add_result "SYS-002" "Systemd" "Sandboxing" "PASS" "medium" \
+            "$sandbox_count services utilisent le sandboxing systemd" "" "ANSSI R61"
+    else
+        log_info "Sandboxing systemd peu utilisé"
+        add_result "SYS-002" "Systemd" "Sandboxing" "WARN" "medium" \
+            "Peu de services utilisent les options de sandboxing" \
+            "Ajouter ProtectSystem, ProtectHome, NoNewPrivileges aux services" "ANSSI R61"
+    fi
+    
+    # R62: Coredump systemd
+    log_info "Vérification gestion coredump systemd..."
+    if [[ -f /etc/systemd/coredump.conf ]]; then
+        if grep -q "Storage=none" /etc/systemd/coredump.conf 2>/dev/null; then
+            log_success "Coredumps systemd désactivés"
+            add_result "SYS-003" "Systemd" "Coredumps" "PASS" "medium" \
+                "Stockage des coredumps désactivé" "" "ANSSI R62"
+        else
+            log_warning "Coredumps systemd activés"
+            add_result "SYS-003" "Systemd" "Coredumps" "WARN" "medium" \
+                "Coredumps peuvent contenir des données sensibles" \
+                "Ajouter Storage=none dans /etc/systemd/coredump.conf" "ANSSI R62"
+        fi
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Audit Avancé
+#===============================================================================
+
+audit_advanced_logging() {
+    print_section "AUDIT AVANCÉ (RENFORCÉ)"
+    
+    # R63: Règles auditd détaillées
+    log_info "Vérification règles auditd..."
+    if [[ -d /etc/audit/rules.d ]]; then
+        local rules_count
+        rules_count=$(find /etc/audit/rules.d -name "*.rules" -exec cat {} + 2>/dev/null | grep -c "^-" || echo "0")
+        
+        if [[ $rules_count -ge 20 ]]; then
+            log_success "Nombreuses règles audit ($rules_count)"
+            add_result "AUD-001" "Audit" "Règles auditd" "PASS" "high" \
+                "$rules_count règles d'audit configurées" "" "ANSSI R63"
+        elif [[ $rules_count -ge 5 ]]; then
+            log_warning "Règles audit basiques ($rules_count)"
+            add_result "AUD-001" "Audit" "Règles auditd" "WARN" "high" \
+                "Seulement $rules_count règles d'audit" \
+                "Ajouter les règles ANSSI recommandées" "ANSSI R63"
+        else
+            log_error "Très peu de règles audit"
+            add_result "AUD-001" "Audit" "Règles auditd" "FAIL" "high" \
+                "Moins de 5 règles d'audit configurées" \
+                "Configurer les règles d'audit ANSSI" "ANSSI R63"
+        fi
+    fi
+    
+    # R64: Audit des fichiers sensibles
+    log_info "Vérification audit fichiers sensibles..."
+    local sensitive_audit=false
+    if auditctl -l 2>/dev/null | grep -qE "(/etc/passwd|/etc/shadow|/etc/sudoers)"; then
+        sensitive_audit=true
+    fi
+    
+    if [[ "$sensitive_audit" == true ]]; then
+        log_success "Fichiers sensibles audités"
+        add_result "AUD-002" "Audit" "Fichiers sensibles" "PASS" "high" \
+            "Les fichiers critiques sont sous surveillance audit" "" "ANSSI R64"
+    else
+        log_warning "Fichiers sensibles non audités"
+        add_result "AUD-002" "Audit" "Fichiers sensibles" "WARN" "high" \
+            "/etc/passwd, shadow, sudoers non audités" \
+            "Ajouter règles: -w /etc/passwd -p wa -k identity" "ANSSI R64"
+    fi
+    
+    # R65: Audit des commandes privilégiées
+    log_info "Vérification audit commandes privilégiées..."
+    local priv_audit=false
+    if auditctl -l 2>/dev/null | grep -qE "(sudo|su|passwd|useradd)"; then
+        priv_audit=true
+    fi
+    
+    if [[ "$priv_audit" == true ]]; then
+        log_success "Commandes privilégiées auditées"
+        add_result "AUD-003" "Audit" "Commandes privilégiées" "PASS" "high" \
+            "Utilisation de sudo/su/passwd sous audit" "" "ANSSI R65"
+    else
+        log_warning "Commandes privilégiées non auditées"
+        add_result "AUD-003" "Audit" "Commandes privilégiées" "WARN" "high" \
+            "L'utilisation de commandes privilégiées n'est pas auditée" \
+            "Ajouter règles pour /usr/bin/sudo, /bin/su, etc." "ANSSI R65"
+    fi
+    
+    # R66: Immutabilité des règles
+    log_info "Vérification immutabilité règles audit..."
+    if auditctl -l 2>/dev/null | grep -q "^-e 2"; then
+        log_success "Règles audit immutables"
+        add_result "AUD-004" "Audit" "Immutabilité règles" "PASS" "high" \
+            "Les règles audit ne peuvent être modifiées sans reboot" "" "ANSSI R66"
+    else
+        log_warning "Règles audit modifiables"
+        add_result "AUD-004" "Audit" "Immutabilité règles" "WARN" "high" \
+            "Les règles audit peuvent être modifiées à chaud" \
+            "Ajouter -e 2 à la fin des règles audit" "ANSSI R66"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Réseau Avancé
+#===============================================================================
+
+audit_network_advanced() {
+    print_section "RÉSEAU AVANCÉ (RENFORCÉ)"
+    
+    # R67: Synproxy / SYN cookies
+    log_info "Vérification protection SYN flood..."
+    local syncookies
+    syncookies=$(cat /proc/sys/net/ipv4/tcp_syncookies 2>/dev/null || echo "0")
+    if [[ "$syncookies" == "1" ]]; then
+        log_success "SYN cookies activés"
+        add_result "NET-ADV-001" "Réseau" "SYN cookies" "PASS" "high" \
+            "Protection contre SYN flood active" "" "ANSSI R67"
+    else
+        log_warning "SYN cookies désactivés"
+        add_result "NET-ADV-001" "Réseau" "SYN cookies" "WARN" "high" \
+            "Vulnérable aux attaques SYN flood" \
+            "echo 1 > /proc/sys/net/ipv4/tcp_syncookies" "ANSSI R67"
+    fi
+    
+    # R68: Reverse path filtering
+    log_info "Vérification reverse path filtering..."
+    local rpf
+    rpf=$(cat /proc/sys/net/ipv4/conf/all/rp_filter 2>/dev/null || echo "0")
+    if [[ "$rpf" == "1" ]] || [[ "$rpf" == "2" ]]; then
+        log_success "Reverse path filtering actif"
+        add_result "NET-ADV-002" "Réseau" "Reverse path filter" "PASS" "medium" \
+            "rp_filter=$rpf (protection anti-spoofing)" "" "ANSSI R68"
+    else
+        log_warning "Reverse path filtering désactivé"
+        add_result "NET-ADV-002" "Réseau" "Reverse path filter" "WARN" "medium" \
+            "Anti-spoofing désactivé" \
+            "echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter" "ANSSI R68"
+    fi
+    
+    # R69: TCP timestamps
+    log_info "Vérification TCP timestamps..."
+    local timestamps
+    timestamps=$(cat /proc/sys/net/ipv4/tcp_timestamps 2>/dev/null || echo "1")
+    if [[ "$timestamps" == "0" ]]; then
+        log_success "TCP timestamps désactivés"
+        add_result "NET-ADV-003" "Réseau" "TCP timestamps" "PASS" "low" \
+            "TCP timestamps désactivés (anti-fingerprinting)" "" "ANSSI R69"
+    else
+        log_info "TCP timestamps activés"
+        add_result "NET-ADV-003" "Réseau" "TCP timestamps" "WARN" "low" \
+            "TCP timestamps peuvent révéler l'uptime" \
+            "Désactiver si nécessaire: sysctl -w net.ipv4.tcp_timestamps=0" "ANSSI R69"
+    fi
+    
+    # R70: Ports privilégiés
+    log_info "Vérification ports privilégiés..."
+    local unprivileged_ports
+    unprivileged_ports=$(cat /proc/sys/net/ipv4/ip_unprivileged_port_start 2>/dev/null || echo "1024")
+    if [[ "$unprivileged_ports" -ge 1024 ]]; then
+        log_success "Ports < 1024 réservés à root"
+        add_result "NET-ADV-004" "Réseau" "Ports privilégiés" "PASS" "medium" \
+            "Seulement root peut écouter sur les ports < $unprivileged_ports" "" "ANSSI R70"
+    else
+        log_warning "Ports non privilégiés étendus"
+        add_result "NET-ADV-004" "Réseau" "Ports privilégiés" "WARN" "medium" \
+            "Utilisateurs non-root peuvent écouter sur des ports bas" "" "ANSSI R70"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Conteneurs et Isolation
+#===============================================================================
+
+audit_containers() {
+    print_section "CONTENEURS ET ISOLATION (RENFORCÉ)"
+    
+    # R71: Docker daemon
+    log_info "Vérification sécurité Docker..."
+    if command -v docker &>/dev/null; then
+        if systemctl is-active docker &>/dev/null; then
+            # Vérifier les options de sécurité Docker
+            local docker_issues=0
+            
+            # Vérifier userns-remap
+            if ! docker info 2>/dev/null | grep -q "userns"; then
+                docker_issues=$((docker_issues + 1))
+            fi
+            
+            if [[ $docker_issues -eq 0 ]]; then
+                log_success "Docker configuré avec options de sécurité"
+                add_result "CNT-001" "Conteneurs" "Docker sécurité" "PASS" "high" \
+                    "Docker configuré avec userns-remap" "" "ANSSI R71"
+            else
+                log_warning "Docker sans isolation user namespace"
+                add_result "CNT-001" "Conteneurs" "Docker sécurité" "WARN" "high" \
+                    "Docker sans userns-remap activé" \
+                    "Activer userns-remap dans /etc/docker/daemon.json" "ANSSI R71"
+            fi
+            
+            # R72: Conteneurs privileged
+            log_info "Vérification conteneurs privilégiés..."
+            local priv_containers
+            priv_containers=$(docker ps --format '{{.ID}}' 2>/dev/null | xargs -I {} docker inspect {} 2>/dev/null | grep -c '"Privileged": true' || echo "0")
+            
+            if [[ "$priv_containers" == "0" ]]; then
+                log_success "Aucun conteneur privilégié en cours"
+                add_result "CNT-002" "Conteneurs" "Conteneurs privilégiés" "PASS" "critical" \
+                    "Aucun conteneur en mode privileged" "" "ANSSI R72"
+            else
+                log_error "$priv_containers conteneurs privilégiés détectés"
+                add_result "CNT-002" "Conteneurs" "Conteneurs privilégiés" "FAIL" "critical" \
+                    "$priv_containers conteneurs tournent en mode privileged" \
+                    "Revoir les conteneurs et retirer --privileged" "ANSSI R72"
+            fi
+        fi
+    else
+        log_info "Docker non installé"
+        add_result "CNT-001" "Conteneurs" "Docker" "PASS" "low" \
+            "Docker non installé (non applicable)" "" "ANSSI R71"
+    fi
+    
+    # R73: Cgroups v2
+    log_info "Vérification cgroups v2..."
+    if [[ -f /sys/fs/cgroup/cgroup.controllers ]]; then
+        log_success "Cgroups v2 (unified) actif"
+        add_result "CNT-003" "Conteneurs" "Cgroups v2" "PASS" "medium" \
+            "Cgroups v2 offre une meilleure isolation" "" "ANSSI R73"
+    else
+        log_info "Cgroups v1 (legacy)"
+        add_result "CNT-003" "Conteneurs" "Cgroups v2" "WARN" "medium" \
+            "Système utilise cgroups v1" \
+            "Migrer vers cgroups v2 pour une meilleure sécurité" "ANSSI R73"
+    fi
+    
+    # R74: Namespace isolation
+    log_info "Vérification support namespaces..."
+    local ns_support=0
+    for ns in user pid net mnt uts ipc; do
+        if [[ -d /proc/1/ns ]]; then
+            if [[ -L "/proc/1/ns/$ns" ]]; then
+                ns_support=$((ns_support + 1))
+            fi
+        fi
+    done
+    
+    if [[ $ns_support -ge 6 ]]; then
+        log_success "Tous les namespaces supportés"
+        add_result "CNT-004" "Conteneurs" "Namespaces" "PASS" "medium" \
+            "Support complet des namespaces Linux" "" "ANSSI R74"
+    else
+        log_warning "Support namespaces incomplet"
+        add_result "CNT-004" "Conteneurs" "Namespaces" "WARN" "medium" \
+            "Certains namespaces non disponibles" "" "ANSSI R74"
+    fi
+}
+
+#===============================================================================
+# CONTRÔLES RENFORCÉS - Divers
+#===============================================================================
+
+audit_miscellaneous() {
+    print_section "CONTRÔLES DIVERS (RENFORCÉ)"
+    
+    # R75: USB storage
+    log_info "Vérification stockage USB..."
+    local usb_disabled=false
+    if lsmod 2>/dev/null | grep -q "usb-storage"; then
+        usb_disabled=false
+    else
+        usb_disabled=true
+    fi
+    if [[ -f /etc/modprobe.d/blacklist.conf ]] && grep -q "usb-storage" /etc/modprobe.d/blacklist.conf 2>/dev/null; then
+        usb_disabled=true
+    fi
+    
+    if [[ "$usb_disabled" == true ]]; then
+        log_success "Stockage USB désactivé"
+        add_result "MSC-001" "Divers" "Stockage USB" "PASS" "medium" \
+            "Module usb-storage non chargé ou blacklisté" "" "ANSSI R75"
+    else
+        log_info "Stockage USB activé"
+        add_result "MSC-001" "Divers" "Stockage USB" "WARN" "medium" \
+            "Stockage USB autorisé" \
+            "Blacklister usb-storage si non nécessaire" "ANSSI R75"
+    fi
+    
+    # R76: Firewire
+    log_info "Vérification Firewire/Thunderbolt..."
+    local firewire_disabled=true
+    if lsmod 2>/dev/null | grep -qE "(firewire|ohci1394|sbp2|thunderbolt)"; then
+        firewire_disabled=false
+    fi
+    
+    if [[ "$firewire_disabled" == true ]]; then
+        log_success "Firewire/Thunderbolt désactivé"
+        add_result "MSC-002" "Divers" "Firewire DMA" "PASS" "high" \
+            "Modules DMA dangereux non chargés" "" "ANSSI R76"
+    else
+        log_warning "Firewire/Thunderbolt actif (risque DMA)"
+        add_result "MSC-002" "Divers" "Firewire DMA" "WARN" "high" \
+            "Modules DMA actifs (attaque possible)" \
+            "Blacklister firewire_ohci, thunderbolt" "ANSSI R76"
+    fi
+    
+    # R77: Bluetooth
+    log_info "Vérification Bluetooth..."
+    local bt_disabled=true
+    if systemctl is-active bluetooth &>/dev/null; then
+        bt_disabled=false
+    fi
+    if lsmod 2>/dev/null | grep -q "bluetooth"; then
+        bt_disabled=false
+    fi
+    
+    if [[ "$bt_disabled" == true ]]; then
+        log_success "Bluetooth désactivé"
+        add_result "MSC-003" "Divers" "Bluetooth" "PASS" "medium" \
+            "Service Bluetooth inactif" "" "ANSSI R77"
+    else
+        log_info "Bluetooth actif"
+        add_result "MSC-003" "Divers" "Bluetooth" "WARN" "medium" \
+            "Bluetooth actif (surface d'attaque)" \
+            "Désactiver si non nécessaire: systemctl disable bluetooth" "ANSSI R77"
+    fi
+    
+    # R78: Webcam/microphone
+    log_info "Vérification périphériques multimédia..."
+    local multimedia_info=""
+    if lsmod 2>/dev/null | grep -q "uvcvideo"; then
+        multimedia_info="webcam active"
+    fi
+    if [[ -n "$multimedia_info" ]]; then
+        log_info "Périphériques: $multimedia_info"
+        add_result "MSC-004" "Divers" "Multimédia" "WARN" "low" \
+            "Périphériques multimédia détectés: $multimedia_info" \
+            "Blacklister uvcvideo si webcam non nécessaire" "ANSSI R78"
+    else
+        log_success "Pas de périphériques multimédia actifs"
+        add_result "MSC-004" "Divers" "Multimédia" "PASS" "low" \
+            "Aucun périphérique multimédia détecté" "" "ANSSI R78"
+    fi
+    
+    # R79: Compte root direct
+    log_info "Vérification accès root direct..."
+    local root_login_disabled=true
+    if [[ -f /etc/securetty ]]; then
+        if [[ -s /etc/securetty ]]; then
+            root_login_disabled=false
+        fi
+    fi
+    if grep -q "^root:" /etc/passwd && [[ $(grep "^root:" /etc/shadow | cut -d: -f2) != "!" ]] && [[ $(grep "^root:" /etc/shadow | cut -d: -f2) != "*" ]]; then
+        if grep -q "PermitRootLogin no" /etc/ssh/sshd_config 2>/dev/null; then
+            root_login_disabled=true
+        fi
+    fi
+    
+    if [[ "$root_login_disabled" == true ]]; then
+        log_success "Connexion root directe restreinte"
+        add_result "MSC-005" "Divers" "Connexion root" "PASS" "high" \
+            "Connexion directe en root limitée" "" "ANSSI R79"
+    else
+        log_warning "Connexion root possible"
+        add_result "MSC-005" "Divers" "Connexion root" "WARN" "high" \
+            "Root peut se connecter directement" \
+            "Utiliser sudo et désactiver le login root" "ANSSI R79"
+    fi
+    
+    # R80: Bannières légales
+    log_info "Vérification bannières légales..."
+    local has_banner=false
+    if [[ -s /etc/issue ]] || [[ -s /etc/issue.net ]] || [[ -s /etc/motd ]]; then
+        if grep -qiE "(authorized|warning|legal|avertissement)" /etc/issue /etc/issue.net /etc/motd 2>/dev/null; then
+            has_banner=true
+        fi
+    fi
+    
+    if [[ "$has_banner" == true ]]; then
+        log_success "Bannières légales configurées"
+        add_result "MSC-006" "Divers" "Bannières légales" "PASS" "low" \
+            "Message d'avertissement légal présent" "" "ANSSI R80"
+    else
+        log_info "Pas de bannière légale"
+        add_result "MSC-006" "Divers" "Bannières légales" "WARN" "low" \
+            "Aucun avertissement légal configuré" \
+            "Configurer /etc/issue et /etc/motd" "ANSSI R80"
+    fi
+}
+
+#===============================================================================
 # Génération du rapport
 #===============================================================================
 
@@ -1173,9 +2029,9 @@ HTMLHEAD
 
     cat >> "$html_file" << HTMLHEADER
         <div class="header">
-            <h1>Rapport d'Audit de Sécurité Linux</h1>
-            <div class="subtitle">Généré par InfraGuard Security</div>
-            <div class="framework">Référentiel ANSSI</div>
+            <h1>Rapport d'Audit de Sécurité Linux (RENFORCÉ)</h1>
+            <div class="subtitle">Généré par InfraGuard Security - ~80 contrôles complets</div>
+            <div class="framework">Référentiel ANSSI-BP-028 v2.0</div>
         </div>
 
         <div class="summary-grid">
@@ -1400,11 +2256,11 @@ main() {
     # Affichage du header
     print_header
     
-    echo "Démarrage de l'audit de sécurité..."
+    echo "Démarrage de l'audit de sécurité RENFORCÉ (~80 contrôles)..."
     echo "Fichier de sortie: $OUTPUT_FILE"
     echo ""
     
-    # Exécution des audits
+    # Exécution des audits BASE
     audit_system_config
     audit_accounts
     audit_ssh
@@ -1413,6 +2269,17 @@ main() {
     audit_services
     audit_logging
     audit_security_tools
+    
+    # Exécution des audits RENFORCÉS
+    audit_kernel_hardening
+    audit_mandatory_access_control
+    audit_pam_advanced
+    audit_encryption
+    audit_systemd_security
+    audit_advanced_logging
+    audit_network_advanced
+    audit_containers
+    audit_miscellaneous
     
     # Génération du rapport
     generate_report

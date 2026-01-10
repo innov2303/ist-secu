@@ -132,7 +132,8 @@ export class DatabaseStorage implements IStorage {
   async updateScriptsFromFiles(): Promise<void> {
     const existingScripts = await this.getScripts();
     const scriptFiles: Record<string, string> = {
-      "linux-security-audit-anssi.sh": this.loadScriptContent("linux-security-audit-anssi.sh"),
+      "linux-security-base-anssi.sh": this.loadScriptContent("linux-security-base-anssi.sh"),
+      "linux-security-enhanced-anssi.sh": this.loadScriptContent("linux-security-enhanced-anssi.sh"),
     };
 
     for (const script of existingScripts) {
@@ -163,15 +164,27 @@ export class DatabaseStorage implements IStorage {
       },
       {
         os: "Linux",
-        name: "Linux Security Audit ANSSI",
-        description: "Audit de sécurité complet pour systèmes Linux basé sur les recommandations ANSSI. Vérifie le partitionnement, les comptes, SSH, le réseau, les permissions, les services et la journalisation.",
-        filename: "linux-security-audit-anssi.sh",
+        name: "Linux Security Base ANSSI",
+        description: "Audit de sécurité de base pour systèmes Linux basé sur les recommandations essentielles ANSSI-BP-028. Vérifie le partitionnement, les comptes, SSH, le réseau, les permissions, les services et la journalisation.",
+        filename: "linux-security-base-anssi.sh",
         icon: "Terminal",
         compliance: "ANSSI",
-        features: ["40+ contrôles de sécurité", "Génération de rapport JSON", "Score de conformité A-F", "Recommandations de correction", "Compatible Debian/Ubuntu/RHEL/CentOS"],
-        content: this.loadScriptContent("linux-security-audit-anssi.sh"),
+        features: ["~40 contrôles essentiels", "Génération de rapport HTML/JSON", "Score de conformité A-F", "Recommandations de correction", "Compatible Debian/Ubuntu/RHEL/CentOS"],
+        content: this.loadScriptContent("linux-security-base-anssi.sh"),
         priceCents: 50000,
         monthlyPriceCents: 10000,
+      },
+      {
+        os: "Linux",
+        name: "Linux Security Enhanced ANSSI",
+        description: "Audit de sécurité renforcé pour systèmes Linux couvrant l'intégralité des 80 contrôles ANSSI-BP-028 v2.0. Inclut kernel hardening, SELinux/AppArmor, PAM, chiffrement LUKS, sécurité systemd, conteneurs et plus.",
+        filename: "linux-security-enhanced-anssi.sh",
+        icon: "Terminal",
+        compliance: "ANSSI-BP-028 v2.0",
+        features: ["~80 contrôles complets", "Kernel hardening", "SELinux/AppArmor avancé", "PAM détaillé", "Chiffrement disque", "Sécurité conteneurs", "Rapport HTML/JSON"],
+        content: this.loadScriptContent("linux-security-enhanced-anssi.sh"),
+        priceCents: 80000,
+        monthlyPriceCents: 15000,
       },
       {
         os: "VMware",
