@@ -18,7 +18,7 @@ async function createProducts() {
     },
     {
       name: 'Linux Compliance Toolkit',
-      description: 'Pack complet d\'audit de conformité Linux basé sur les recommandations ANSSI-BP-028 et CIS Benchmark. Inclut les versions Base (~55 contrôles) et Renforcée (~100 contrôles).\n\nCompatible Debian/Ubuntu, Red Hat/CentOS, Fedora, SUSE. Fonctionnement limité sur les distributions non listées. Mise à jour et support inclus.',
+      description: 'Pack complet d\'audit de conformité Linux basé sur les recommandations ANSSI-BP-028 et CIS Benchmark. Inclut les versions Base (~55 contrôles) et Renforcée (~100 contrôles).\n\nCompatible Debian/Ubuntu, Red Hat/CentOS, Fedora, SUSE. Fonctionnement limité sur les distributions non listées.',
       metadata: { os: 'Linux', compliance: 'ANSSI-BP-028 + CIS Benchmark' },
       monthlyPriceCents: 30000,
     },
