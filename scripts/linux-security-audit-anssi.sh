@@ -292,21 +292,22 @@ audit_accounts() {
             "Supprimer ou modifier l'UID des comptes autres que root" "ANSSI R7"
     fi
     
-    # R8: Mots de passe vides
+    # R8: Mots de passe vides (! et * sont des comptes verrouillés, pas des mots de passe vides)
     log_info "Vérification des mots de passe vides..."
     
-    local empty_pass=$(awk -F: '($2 == "" || $2 == "!" || $2 == "*") && $1 != "root" {print $1}' /etc/shadow 2>/dev/null | grep -v '^$' || true)
+    # Only flag truly empty passwords (empty string), not locked accounts (! or *)
+    local empty_pass=$(awk -F: '$2 == "" && $1 != "root" {print $1}' /etc/shadow 2>/dev/null | grep -v '^$' || true)
     
     if [[ -z "$empty_pass" ]]; then
         log_success "Aucun compte utilisateur avec mot de passe vide"
         add_result "ACC-002" "Comptes" "Mots de passe vides" "PASS" "critical" \
-            "Tous les comptes ont un mot de passe défini" \
+            "Tous les comptes ont un mot de passe défini ou sont verrouillés" \
             "" "ANSSI R8"
     else
         log_error "Comptes sans mot de passe: $empty_pass"
         add_result "ACC-002" "Comptes" "Mots de passe vides" "FAIL" "critical" \
             "Comptes sans mot de passe: $empty_pass" \
-            "Définir un mot de passe ou désactiver ces comptes" "ANSSI R8"
+            "Définir un mot de passe ou verrouiller ces comptes avec passwd -l" "ANSSI R8"
     fi
     
     # R9: Politique de mots de passe
