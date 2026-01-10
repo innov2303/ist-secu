@@ -54,12 +54,12 @@ export function Hero() {
             <span>Integrity Check</span>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <Terminal className="w-4 h-4 text-primary" />
-            <span>Automated Audit</span>
+            <Lock className="w-4 h-4 text-primary" />
+            <span>Secure</span>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <Lock className="w-4 h-4 text-primary" />
-            <span>Zero Trust</span>
+            <FileText className="w-4 h-4 text-primary" />
+            <span>Rapport & Recommendations</span>
           </div>
         </motion.div>
 
