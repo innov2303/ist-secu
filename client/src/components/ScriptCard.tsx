@@ -134,7 +134,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 </p>
               </div>
               <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-                Mises à jour régulières incluses
+                Mise à jour et support inclus
               </p>
             </div>
           </div>
