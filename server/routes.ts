@@ -362,8 +362,9 @@ export async function registerRoutes(
     }
   });
 
-  // Initialize seed data
+  // Initialize seed data and update scripts from files
   await storage.seed();
+  await storage.updateScriptsFromFiles();
 
   // Public routes
   app.get(api.scripts.list.path, async (req, res) => {
@@ -371,19 +372,30 @@ export async function registerRoutes(
     res.json(scripts);
   });
 
-  app.get(api.scripts.download.path, async (req, res) => {
+  app.get(api.scripts.download.path, isAuthenticated, async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentification requise" });
+    }
+
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+      return res.status(400).json({ message: "ID invalide" });
     }
 
     const script = await storage.getScript(id);
     if (!script) {
-      return res.status(404).json({ message: "Script not found" });
+      return res.status(404).json({ message: "Script non trouvé" });
+    }
+
+    // Check if user has an active purchase
+    const activePurchase = await storage.getActivePurchase(userId, id);
+    if (!activePurchase) {
+      return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
     }
 
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
-    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.send(script.content);
   });
 
