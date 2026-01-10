@@ -17,6 +17,7 @@ export interface IStorage {
   getPurchasesByUser(userId: string): Promise<(Purchase & { script: Script })[]>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
   createPurchasesForBundle(userId: string, bundleScript: Script, purchaseType: string, priceCents: number, expiresAt: Date | null, stripePaymentIntentId?: string, stripeSubscriptionId?: string): Promise<void>;
+  hasPurchasedBundle(userId: string, bundleScriptIds: number[]): Promise<boolean>;
   hasPurchased(userId: string, scriptId: number): Promise<boolean>;
   getActivePurchase(userId: string, scriptId: number): Promise<Purchase | null>;
 }
@@ -80,29 +81,17 @@ export class DatabaseStorage implements IStorage {
     stripeSubscriptionId?: string
   ): Promise<void> {
     const scriptIds = bundleScript.bundledScriptIds || [];
+    const pricePerScript = Math.floor(priceCents / scriptIds.length);
 
-    // Create purchase for the bundle script itself to prevent duplicate purchases
-    const existingBundle = await this.getActivePurchase(userId, bundleScript.id);
-    if (!existingBundle) {
-      await this.createPurchase({
-        userId,
-        scriptId: bundleScript.id,
-        priceCents,
-        purchaseType,
-        expiresAt,
-        stripePaymentIntentId,
-        stripeSubscriptionId,
-      });
-    }
-
-    // Create purchases for all bundled scripts
+    // Create purchases ONLY for the bundled scripts (not the bundle itself)
+    // The bundle is just a "shopping item", users own the actual scripts
     for (const scriptId of scriptIds) {
       const existing = await this.getActivePurchase(userId, scriptId);
       if (!existing) {
         await this.createPurchase({
           userId,
           scriptId,
-          priceCents: 0,
+          priceCents: pricePerScript,
           purchaseType,
           expiresAt,
           stripePaymentIntentId,
@@ -110,6 +99,15 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  async hasPurchasedBundle(userId: string, bundleScriptIds: number[]): Promise<boolean> {
+    // A bundle is considered purchased if ALL bundled scripts are purchased
+    for (const scriptId of bundleScriptIds) {
+      const purchase = await this.getActivePurchase(userId, scriptId);
+      if (!purchase) return false;
+    }
+    return bundleScriptIds.length > 0;
   }
 
   async hasPurchased(userId: string, scriptId: number): Promise<boolean> {
@@ -128,9 +126,19 @@ export class DatabaseStorage implements IStorage {
     
     if (!existing) return null;
     
+    // Direct purchases never expire
     if (existing.purchaseType === "direct") return existing;
     
-    if (existing.expiresAt && new Date(existing.expiresAt) > new Date()) {
+    // Monthly subscriptions: check expiration if set, otherwise assume active if has subscription ID
+    if (existing.expiresAt) {
+      if (new Date(existing.expiresAt) > new Date()) {
+        return existing;
+      }
+      return null; // Expired
+    }
+    
+    // If no expiration set but has subscription ID, consider it active (new subscription)
+    if (existing.stripeSubscriptionId) {
       return existing;
     }
     

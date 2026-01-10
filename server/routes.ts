@@ -513,6 +513,21 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Invalid script ID" });
     }
 
+    // Check if this is a bundle - if so, check if all bundled scripts are purchased
+    const script = await storage.getScript(scriptId);
+    if (script?.bundledScriptIds && script.bundledScriptIds.length > 0) {
+      const hasPurchased = await storage.hasPurchasedBundle(userId, script.bundledScriptIds);
+      // Get expiry from first bundled script
+      const firstBundledPurchase = hasPurchased 
+        ? await storage.getActivePurchase(userId, script.bundledScriptIds[0])
+        : null;
+      return res.json({ 
+        hasPurchased,
+        purchaseType: firstBundledPurchase?.purchaseType || null,
+        expiresAt: firstBundledPurchase?.expiresAt || null,
+      });
+    }
+
     const activePurchase = await storage.getActivePurchase(userId, scriptId);
     res.json({ 
       hasPurchased: !!activePurchase,
@@ -544,9 +559,17 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Script not found" });
     }
 
-    const existingPurchase = await storage.getActivePurchase(userId, scriptId);
-    if (existingPurchase) {
-      return res.status(400).json({ message: "You already have an active purchase for this script" });
+    // Check if already purchased (including bundle check)
+    if (script.bundledScriptIds && script.bundledScriptIds.length > 0) {
+      const hasPurchased = await storage.hasPurchasedBundle(userId, script.bundledScriptIds);
+      if (hasPurchased) {
+        return res.status(400).json({ message: "You already have an active purchase for this bundle" });
+      }
+    } else {
+      const existingPurchase = await storage.getActivePurchase(userId, scriptId);
+      if (existingPurchase) {
+        return res.status(400).json({ message: "You already have an active purchase for this script" });
+      }
     }
 
     try {
