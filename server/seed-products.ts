@@ -29,7 +29,7 @@ async function createProducts() {
       monthlyPriceCents: 40000,
     },
     {
-      name: 'Container Security Scanner',
+      name: 'Container Compliance Toolkit',
       description: 'Scan de configuration Docker selon le benchmark CIS. En développement.',
       metadata: { os: 'Docker', compliance: 'CIS' },
       monthlyPriceCents: 30000,

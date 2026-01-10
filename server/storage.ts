@@ -265,7 +265,7 @@ export class DatabaseStorage implements IStorage {
       },
       {
         os: "Docker",
-        name: "Container Security Scanner",
+        name: "Container Compliance Toolkit",
         description: "Scan de sécurité Docker selon le benchmark CIS. Vérifie la configuration du daemon, les conteneurs, les images, les réseaux et les volumes.",
         filename: "docker-security-audit-cis.sh",
         icon: "Container",
