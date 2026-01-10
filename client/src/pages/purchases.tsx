@@ -198,6 +198,9 @@ export default function Purchases() {
           className="w-full h-full object-cover brightness-[0.4]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <Link href="/" className="absolute top-4 left-4 z-10">
+          <img src={logoImg} alt="IGS Logo" className="w-12 h-12 rounded-md hover:opacity-80 transition-opacity" />
+        </Link>
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex items-center gap-3 px-6 py-3 bg-background/80 backdrop-blur-md rounded-xl border border-border/50">
             <ShoppingBag className="h-6 w-6 text-primary" />
