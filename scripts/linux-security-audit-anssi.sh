@@ -89,28 +89,18 @@ add_result() {
     local remediation="$7"
     local reference="${8:-}"
     
-    ((TOTAL_CHECKS++))
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
     
     case "$status" in
-        "PASS") ((PASSED_CHECKS++)) ;;
-        "FAIL") ((FAILED_CHECKS++)) ;;
-        "WARN") ((WARNING_CHECKS++)) ;;
+        "PASS") PASSED_CHECKS=$((PASSED_CHECKS + 1)) ;;
+        "FAIL") FAILED_CHECKS=$((FAILED_CHECKS + 1)) ;;
+        "WARN") WARNING_CHECKS=$((WARNING_CHECKS + 1)) ;;
     esac
     
-    local result=$(cat <<EOF
-{
-    "id": "$id",
-    "category": "$category",
-    "title": "$title",
-    "status": "$status",
-    "severity": "$severity",
-    "description": "$description",
-    "remediation": "$remediation",
-    "reference": "$reference",
-    "timestamp": "$(date -Iseconds)"
-}
-EOF
-)
+    local timestamp
+    timestamp=$(date -Iseconds 2>/dev/null || date "+%Y-%m-%dT%H:%M:%S")
+    
+    local result="{\"id\":\"$id\",\"category\":\"$category\",\"title\":\"$title\",\"status\":\"$status\",\"severity\":\"$severity\",\"description\":\"$description\",\"remediation\":\"$remediation\",\"reference\":\"$reference\",\"timestamp\":\"$timestamp\"}"
     RESULTS+=("$result")
 }
 
