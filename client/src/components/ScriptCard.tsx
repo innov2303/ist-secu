@@ -1,6 +1,7 @@
 import { Script } from "@shared/schema";
 import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw } from "lucide-react";
 import { SiLinux } from "react-icons/si";
+import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { downloadScript } from "@/hooks/use-scripts";
@@ -23,8 +24,8 @@ interface PurchaseStatus {
 }
 
 const IconMap: Record<string, any> = {
-  windows: Monitor,
-  monitor: Monitor,
+  windows: FaWindows,
+  monitor: FaWindows,
   linux: SiLinux,
   terminal: SiLinux,
   vmware: Server,
