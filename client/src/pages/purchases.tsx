@@ -223,7 +223,7 @@ export default function Purchases() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex items-center gap-3 px-6 py-3 bg-background/80 backdrop-blur-md rounded-xl border border-border/50">
             <ShoppingBag className="h-6 w-6 text-primary" />
-            <h1 className="text-xl md:text-2xl font-bold">Mes Achats</h1>
+            <h1 className="text-xl md:text-2xl font-bold">Mes produits</h1>
           </div>
         </div>
       </div>

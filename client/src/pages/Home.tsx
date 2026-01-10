@@ -22,7 +22,7 @@ export default function Home() {
             <Button variant="default" size="sm" asChild data-testid="link-purchases">
               <Link href="/purchases">
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Mes Achats
+                Mes produits
               </Link>
             </Button>
             {user.isAdmin && (
