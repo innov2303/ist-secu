@@ -149,12 +149,12 @@ audit_system_config() {
     
     if [[ ${#missing_partitions[@]} -eq 0 ]]; then
         log_success "Partitionnement conforme - partitions séparées détectées"
-        add_result "SYS-001" "Système" "Partitionnement sécurisé" "PASS" "high" \
+        add_result "SYS-001" "ANSSI" "Partitionnement sécurisé" "PASS" "high" \
             "Les partitions critiques sont correctement séparées" \
             "" "ANSSI R1"
     else
         log_warning "Partitions manquantes: ${missing_partitions[*]}"
-        add_result "SYS-001" "Système" "Partitionnement sécurisé" "WARN" "high" \
+        add_result "SYS-001" "ANSSI" "Partitionnement sécurisé" "WARN" "high" \
             "Partitions non séparées: ${missing_partitions[*]}" \
             "Créer des partitions séparées pour: ${missing_partitions[*]}" "ANSSI R1"
     fi
@@ -176,12 +176,12 @@ audit_system_config() {
     
     if [[ ${#mount_issues[@]} -eq 0 ]]; then
         log_success "Options de montage conformes"
-        add_result "SYS-002" "Système" "Options de montage" "PASS" "medium" \
+        add_result "SYS-002" "ANSSI" "Options de montage" "PASS" "medium" \
             "Les partitions ont des options de montage sécurisées" \
             "" "ANSSI R2"
     else
         log_warning "Problèmes de montage: ${mount_issues[*]}"
-        add_result "SYS-002" "Système" "Options de montage" "WARN" "medium" \
+        add_result "SYS-002" "ANSSI" "Options de montage" "WARN" "medium" \
             "Options manquantes: ${mount_issues[*]}" \
             "Ajouter noexec,nosuid,nodev sur /tmp, /var/tmp, /dev/shm" "ANSSI R2"
     fi
@@ -200,12 +200,12 @@ audit_system_config() {
     
     if [[ "$auto_update" == true ]]; then
         log_success "Mises à jour automatiques activées"
-        add_result "SYS-003" "Système" "Mises à jour automatiques" "PASS" "critical" \
+        add_result "SYS-003" "ANSSI" "Mises à jour automatiques" "PASS" "critical" \
             "Les mises à jour de sécurité automatiques sont activées" \
             "" "ANSSI R3"
     else
         log_error "Mises à jour automatiques non configurées"
-        add_result "SYS-003" "Système" "Mises à jour automatiques" "FAIL" "critical" \
+        add_result "SYS-003" "ANSSI" "Mises à jour automatiques" "FAIL" "critical" \
             "Les mises à jour automatiques ne sont pas activées" \
             "Activer unattended-upgrades (Debian/Ubuntu) ou dnf-automatic (RHEL/CentOS)" "ANSSI R3"
     fi
@@ -219,12 +219,12 @@ audit_system_config() {
     
     if [[ "$kernel_major" -ge 5 ]] || [[ "$kernel_major" -eq 4 && "$kernel_minor" -ge 19 ]]; then
         log_success "Version du noyau à jour: $kernel_version"
-        add_result "SYS-004" "Système" "Version du noyau" "PASS" "high" \
+        add_result "SYS-004" "ANSSI" "Version du noyau" "PASS" "high" \
             "Noyau Linux $kernel_version - version supportée" \
             "" "ANSSI R4"
     else
         log_warning "Version du noyau ancienne: $kernel_version"
-        add_result "SYS-004" "Système" "Version du noyau" "WARN" "high" \
+        add_result "SYS-004" "ANSSI" "Version du noyau" "WARN" "high" \
             "Noyau Linux $kernel_version - version potentiellement non supportée" \
             "Mettre à jour vers un noyau LTS récent (4.19+ ou 5.x+)" "ANSSI R4"
     fi
@@ -235,12 +235,12 @@ audit_system_config() {
     local aslr=$(cat /proc/sys/kernel/randomize_va_space 2>/dev/null || echo "0")
     if [[ "$aslr" -eq 2 ]]; then
         log_success "ASLR activé (niveau 2)"
-        add_result "SYS-005" "Système" "Protection mémoire ASLR" "PASS" "critical" \
+        add_result "SYS-005" "ANSSI" "Protection mémoire ASLR" "PASS" "critical" \
             "Address Space Layout Randomization activé au niveau maximum" \
             "" "ANSSI R5"
     else
         log_error "ASLR non activé ou partiellement activé (niveau: $aslr)"
-        add_result "SYS-005" "Système" "Protection mémoire ASLR" "FAIL" "critical" \
+        add_result "SYS-005" "ANSSI" "Protection mémoire ASLR" "FAIL" "critical" \
             "ASLR au niveau $aslr (devrait être 2)" \
             "echo 2 > /proc/sys/kernel/randomize_va_space et ajouter dans sysctl.conf" "ANSSI R5"
     fi
@@ -250,12 +250,12 @@ audit_system_config() {
     
     if grep -q ' nx ' /proc/cpuinfo 2>/dev/null; then
         log_success "Protection NX (No-eXecute) activée"
-        add_result "SYS-006" "Système" "Protection NX bit" "PASS" "high" \
+        add_result "SYS-006" "ANSSI" "Protection NX bit" "PASS" "high" \
             "Le processeur supporte et utilise NX bit" \
             "" "ANSSI R6"
     else
         log_warning "Protection NX non détectée"
-        add_result "SYS-006" "Système" "Protection NX bit" "WARN" "high" \
+        add_result "SYS-006" "ANSSI" "Protection NX bit" "WARN" "high" \
             "NX bit non détecté - possible désactivation dans le BIOS" \
             "Activer NX/XD dans les paramètres BIOS/UEFI" "ANSSI R6"
     fi
@@ -276,12 +276,12 @@ audit_accounts() {
     
     if [[ "$uid0_count" -eq 1 && "$uid0_accounts" == "root" ]]; then
         log_success "Seul root a UID 0"
-        add_result "ACC-001" "Comptes" "Comptes UID 0" "PASS" "critical" \
+        add_result "ACC-001" "ANSSI" "Comptes UID 0" "PASS" "critical" \
             "Seul le compte root possède l'UID 0" \
             "" "ANSSI R7"
     else
         log_error "Plusieurs comptes avec UID 0: $uid0_accounts"
-        add_result "ACC-001" "Comptes" "Comptes UID 0" "FAIL" "critical" \
+        add_result "ACC-001" "ANSSI" "Comptes UID 0" "FAIL" "critical" \
             "Comptes avec UID 0: $uid0_accounts" \
             "Supprimer ou modifier l'UID des comptes autres que root" "ANSSI R7"
     fi
@@ -294,12 +294,12 @@ audit_accounts() {
     
     if [[ -z "$empty_pass" ]]; then
         log_success "Aucun compte utilisateur avec mot de passe vide"
-        add_result "ACC-002" "Comptes" "Mots de passe vides" "PASS" "critical" \
+        add_result "ACC-002" "ANSSI" "Mots de passe vides" "PASS" "critical" \
             "Tous les comptes ont un mot de passe défini ou sont verrouillés" \
             "" "ANSSI R8"
     else
         log_error "Comptes sans mot de passe: $empty_pass"
-        add_result "ACC-002" "Comptes" "Mots de passe vides" "FAIL" "critical" \
+        add_result "ACC-002" "ANSSI" "Mots de passe vides" "FAIL" "critical" \
             "Comptes sans mot de passe: $empty_pass" \
             "Définir un mot de passe ou verrouiller ces comptes avec passwd -l" "ANSSI R8"
     fi
@@ -325,12 +325,12 @@ audit_accounts() {
     
     if [[ "$pass_policy_ok" == true ]]; then
         log_success "Politique de mots de passe conforme"
-        add_result "ACC-003" "Comptes" "Politique mots de passe" "PASS" "high" \
+        add_result "ACC-003" "ANSSI" "Politique mots de passe" "PASS" "high" \
             "La politique de mots de passe respecte les recommandations" \
             "" "ANSSI R9"
     else
         log_warning "Politique de mots de passe insuffisante"
-        add_result "ACC-003" "Comptes" "Politique mots de passe" "WARN" "high" \
+        add_result "ACC-003" "ANSSI" "Politique mots de passe" "WARN" "high" \
             "Problèmes: ${pass_issues[*]}" \
             "Modifier /etc/login.defs: PASS_MAX_DAYS 90, PASS_MIN_LEN 12" "ANSSI R9"
     fi
@@ -347,12 +347,12 @@ audit_accounts() {
     
     if [[ "$faillock_enabled" == true ]]; then
         log_success "Verrouillage après échecs d'authentification activé"
-        add_result "ACC-004" "Comptes" "Verrouillage échecs auth" "PASS" "high" \
+        add_result "ACC-004" "ANSSI" "Verrouillage échecs auth" "PASS" "high" \
             "Le verrouillage de compte après échecs est configuré" \
             "" "ANSSI R10"
     else
         log_error "Verrouillage après échecs non configuré"
-        add_result "ACC-004" "Comptes" "Verrouillage échecs auth" "FAIL" "high" \
+        add_result "ACC-004" "ANSSI" "Verrouillage échecs auth" "FAIL" "high" \
             "Pas de protection contre les attaques par force brute" \
             "Configurer pam_faillock avec deny=5 et unlock_time=900" "ANSSI R10"
     fi
@@ -371,12 +371,12 @@ audit_accounts() {
     
     if [[ ${#sudo_issues[@]} -eq 0 ]]; then
         log_success "Configuration sudo sécurisée"
-        add_result "ACC-005" "Comptes" "Configuration sudo" "PASS" "high" \
+        add_result "ACC-005" "ANSSI" "Configuration sudo" "PASS" "high" \
             "sudo est configuré de manière sécurisée" \
             "" "ANSSI R11"
     else
         log_warning "Problèmes sudo: ${sudo_issues[*]}"
-        add_result "ACC-005" "Comptes" "Configuration sudo" "WARN" "high" \
+        add_result "ACC-005" "ANSSI" "Configuration sudo" "WARN" "high" \
             "Problèmes détectés: ${sudo_issues[*]}" \
             "Supprimer NOPASSWD et !authenticate de la configuration sudo" "ANSSI R11"
     fi
@@ -395,12 +395,12 @@ audit_accounts() {
     
     if [[ "$unused_shells" -eq 0 ]]; then
         log_success "Comptes système correctement configurés"
-        add_result "ACC-006" "Comptes" "Comptes système" "PASS" "medium" \
+        add_result "ACC-006" "ANSSI" "Comptes système" "PASS" "medium" \
             "Les comptes système ont des shells désactivés" \
             "" "ANSSI R12"
     else
         log_warning "$unused_shells comptes système avec shell actif"
-        add_result "ACC-006" "Comptes" "Comptes système" "WARN" "medium" \
+        add_result "ACC-006" "ANSSI" "Comptes système" "WARN" "medium" \
             "$unused_shells comptes système ont un shell de connexion" \
             "Configurer /sbin/nologin pour les comptes système non utilisés" "ANSSI R12"
     fi
@@ -417,7 +417,7 @@ audit_ssh() {
     
     if [[ ! -f "$sshd_config" ]]; then
         log_warning "SSH n'est pas installé"
-        add_result "SSH-001" "SSH" "Installation SSH" "PASS" "info" \
+        add_result "SSH-001" "ANSSI" "Installation SSH" "PASS" "info" \
             "SSH n'est pas installé sur ce système" \
             "" "ANSSI R13"
         return
@@ -430,17 +430,17 @@ audit_ssh() {
     
     if [[ "$permit_root" == "no" ]]; then
         log_success "Connexion root SSH désactivée"
-        add_result "SSH-001" "SSH" "Connexion root" "PASS" "critical" \
+        add_result "SSH-001" "ANSSI" "Connexion root" "PASS" "critical" \
             "PermitRootLogin est défini sur 'no'" \
             "" "ANSSI R13"
     elif [[ "$permit_root" == "prohibit-password" || "$permit_root" == "without-password" ]]; then
         log_success "Connexion root SSH par mot de passe désactivée"
-        add_result "SSH-001" "SSH" "Connexion root" "PASS" "critical" \
+        add_result "SSH-001" "ANSSI" "Connexion root" "PASS" "critical" \
             "PermitRootLogin = $permit_root (clés uniquement)" \
             "" "ANSSI R13"
     else
         log_error "Connexion root SSH autorisée"
-        add_result "SSH-001" "SSH" "Connexion root" "FAIL" "critical" \
+        add_result "SSH-001" "ANSSI" "Connexion root" "FAIL" "critical" \
             "PermitRootLogin = $permit_root" \
             "Ajouter 'PermitRootLogin no' dans $sshd_config" "ANSSI R13"
     fi
@@ -452,12 +452,12 @@ audit_ssh() {
     
     if [[ "$pass_auth" == "no" ]]; then
         log_success "Authentification SSH par mot de passe désactivée"
-        add_result "SSH-002" "SSH" "Auth mot de passe" "PASS" "high" \
+        add_result "SSH-002" "ANSSI" "Auth mot de passe" "PASS" "high" \
             "PasswordAuthentication = no (clés uniquement)" \
             "" "ANSSI R14"
     else
         log_warning "Authentification SSH par mot de passe activée"
-        add_result "SSH-002" "SSH" "Auth mot de passe" "WARN" "high" \
+        add_result "SSH-002" "ANSSI" "Auth mot de passe" "WARN" "high" \
             "PasswordAuthentication = $pass_auth" \
             "Préférer l'authentification par clés: PasswordAuthentication no" "ANSSI R14"
     fi
@@ -469,12 +469,12 @@ audit_ssh() {
     
     if [[ "$ssh_proto" == "2" || -z "$ssh_proto" ]]; then
         log_success "Protocole SSH version 2 uniquement"
-        add_result "SSH-003" "SSH" "Protocole SSH" "PASS" "critical" \
+        add_result "SSH-003" "ANSSI" "Protocole SSH" "PASS" "critical" \
             "SSH utilise uniquement le protocole version 2" \
             "" "ANSSI R15"
     else
         log_error "Protocole SSH v1 potentiellement activé"
-        add_result "SSH-003" "SSH" "Protocole SSH" "FAIL" "critical" \
+        add_result "SSH-003" "ANSSI" "Protocole SSH" "FAIL" "critical" \
             "Protocol = $ssh_proto (devrait être 2)" \
             "Ajouter 'Protocol 2' dans $sshd_config" "ANSSI R15"
     fi
@@ -494,12 +494,12 @@ audit_ssh() {
     
     if [[ ${#weak_found[@]} -eq 0 ]]; then
         log_success "Algorithmes SSH sécurisés"
-        add_result "SSH-004" "SSH" "Algorithmes SSH" "PASS" "high" \
+        add_result "SSH-004" "ANSSI" "Algorithmes SSH" "PASS" "high" \
             "Aucun algorithme faible détecté" \
             "" "ANSSI R16"
     else
         log_error "Algorithmes SSH faibles détectés: ${weak_found[*]}"
-        add_result "SSH-004" "SSH" "Algorithmes SSH" "FAIL" "high" \
+        add_result "SSH-004" "ANSSI" "Algorithmes SSH" "FAIL" "high" \
             "Algorithmes faibles: ${weak_found[*]}" \
             "Supprimer les algorithmes faibles et utiliser: chacha20-poly1305,aes256-gcm" "ANSSI R16"
     fi
@@ -511,12 +511,12 @@ audit_ssh() {
     
     if [[ "$x11_forward" == "no" ]]; then
         log_success "X11 Forwarding désactivé"
-        add_result "SSH-005" "SSH" "X11 Forwarding" "PASS" "medium" \
+        add_result "SSH-005" "ANSSI" "X11 Forwarding" "PASS" "medium" \
             "X11Forwarding = no" \
             "" "ANSSI R17"
     else
         log_warning "X11 Forwarding activé"
-        add_result "SSH-005" "SSH" "X11 Forwarding" "WARN" "medium" \
+        add_result "SSH-005" "ANSSI" "X11 Forwarding" "WARN" "medium" \
             "X11Forwarding = $x11_forward" \
             "Désactiver si non nécessaire: X11Forwarding no" "ANSSI R17"
     fi
@@ -528,12 +528,12 @@ audit_ssh() {
     
     if [[ -n "$allow_users" ]]; then
         log_success "Restrictions d'accès SSH configurées"
-        add_result "SSH-006" "SSH" "Restrictions accès" "PASS" "high" \
+        add_result "SSH-006" "ANSSI" "Restrictions accès" "PASS" "high" \
             "AllowUsers ou AllowGroups configuré" \
             "" "ANSSI R18"
     else
         log_warning "Pas de restrictions d'accès SSH spécifiques"
-        add_result "SSH-006" "SSH" "Restrictions accès" "WARN" "high" \
+        add_result "SSH-006" "ANSSI" "Restrictions accès" "WARN" "high" \
             "Aucun AllowUsers ou AllowGroups défini" \
             "Limiter l'accès avec AllowUsers ou AllowGroups" "ANSSI R18"
     fi
@@ -553,12 +553,12 @@ audit_network() {
     
     if [[ "$ip_forward" -eq 0 ]]; then
         log_success "IP Forwarding désactivé"
-        add_result "NET-001" "Réseau" "IP Forwarding" "PASS" "high" \
+        add_result "NET-001" "ANSSI" "IP Forwarding" "PASS" "high" \
             "net.ipv4.ip_forward = 0" \
             "" "ANSSI R19"
     else
         log_warning "IP Forwarding activé"
-        add_result "NET-001" "Réseau" "IP Forwarding" "WARN" "high" \
+        add_result "NET-001" "ANSSI" "IP Forwarding" "WARN" "high" \
             "net.ipv4.ip_forward = 1" \
             "Désactiver si ce n'est pas un routeur: sysctl -w net.ipv4.ip_forward=0" "ANSSI R19"
     fi
@@ -570,12 +570,12 @@ audit_network() {
     
     if [[ "$accept_source" -eq 0 ]]; then
         log_success "Source Routing désactivé"
-        add_result "NET-002" "Réseau" "Source Routing" "PASS" "high" \
+        add_result "NET-002" "ANSSI" "Source Routing" "PASS" "high" \
             "accept_source_route = 0" \
             "" "ANSSI R20"
     else
         log_error "Source Routing activé"
-        add_result "NET-002" "Réseau" "Source Routing" "FAIL" "high" \
+        add_result "NET-002" "ANSSI" "Source Routing" "FAIL" "high" \
             "accept_source_route = 1" \
             "sysctl -w net.ipv4.conf.all.accept_source_route=0" "ANSSI R20"
     fi
@@ -587,12 +587,12 @@ audit_network() {
     
     if [[ "$accept_redirects" -eq 0 ]]; then
         log_success "ICMP Redirects désactivés"
-        add_result "NET-003" "Réseau" "ICMP Redirects" "PASS" "medium" \
+        add_result "NET-003" "ANSSI" "ICMP Redirects" "PASS" "medium" \
             "accept_redirects = 0" \
             "" "ANSSI R21"
     else
         log_warning "ICMP Redirects activés"
-        add_result "NET-003" "Réseau" "ICMP Redirects" "WARN" "medium" \
+        add_result "NET-003" "ANSSI" "ICMP Redirects" "WARN" "medium" \
             "accept_redirects = 1" \
             "sysctl -w net.ipv4.conf.all.accept_redirects=0" "ANSSI R21"
     fi
@@ -604,12 +604,12 @@ audit_network() {
     
     if [[ "$syn_cookies" -eq 1 ]]; then
         log_success "SYN Cookies activés"
-        add_result "NET-004" "Réseau" "SYN Cookies" "PASS" "high" \
+        add_result "NET-004" "ANSSI" "SYN Cookies" "PASS" "high" \
             "tcp_syncookies = 1" \
             "" "ANSSI R22"
     else
         log_error "SYN Cookies désactivés"
-        add_result "NET-004" "Réseau" "SYN Cookies" "FAIL" "high" \
+        add_result "NET-004" "ANSSI" "SYN Cookies" "FAIL" "high" \
             "tcp_syncookies = 0 - vulnérable aux attaques SYN flood" \
             "sysctl -w net.ipv4.tcp_syncookies=1" "ANSSI R22"
     fi
@@ -636,12 +636,12 @@ audit_network() {
     
     if [[ "$firewall_active" == true ]]; then
         log_success "Pare-feu actif: $firewall_name"
-        add_result "NET-005" "Réseau" "Pare-feu" "PASS" "critical" \
+        add_result "NET-005" "ANSSI" "Pare-feu" "PASS" "critical" \
             "Pare-feu $firewall_name actif et configuré" \
             "" "ANSSI R23"
     else
         log_error "Aucun pare-feu actif détecté"
-        add_result "NET-005" "Réseau" "Pare-feu" "FAIL" "critical" \
+        add_result "NET-005" "ANSSI" "Pare-feu" "FAIL" "critical" \
             "Aucun pare-feu n'est actif" \
             "Activer et configurer ufw, firewalld ou iptables" "ANSSI R23"
     fi
@@ -667,12 +667,12 @@ audit_network() {
     
     if [[ ${#dangerous_ports[@]} -eq 0 ]]; then
         log_success "Aucun port dangereux détecté ($listening_ports ports en écoute)"
-        add_result "NET-006" "Réseau" "Ports dangereux" "PASS" "high" \
+        add_result "NET-006" "ANSSI" "Ports dangereux" "PASS" "high" \
             "$listening_ports ports en écoute, aucun service dangereux" \
             "" "ANSSI R24"
     else
         log_error "Ports dangereux détectés: ${dangerous_ports[*]}"
-        add_result "NET-006" "Réseau" "Ports dangereux" "FAIL" "high" \
+        add_result "NET-006" "ANSSI" "Ports dangereux" "FAIL" "high" \
             "Services non sécurisés: ${dangerous_ports[*]}" \
             "Désactiver telnet, ftp, rlogin, rsh et utiliser SSH/SFTP" "ANSSI R24"
     fi
@@ -707,12 +707,12 @@ audit_filesystem() {
     
     if [[ ${#perm_issues[@]} -eq 0 ]]; then
         log_success "Permissions des fichiers d'authentification correctes"
-        add_result "FS-001" "Fichiers" "Fichiers auth" "PASS" "critical" \
+        add_result "FS-001" "ANSSI" "Fichiers auth" "PASS" "critical" \
             "Les fichiers /etc/passwd, shadow, gshadow ont des permissions correctes" \
             "" "ANSSI R25"
     else
         log_error "Permissions incorrectes: ${perm_issues[*]}"
-        add_result "FS-001" "Fichiers" "Fichiers auth" "FAIL" "critical" \
+        add_result "FS-001" "ANSSI" "Fichiers auth" "FAIL" "critical" \
             "Permissions trop permissives: ${perm_issues[*]}" \
             "chmod 644 /etc/passwd; chmod 640 /etc/shadow /etc/gshadow" "ANSSI R25"
     fi
@@ -740,12 +740,12 @@ audit_filesystem() {
     
     if [[ ${#unusual_suid[@]} -le 5 ]]; then
         log_success "$suid_count fichiers SUID/SGID (normal)"
-        add_result "FS-002" "Fichiers" "Fichiers SUID/SGID" "PASS" "high" \
+        add_result "FS-002" "ANSSI" "Fichiers SUID/SGID" "PASS" "high" \
             "$suid_count fichiers SUID/SGID détectés" \
             "" "ANSSI R26"
     else
         log_warning "$suid_count fichiers SUID/SGID détectés"
-        add_result "FS-002" "Fichiers" "Fichiers SUID/SGID" "WARN" "high" \
+        add_result "FS-002" "ANSSI" "Fichiers SUID/SGID" "WARN" "high" \
             "$suid_count fichiers SUID/SGID, vérifier les inhabituels" \
             "Auditer et supprimer les bits SUID/SGID non nécessaires" "ANSSI R26"
     fi
@@ -757,12 +757,12 @@ audit_filesystem() {
     
     if [[ "$world_writable" -eq 0 ]]; then
         log_success "Aucun fichier world-writable détecté"
-        add_result "FS-003" "Fichiers" "World-writable" "PASS" "high" \
+        add_result "FS-003" "ANSSI" "World-writable" "PASS" "high" \
             "Aucun fichier accessible en écriture à tous" \
             "" "ANSSI R27"
     else
         log_error "$world_writable fichiers world-writable détectés"
-        add_result "FS-003" "Fichiers" "World-writable" "FAIL" "high" \
+        add_result "FS-003" "ANSSI" "World-writable" "FAIL" "high" \
             "$world_writable fichiers accessibles en écriture à tous" \
             "Corriger les permissions: find / -xdev -type f -perm -0002 -exec chmod o-w {} \\;" "ANSSI R27"
     fi
@@ -784,12 +784,12 @@ audit_filesystem() {
     
     if [[ ${#sticky_issues[@]} -eq 0 ]]; then
         log_success "Sticky bit configuré sur les répertoires publics"
-        add_result "FS-004" "Fichiers" "Sticky bit" "PASS" "medium" \
+        add_result "FS-004" "ANSSI" "Sticky bit" "PASS" "medium" \
             "/tmp et /var/tmp ont le sticky bit" \
             "" "ANSSI R28"
     else
         log_error "Sticky bit manquant: ${sticky_issues[*]}"
-        add_result "FS-004" "Fichiers" "Sticky bit" "FAIL" "medium" \
+        add_result "FS-004" "ANSSI" "Sticky bit" "FAIL" "medium" \
             "Sticky bit manquant sur: ${sticky_issues[*]}" \
             "chmod +t /tmp /var/tmp" "ANSSI R28"
     fi
@@ -801,12 +801,12 @@ audit_filesystem() {
     
     if [[ "$umask_value" == "0027" || "$umask_value" == "027" || "$umask_value" == "0077" || "$umask_value" == "077" ]]; then
         log_success "umask restrictif: $umask_value"
-        add_result "FS-005" "Fichiers" "umask" "PASS" "medium" \
+        add_result "FS-005" "ANSSI" "umask" "PASS" "medium" \
             "umask = $umask_value (restrictif)" \
             "" "ANSSI R29"
     else
         log_warning "umask permissif: $umask_value"
-        add_result "FS-005" "Fichiers" "umask" "WARN" "medium" \
+        add_result "FS-005" "ANSSI" "umask" "WARN" "medium" \
             "umask = $umask_value (recommandé: 027 ou 077)" \
             "Configurer umask 027 dans /etc/profile et /etc/bash.bashrc" "ANSSI R29"
     fi
@@ -833,12 +833,12 @@ audit_services() {
     
     if [[ ${#active_risky[@]} -eq 0 ]]; then
         log_success "Aucun service potentiellement risqué actif"
-        add_result "SVC-001" "Services" "Services risqués" "PASS" "medium" \
+        add_result "SVC-001" "ANSSI" "Services risqués" "PASS" "medium" \
             "Pas de services non essentiels détectés" \
             "" "ANSSI R30"
     else
         log_warning "Services potentiellement inutiles: ${active_risky[*]}"
-        add_result "SVC-001" "Services" "Services risqués" "WARN" "medium" \
+        add_result "SVC-001" "ANSSI" "Services risqués" "WARN" "medium" \
             "Services actifs à évaluer: ${active_risky[*]}" \
             "Désactiver les services non nécessaires avec systemctl disable" "ANSSI R30"
     fi
@@ -857,12 +857,12 @@ audit_services() {
     
     if [[ "$ntp_active" == true ]]; then
         log_success "Synchronisation NTP active"
-        add_result "SVC-002" "Services" "Synchronisation NTP" "PASS" "medium" \
+        add_result "SVC-002" "ANSSI" "Synchronisation NTP" "PASS" "medium" \
             "Le système est synchronisé avec un serveur NTP" \
             "" "ANSSI R31"
     else
         log_warning "Synchronisation NTP non active"
-        add_result "SVC-002" "Services" "Synchronisation NTP" "WARN" "medium" \
+        add_result "SVC-002" "ANSSI" "Synchronisation NTP" "WARN" "medium" \
             "Pas de synchronisation horaire configurée" \
             "Activer systemd-timesyncd ou chrony" "ANSSI R31"
     fi
@@ -878,12 +878,12 @@ audit_services() {
     
     if [[ "$cron_secure" == true ]]; then
         log_success "Restrictions cron configurées"
-        add_result "SVC-003" "Services" "Restrictions cron" "PASS" "medium" \
+        add_result "SVC-003" "ANSSI" "Restrictions cron" "PASS" "medium" \
             "cron.allow ou cron.deny configuré" \
             "" "ANSSI R32"
     else
         log_warning "Pas de restrictions cron"
-        add_result "SVC-003" "Services" "Restrictions cron" "WARN" "medium" \
+        add_result "SVC-003" "ANSSI" "Restrictions cron" "WARN" "medium" \
             "Aucune restriction d'accès à cron" \
             "Créer /etc/cron.allow avec les utilisateurs autorisés" "ANSSI R32"
     fi
