@@ -161,7 +161,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              S'abonner {formatPrice(script.monthlyPriceCents)}/mois
+              S'abonner
             </Button>
           )}
 
