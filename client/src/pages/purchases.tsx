@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
-import logoImg from "@assets/generated_images/igs_cybersecurity_logo_transparent.png";
+import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 type PurchaseWithScript = Purchase & { script: Script };
@@ -233,7 +233,7 @@ export default function Purchases() {
               <img 
                 src={logoImg} 
                 alt="IGS Logo" 
-                className="w-32 h-32 md:w-56 md:h-56 drop-shadow-lg"
+                className="w-32 h-32 md:w-56 md:h-56 drop-shadow-lg mix-blend-screen"
               />
             </Link>
             <div>
