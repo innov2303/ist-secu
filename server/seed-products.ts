@@ -26,12 +26,12 @@ async function createProducts() {
       name: 'ESXi Host Validator',
       description: 'Contrôle de sécurité pour hôtes ESXi selon les recommandations CIS. Mise à jour et support inclus.',
       metadata: { os: 'VMware', compliance: 'CIS' },
-      monthlyPriceCents: 30000,
+      monthlyPriceCents: 40000,
     },
     {
       name: 'Container Security Scanner',
-      description: 'Scan de configuration Docker selon le benchmark CIS. Mise à jour et support inclus.',
-      metadata: { os: 'Docker', compliance: 'CIS' },
+      description: 'Scan de configuration Docker selon le benchmark CIS. En développement.',
+      metadata: { os: 'Docker', compliance: 'CIS', status: 'development' },
       monthlyPriceCents: 30000,
     },
   ];

@@ -88,6 +88,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const hasPurchased = purchaseStatus?.hasPurchased || false;
   const purchaseType = purchaseStatus?.purchaseType;
   const canDownload = hasPurchased;
+  const isInDevelopment = script.description.includes("En développement");
 
   return (
     <motion.div
@@ -117,11 +118,14 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           {script.description}
         </p>
 
-        <div className="text-xs text-muted-foreground mb-4">
-          <Badge variant="outline" className="mr-2">{script.compliance}</Badge>
+        <div className="text-xs text-muted-foreground mb-4 flex flex-wrap gap-2">
+          <Badge variant="outline">{script.compliance}</Badge>
+          {isInDevelopment && (
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">En développement</Badge>
+          )}
         </div>
 
-        {user && (
+        {user && !isInDevelopment && (
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -149,7 +153,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             </Button>
           )}
 
-          {user && !hasPurchased && !checkingPurchase && (
+          {user && !hasPurchased && !checkingPurchase && !isInDevelopment && (
             <Button
               onClick={() => checkoutMutation.mutate("monthly")}
               disabled={checkoutMutation.isPending}
@@ -163,6 +167,12 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
               )}
               S'abonner
             </Button>
+          )}
+
+          {isInDevelopment && (
+            <div className="text-center py-3 text-sm text-muted-foreground">
+              Disponible prochainement
+            </div>
           )}
 
           {hasPurchased && (
