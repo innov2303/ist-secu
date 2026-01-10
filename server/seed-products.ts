@@ -31,7 +31,7 @@ async function createProducts() {
     {
       name: 'Container Security Scanner',
       description: 'Scan de configuration Docker selon le benchmark CIS. En développement.',
-      metadata: { os: 'Docker', compliance: 'CIS', status: 'development' },
+      metadata: { os: 'Docker', compliance: 'CIS' },
       monthlyPriceCents: 30000,
     },
   ];
