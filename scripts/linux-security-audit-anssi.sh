@@ -384,7 +384,7 @@ audit_accounts() {
     while IFS=: read -r user _ uid _ _ _ shell; do
         if [[ "$uid" -lt 1000 && "$uid" -ne 0 ]]; then
             if [[ "$shell" != "/sbin/nologin" && "$shell" != "/bin/false" && "$shell" != "/usr/sbin/nologin" ]]; then
-                ((unused_shells++))
+                unused_shells=$((unused_shells + 1))
             fi
         fi
     done < /etc/passwd
