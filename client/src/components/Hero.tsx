@@ -1,7 +1,10 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, Terminal, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Lock, FileText, BarChart3, CheckCircle2 } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
+import integrityImg from "@assets/stock_images/security_infrastruct_65235ec4.jpg";
+import secureImg from "@assets/stock_images/modern_server_data_c_a5733689.jpg";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Hero() {
   return (
@@ -22,45 +25,78 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="container relative z-10 px-4 mx-auto text-center pt-12 pb-16 md:pb-24">
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60"
-        >
-          Secure Your Infrastructure<br />
-          <span className="text-primary">Verify Your Systems</span>
-        </motion.h1>
-
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed"
-        >
-          Download official security verification scripts for your operating environment. 
-          Automated checks for compliance, vulnerabilities, and configuration drift.
-        </motion.p>
-
+      <div className="container relative z-10 px-4 mx-auto pt-12 pb-16 md:pb-24">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-wrap justify-center gap-4 text-sm font-mono text-muted-foreground"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            <span>Integrity Check</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <Lock className="w-4 h-4 text-primary" />
-            <span>Secure</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <FileText className="w-4 h-4 text-primary" />
-            <span>Rapport & Recommendations</span>
-          </div>
+          <Card className="overflow-hidden" data-testid="card-integrity-check">
+            <div className="relative h-40 overflow-hidden">
+              <img 
+                src={integrityImg} 
+                alt="Integrity Check" 
+                className="w-full h-full object-cover brightness-[0.6]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                Integrity Check
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Analyse cryptographique et vérification d'intégrité des scripts avant exécution. Validation automatique des signatures et des checksums.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden" data-testid="card-secure">
+            <div className="relative h-40 overflow-hidden">
+              <img 
+                src={secureImg} 
+                alt="Secure" 
+                className="w-full h-full object-cover brightness-[0.6]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-primary" />
+                Secure
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Durcissement automatique des configurations sensibles et surveillance continue des dérives de sécurité sur vos systèmes.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden" data-testid="card-rapport">
+            <div className="relative h-40 overflow-hidden">
+              <img 
+                src={bannerImg} 
+                alt="Rapport & Recommendations" 
+                className="w-full h-full object-cover brightness-[0.6]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+            </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Rapport & Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Synthèse PDF/HTML avec scores de conformité détaillés et plan d'actions priorisé pour remédier aux vulnérabilités détectées.
+              </p>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Reports Section */}
