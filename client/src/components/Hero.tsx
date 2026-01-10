@@ -30,7 +30,7 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
-          <Card className="overflow-hidden" data-testid="card-audit-conformite">
+          <Card className="overflow-hidden border-transparent" data-testid="card-audit-conformite">
             <div className="flex items-center justify-center h-32 bg-primary/10">
               <ShieldCheck className="w-16 h-16 text-primary" />
             </div>
@@ -47,7 +47,7 @@ export function Hero() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden" data-testid="card-rapport">
+          <Card className="overflow-hidden border-transparent" data-testid="card-rapport">
             <div className="flex items-center justify-center h-32 bg-primary/10">
               <FileText className="w-16 h-16 text-primary" />
             </div>
@@ -64,7 +64,7 @@ export function Hero() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden" data-testid="card-secure">
+          <Card className="overflow-hidden border-transparent" data-testid="card-secure">
             <div className="flex items-center justify-center h-32 bg-primary/10">
               <Lock className="w-16 h-16 text-primary" />
             </div>
