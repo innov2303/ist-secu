@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
@@ -190,38 +190,66 @@ export default function Purchases() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Banner */}
-      <div className="relative h-32 md:h-40 w-full overflow-hidden">
+      {/* Auth Header - Same as Home page */}
+      <div className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
+        <Button variant="default" size="sm" asChild data-testid="link-home">
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Accueil
+          </Link>
+        </Button>
+        {user.isAdmin && (
+          <Button variant="secondary" size="sm" asChild data-testid="link-admin">
+            <Link href="/admin">
+              <Settings className="h-4 w-4 mr-2" />
+              Admin
+            </Link>
+          </Button>
+        )}
+        <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border hover-elevate cursor-pointer" data-testid="link-profile">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={user.profileImageUrl || undefined} />
+            <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
+        </Link>
+        <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Hero Banner - Same style as Home page */}
+      <div className="relative w-full h-[50vh] min-h-[400px] overflow-hidden">
         <img 
           src={bannerImg} 
           alt="Security Infrastructure" 
-          className="w-full h-full object-cover brightness-[0.4]"
+          className="absolute inset-0 w-full h-full object-cover brightness-[0.3]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        <Link href="/" className="absolute top-4 left-4 z-10">
-          <img src={logoImg} alt="IGS Logo" className="w-12 h-12 rounded-md hover:opacity-80 transition-opacity" />
-        </Link>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex items-center gap-3 px-6 py-3 bg-background/80 backdrop-blur-md rounded-xl border border-border/50">
-            <ShoppingBag className="h-6 w-6 text-primary" />
-            <h1 className="text-xl md:text-2xl font-bold">Mes produits</h1>
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        
+        <div className="relative z-10 container mx-auto px-4 h-full flex items-center">
+          <div className="flex items-center gap-6">
+            <Link href="/">
+              <img 
+                src={logoImg} 
+                alt="IGS Logo" 
+                className="w-24 h-24 md:w-32 md:h-32 rounded-xl mix-blend-screen hover:scale-105 transition-transform"
+              />
+            </Link>
+            <div>
+              <h1 className="text-3xl md:text-5xl font-bold font-mono text-white mb-2">
+                Mes produits
+              </h1>
+              <p className="text-lg text-white/70">
+                Scripts de sécurité que vous avez achetés
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="container mx-auto py-8 px-4 max-w-4xl">
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="outline" size="sm" asChild data-testid="button-back-home">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Link>
-          </Button>
-          <p className="text-muted-foreground text-sm">
-            Scripts de sécurité que vous avez achetés
-          </p>
-        </div>
+      <div className="container mx-auto py-8 px-4">
 
         {isLoading ? (
           <LoadingSkeleton />
