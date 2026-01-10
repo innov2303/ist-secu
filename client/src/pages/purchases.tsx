@@ -190,28 +190,6 @@ export default function Purchases() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg px-2 py-1">
-            <img src={logoImg} alt="IGS Logo" className="w-10 h-10 rounded-md" />
-            <span className="font-bold hidden sm:inline">InfraGuard Security</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user.profileImageUrl || undefined} alt={user.firstName || "User"} />
-                <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {/* Banner */}
       <div className="relative h-32 md:h-40 w-full overflow-hidden">
         <img 
