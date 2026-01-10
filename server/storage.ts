@@ -253,7 +253,7 @@ export class DatabaseStorage implements IStorage {
       },
       {
         os: "VMware",
-        name: "ESXi Host Validator",
+        name: "VMware Compliance Toolkit",
         description: "Contrôle de sécurité complet pour hôtes VMware ESXi selon les recommandations CIS. Vérifie la configuration réseau, le stockage, les services et les accès.",
         filename: "esxi-security-audit-cis.py",
         icon: "Server",

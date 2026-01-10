@@ -23,7 +23,7 @@ async function createProducts() {
       monthlyPriceCents: 30000,
     },
     {
-      name: 'ESXi Host Validator',
+      name: 'VMware Compliance Toolkit',
       description: 'Contrôle de sécurité pour hôtes ESXi selon les recommandations CIS. Mise à jour et support inclus.',
       metadata: { os: 'VMware', compliance: 'CIS' },
       monthlyPriceCents: 40000,
