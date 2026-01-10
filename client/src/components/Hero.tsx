@@ -15,9 +15,9 @@ export function Hero() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
         <div className="absolute inset-0 flex items-start justify-start p-6">
-          <div className="flex items-center gap-4 px-6 py-4 bg-background/80 backdrop-blur-md rounded-xl border border-border/50 shadow-2xl">
-            <img src={logoImg} alt="IGS Logo" className="w-28 h-28 rounded-xl" />
-            <h1 className="text-2xl font-bold tracking-tight">InfraGuard Security</h1>
+          <div className="flex items-center gap-4">
+            <img src={logoImg} alt="IGS Logo" className="w-28 h-28 drop-shadow-lg" />
+            <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-lg">InfraGuard Security</h1>
           </div>
         </div>
       </div>
