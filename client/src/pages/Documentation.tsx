@@ -4,12 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, Download, BookOpen } from "lucide-react";
+import { ArrowLeft, FileText, Download, BookOpen, FileCode } from "lucide-react";
 import type { Script } from "@shared/schema";
 
 export default function Documentation() {
   const [selectedToolkit, setSelectedToolkit] = useState<string>("");
-  const [selectedScript, setSelectedScript] = useState<string>("");
 
   const { data: scripts, isLoading } = useQuery<Script[]>({
     queryKey: ["/api/scripts"],
@@ -31,19 +30,12 @@ export default function Documentation() {
     return scripts.filter(s => bundledIds.includes(s.id));
   }, [selectedToolkitData, scripts]);
 
-  const selectedScriptData = useMemo(() => {
-    if (!selectedScript || !bundledScripts) return null;
-    return bundledScripts.find(s => s.id.toString() === selectedScript);
-  }, [selectedScript, bundledScripts]);
-
   const handleToolkitChange = (value: string) => {
     setSelectedToolkit(value);
-    setSelectedScript("");
   };
 
-  const handleDownloadPdf = () => {
-    if (!selectedScriptData) return;
-    const pdfFilename = selectedScriptData.filename.replace(/\.(sh|ps1|py)$/, ".pdf");
+  const handleDownloadPdf = (script: Script) => {
+    const pdfFilename = script.filename.replace(/\.(sh|ps1|py)$/, ".pdf");
     const link = document.createElement("a");
     link.href = `/docs/${pdfFilename}`;
     link.download = pdfFilename;
@@ -72,10 +64,10 @@ export default function Documentation() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Sélectionner un script
+              Sélectionner un toolkit
             </CardTitle>
             <CardDescription>
-              Choisissez un toolkit puis le script dont vous souhaitez télécharger la documentation
+              Choisissez un toolkit pour afficher la liste des scripts et leur documentation
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -105,37 +97,33 @@ export default function Documentation() {
                 </div>
 
                 {selectedToolkit && bundledScripts.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Script</label>
-                    <Select value={selectedScript} onValueChange={setSelectedScript}>
-                      <SelectTrigger data-testid="select-script">
-                        <SelectValue placeholder="Sélectionnez un script" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bundledScripts.map((script) => (
-                          <SelectItem key={script.id} value={script.id.toString()}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{script.name}</span>
-                              <span className="text-xs text-muted-foreground">{script.filename}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {selectedScriptData && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{selectedScriptData.name}</h3>
-                        <p className="text-sm text-muted-foreground">{selectedScriptData.description}</p>
-                      </div>
-                      <Button onClick={handleDownloadPdf} data-testid="button-download-pdf">
-                        <Download className="h-4 w-4 mr-2" />
-                        Télécharger PDF
-                      </Button>
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <FileCode className="h-4 w-4" />
+                      Scripts inclus dans {selectedToolkitData?.name}
+                    </h3>
+                    <div className="space-y-3">
+                      {bundledScripts.map((script) => (
+                        <div 
+                          key={script.id} 
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                          data-testid={`script-row-${script.id}`}
+                        >
+                          <div className="flex-1">
+                            <h4 className="font-medium">{script.name}</h4>
+                            <p className="text-sm text-muted-foreground">{script.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1 font-mono">{script.filename}</p>
+                          </div>
+                          <Button 
+                            onClick={() => handleDownloadPdf(script)} 
+                            variant="outline"
+                            data-testid={`button-download-pdf-${script.id}`}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            PDF
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
