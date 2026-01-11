@@ -419,7 +419,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id/toggle-admin", isAuthenticated, isAdmin, async (req, res) => {
     const userId = req.params.id;
-    const requestingUserId = (req as any).user?.claims?.sub;
+    const requestingUserId = (req as any).session?.userId || (req as any).user?.claims?.sub;
 
     // Prevent self-demotion
     if (userId === requestingUserId) {
@@ -453,7 +453,7 @@ export async function registerRoutes(
 
   app.delete("/api/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
     const userId = req.params.id;
-    const requestingUserId = (req as any).user?.claims?.sub;
+    const requestingUserId = (req as any).session?.userId || (req as any).user?.claims?.sub;
 
     // Prevent self-deletion
     if (userId === requestingUserId) {
@@ -466,13 +466,13 @@ export async function registerRoutes(
 
   // Purchase routes
   app.get("/api/purchases", isAuthenticated, async (req, res) => {
-    const userId = (req as any).user?.claims?.sub;
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const userPurchases = await storage.getPurchasesByUser(userId);
     res.json(userPurchases);
   });
 
   app.post("/api/purchases", isAuthenticated, async (req, res) => {
-    const userId = (req as any).user?.claims?.sub;
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const { scriptId, purchaseType } = req.body;
 
     if (!scriptId || typeof scriptId !== "number") {
@@ -510,7 +510,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/purchases/check/:scriptId", isAuthenticated, async (req, res) => {
-    const userId = (req as any).user?.claims?.sub;
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const scriptId = parseInt(req.params.scriptId);
 
     if (isNaN(scriptId)) {
@@ -551,7 +551,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/checkout", isAuthenticated, async (req, res) => {
-    const userId = (req as any).user?.claims?.sub;
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const { scriptId, purchaseType } = req.body;
 
     if (!scriptId || !purchaseType) {
@@ -635,7 +635,7 @@ export async function registerRoutes(
 
   app.get("/api/checkout/success", isAuthenticated, async (req, res) => {
     const sessionId = req.query.session_id as string;
-    const userId = (req as any).user?.claims?.sub;
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
 
     if (!sessionId) {
       return res.status(400).json({ message: "Session ID required" });
