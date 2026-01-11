@@ -125,29 +125,59 @@ container_available() {
     [[ -n "$CONTAINER_CMD" ]]
 }
 
+get_container_data_dir() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "/var/lib/containers"
+    else
+        echo "/var/lib/docker"
+    fi
+}
+
+get_container_config_dir() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "/etc/containers"
+    else
+        echo "/etc/docker"
+    fi
+}
+
+get_container_service_name() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "podman"
+    else
+        echo "docker"
+    fi
+}
+
 #===============================================================================
-# Docker Host Configuration (CIS Section 1) - Level 1+2
+# Container Host Configuration (CIS Section 1) - Level 1+2
 #===============================================================================
 
 check_docker_host_configuration() {
     if ! container_available; then return; fi
     
-    echo -e "\n${CYAN}=== Docker Host Configuration (CIS Section 1) ===${NC}\n"
+    local data_dir config_dir service_name
+    data_dir=$(get_container_data_dir)
+    config_dir=$(get_container_config_dir)
+    service_name=$(get_container_service_name)
     
-    # 1.1.1 - Partition séparée pour /var/lib/docker
-    write_info "Vérification partition Docker..."
-    if mount | grep -q "/var/lib/docker"; then
-        write_pass "Partition séparée pour /var/lib/docker"
-        add_result "CIS-DOCKER-1.1.1" "Docker-Host" "Partition Docker" "PASS" "medium" \
-            "/var/lib/docker sur partition séparée" "" "CIS Docker 1.1.1"
+    echo -e "\n${CYAN}=== Container Host Configuration (CIS Section 1) ===${NC}\n"
+    write_info "Runtime: $CONTAINER_RUNTIME (data: $data_dir, config: $config_dir)"
+    
+    # 1.1.1 - Partition séparée pour données conteneurs
+    write_info "Vérification partition $data_dir..."
+    if mount | grep -q "$data_dir"; then
+        write_pass "Partition séparée pour $data_dir"
+        add_result "CIS-CONTAINER-1.1.1" "Container-Host" "Partition données" "PASS" "medium" \
+            "$data_dir sur partition séparée" "" "CIS Docker/Podman 1.1.1"
     else
-        write_warn "/var/lib/docker pas sur partition séparée"
-        add_result "CIS-DOCKER-1.1.1" "Docker-Host" "Partition Docker" "WARN" "medium" \
-            "/var/lib/docker partage la partition système" \
-            "Créer une partition séparée pour /var/lib/docker" "CIS Docker 1.1.1"
+        write_warn "$data_dir pas sur partition séparée"
+        add_result "CIS-CONTAINER-1.1.1" "Container-Host" "Partition données" "WARN" "medium" \
+            "$data_dir partage la partition système" \
+            "Créer une partition séparée pour $data_dir" "CIS Docker/Podman 1.1.1"
     fi
     
-    # 1.1.2 - Hardening du kernel Docker
+    # 1.1.2 - Hardening du kernel
     write_info "Vérification hardening kernel..."
     local kernel_params=("net.ipv4.conf.all.send_redirects" "net.ipv4.conf.default.send_redirects")
     local hardened=true
@@ -161,23 +191,34 @@ check_docker_host_configuration() {
     
     if $hardened; then
         write_pass "Paramètres kernel sécurisés"
-        add_result "CIS-DOCKER-1.1.2" "Docker-Host" "Kernel Hardening" "PASS" "high" \
-            "Paramètres kernel conformes" "" "CIS Docker 1.1.2"
+        add_result "CIS-CONTAINER-1.1.2" "Container-Host" "Kernel Hardening" "PASS" "high" \
+            "Paramètres kernel conformes" "" "CIS Docker/Podman 1.1.2"
     else
         write_warn "Paramètres kernel à durcir"
-        add_result "CIS-DOCKER-1.1.2" "Docker-Host" "Kernel Hardening" "WARN" "high" \
+        add_result "CIS-CONTAINER-1.1.2" "Container-Host" "Kernel Hardening" "WARN" "high" \
             "Paramètres kernel non optimaux" \
-            "Désactiver send_redirects" "CIS Docker 1.1.2"
+            "Désactiver send_redirects" "CIS Docker/Podman 1.1.2"
     fi
     
-    # 1.1.3-1.1.18 - Audit rules
-    local audit_paths=(
-        "/usr/bin/docker:/usr/bin/docker"
-        "/var/lib/docker:/var/lib/docker"
-        "/etc/docker:/etc/docker"
-        "/usr/bin/containerd:/usr/bin/containerd"
-        "/usr/bin/runc:/usr/bin/runc"
-    )
+    # 1.1.3-1.1.18 - Audit rules (runtime-aware)
+    local audit_paths
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        audit_paths=(
+            "/usr/bin/podman:/usr/bin/podman"
+            "/var/lib/containers:/var/lib/containers"
+            "/etc/containers:/etc/containers"
+            "/usr/bin/conmon:/usr/bin/conmon"
+            "/usr/bin/crun:/usr/bin/crun"
+        )
+    else
+        audit_paths=(
+            "/usr/bin/docker:/usr/bin/docker"
+            "/var/lib/docker:/var/lib/docker"
+            "/etc/docker:/etc/docker"
+            "/usr/bin/containerd:/usr/bin/containerd"
+            "/usr/bin/runc:/usr/bin/runc"
+        )
+    fi
     
     for audit_path in "${audit_paths[@]}"; do
         local path name
@@ -187,13 +228,13 @@ check_docker_host_configuration() {
         write_info "Vérification audit $name..."
         if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "$path"; then
             write_pass "Audit $name configuré"
-            add_result "CIS-DOCKER-1.1-$name" "Docker-Host" "Audit $name" "PASS" "medium" \
-                "Surveillance $name active" "" "CIS Docker 1.1.x"
+            add_result "CIS-CONTAINER-1.1-$name" "Container-Host" "Audit $name" "PASS" "medium" \
+                "Surveillance $name active" "" "CIS Docker/Podman 1.1.x"
         else
             write_warn "Audit $name non configuré"
-            add_result "CIS-DOCKER-1.1-$name" "Docker-Host" "Audit $name" "WARN" "medium" \
+            add_result "CIS-CONTAINER-1.1-$name" "Container-Host" "Audit $name" "WARN" "medium" \
                 "$name non surveillé" \
-                "Ajouter règle audit pour $path" "CIS Docker 1.1.x"
+                "Ajouter règle audit pour $path" "CIS Docker/Podman 1.1.x"
         fi
     done
 }

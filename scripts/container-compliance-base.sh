@@ -125,79 +125,108 @@ container_available() {
     [[ -n "$CONTAINER_CMD" ]]
 }
 
+get_container_data_dir() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "/var/lib/containers"
+    else
+        echo "/var/lib/docker"
+    fi
+}
+
+get_container_config_dir() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "/etc/containers"
+    else
+        echo "/etc/docker"
+    fi
+}
+
+get_container_service_name() {
+    if [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+        echo "podman"
+    else
+        echo "docker"
+    fi
+}
+
 #===============================================================================
-# Vérifications Docker CIS Level 1
+# Vérifications Container CIS Level 1
 #===============================================================================
 
 check_container_host_configuration() {
     if ! container_available; then return; fi
     
+    local data_dir config_dir service_name
+    data_dir=$(get_container_data_dir)
+    config_dir=$(get_container_config_dir)
+    service_name=$(get_container_service_name)
+    
     echo -e "\n${CYAN}=== Container Host Configuration (CIS Section 1) ===${NC}\n"
-    write_info "Runtime: $CONTAINER_RUNTIME"
+    write_info "Runtime: $CONTAINER_RUNTIME (data: $data_dir, config: $config_dir)"
     
-    # 1.1.1 - Partition séparée pour /var/lib/docker
-    write_info "Vérification partition Docker..."
-    if mount | grep -q "/var/lib/docker"; then
-        write_pass "Partition séparée pour /var/lib/docker"
-        add_result "CIS-DOCKER-1.1.1" "Docker-Host" "Partition Docker" "PASS" "medium" \
-            "/var/lib/docker sur partition séparée" "" "CIS Docker 1.1.1"
+    # 1.1.1 - Partition séparée pour données conteneurs
+    write_info "Vérification partition $data_dir..."
+    if mount | grep -q "$data_dir"; then
+        write_pass "Partition séparée pour $data_dir"
+        add_result "CIS-CONTAINER-1.1.1" "Container-Host" "Partition données" "PASS" "medium" \
+            "$data_dir sur partition séparée" "" "CIS Docker/Podman 1.1.1"
     else
-        write_warn "/var/lib/docker pas sur partition séparée"
-        add_result "CIS-DOCKER-1.1.1" "Docker-Host" "Partition Docker" "WARN" "medium" \
-            "/var/lib/docker partage la partition système" \
-            "Créer une partition séparée pour /var/lib/docker" "CIS Docker 1.1.1"
+        write_warn "$data_dir pas sur partition séparée"
+        add_result "CIS-CONTAINER-1.1.1" "Container-Host" "Partition données" "WARN" "medium" \
+            "$data_dir partage la partition système" \
+            "Créer une partition séparée pour $data_dir" "CIS Docker/Podman 1.1.1"
     fi
     
-    # 1.1.3 - Auditing configuré pour Docker
-    write_info "Vérification audit Docker..."
-    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q docker; then
-        write_pass "Audit Docker configuré"
-        add_result "CIS-DOCKER-1.1.3" "Docker-Host" "Audit Docker" "PASS" "high" \
-            "Règles d'audit pour Docker actives" "" "CIS Docker 1.1.3"
+    # 1.1.3 - Auditing configuré pour runtime
+    write_info "Vérification audit $service_name..."
+    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "$service_name"; then
+        write_pass "Audit $service_name configuré"
+        add_result "CIS-CONTAINER-1.1.3" "Container-Host" "Audit runtime" "PASS" "high" \
+            "Règles d'audit pour $service_name actives" "" "CIS Docker/Podman 1.1.3"
     else
-        write_warn "Audit Docker non configuré"
-        add_result "CIS-DOCKER-1.1.3" "Docker-Host" "Audit Docker" "WARN" "high" \
-            "Pas de règles d'audit pour Docker" \
-            "Configurer auditd pour surveiller /usr/bin/docker" "CIS Docker 1.1.3"
+        write_warn "Audit $service_name non configuré"
+        add_result "CIS-CONTAINER-1.1.3" "Container-Host" "Audit runtime" "WARN" "high" \
+            "Pas de règles d'audit pour $service_name" \
+            "Configurer auditd pour surveiller /usr/bin/$service_name" "CIS Docker/Podman 1.1.3"
     fi
     
-    # 1.1.4 - Audit pour docker.service
-    write_info "Vérification audit docker.service..."
-    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "docker.service"; then
-        write_pass "Audit docker.service configuré"
-        add_result "CIS-DOCKER-1.1.4" "Docker-Host" "Audit docker.service" "PASS" "medium" \
-            "Surveillance docker.service active" "" "CIS Docker 1.1.4"
+    # 1.1.4 - Audit pour service systemd
+    write_info "Vérification audit $service_name.service..."
+    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "$service_name.service"; then
+        write_pass "Audit $service_name.service configuré"
+        add_result "CIS-CONTAINER-1.1.4" "Container-Host" "Audit service" "PASS" "medium" \
+            "Surveillance $service_name.service active" "" "CIS Docker/Podman 1.1.4"
     else
-        write_warn "Audit docker.service non configuré"
-        add_result "CIS-DOCKER-1.1.4" "Docker-Host" "Audit docker.service" "WARN" "medium" \
-            "docker.service non surveillé" \
-            "Ajouter règle audit pour docker.service" "CIS Docker 1.1.4"
+        write_warn "Audit $service_name.service non configuré"
+        add_result "CIS-CONTAINER-1.1.4" "Container-Host" "Audit service" "WARN" "medium" \
+            "$service_name.service non surveillé" \
+            "Ajouter règle audit pour $service_name.service" "CIS Docker/Podman 1.1.4"
     fi
     
-    # 1.1.5 - Audit pour docker.socket
-    write_info "Vérification audit docker.socket..."
-    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "docker.socket"; then
-        write_pass "Audit docker.socket configuré"
-        add_result "CIS-DOCKER-1.1.5" "Docker-Host" "Audit docker.socket" "PASS" "medium" \
-            "Surveillance docker.socket active" "" "CIS Docker 1.1.5"
+    # 1.1.5 - Audit pour socket
+    write_info "Vérification audit $service_name.socket..."
+    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "$service_name.socket"; then
+        write_pass "Audit $service_name.socket configuré"
+        add_result "CIS-CONTAINER-1.1.5" "Container-Host" "Audit socket" "PASS" "medium" \
+            "Surveillance $service_name.socket active" "" "CIS Docker/Podman 1.1.5"
     else
-        write_warn "Audit docker.socket non configuré"
-        add_result "CIS-DOCKER-1.1.5" "Docker-Host" "Audit docker.socket" "WARN" "medium" \
-            "docker.socket non surveillé" \
-            "Ajouter règle audit pour docker.socket" "CIS Docker 1.1.5"
+        write_warn "Audit $service_name.socket non configuré"
+        add_result "CIS-CONTAINER-1.1.5" "Container-Host" "Audit socket" "WARN" "medium" \
+            "$service_name.socket non surveillé" \
+            "Ajouter règle audit pour $service_name.socket" "CIS Docker/Podman 1.1.5"
     fi
     
-    # 1.1.6 - Audit pour /etc/docker
-    write_info "Vérification audit /etc/docker..."
-    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "/etc/docker"; then
-        write_pass "Audit /etc/docker configuré"
-        add_result "CIS-DOCKER-1.1.6" "Docker-Host" "Audit /etc/docker" "PASS" "medium" \
-            "Surveillance /etc/docker active" "" "CIS Docker 1.1.6"
+    # 1.1.6 - Audit pour config dir
+    write_info "Vérification audit $config_dir..."
+    if command -v auditctl &>/dev/null && auditctl -l 2>/dev/null | grep -q "$config_dir"; then
+        write_pass "Audit $config_dir configuré"
+        add_result "CIS-CONTAINER-1.1.6" "Container-Host" "Audit config" "PASS" "medium" \
+            "Surveillance $config_dir active" "" "CIS Docker/Podman 1.1.6"
     else
-        write_warn "Audit /etc/docker non configuré"
-        add_result "CIS-DOCKER-1.1.6" "Docker-Host" "Audit /etc/docker" "WARN" "medium" \
-            "/etc/docker non surveillé" \
-            "Ajouter règle audit pour /etc/docker" "CIS Docker 1.1.6"
+        write_warn "Audit $config_dir non configuré"
+        add_result "CIS-CONTAINER-1.1.6" "Container-Host" "Audit config" "WARN" "medium" \
+            "$config_dir non surveillé" \
+            "Ajouter règle audit pour $config_dir" "CIS Docker/Podman 1.1.6"
     fi
 }
 
