@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info } from "lucide-react";
 import type { Script } from "@shared/schema";
+import { Footer } from "@/components/Footer";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 
@@ -325,6 +326,8 @@ export default function Documentation() {
           </CardContent>
         </Card>
       </div>
+
+      <Footer />
     </div>
   );
 }
