@@ -439,7 +439,7 @@ export async function registerRoutes(
         }
       }
       
-      const extension = script.os === "Windows" ? "ps1" : "sh";
+      const extension = (script.os === "Windows" || script.os === "VMware") ? "ps1" : "sh";
       const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}-combined.${extension}`;
       
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
