@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, Mail, Lock, User } from "lucide-react";
 import { Link } from "wouter";
+import { Footer } from "@/components/Footer";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -52,29 +53,32 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="relative h-48 md:h-64 w-full overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header with logo */}
+      <div className="relative h-32 md:h-40 w-full overflow-hidden">
         <img 
           src={bannerImg} 
           alt="Security Infrastructure" 
           className="w-full h-full object-cover brightness-[0.4]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        <div className="absolute inset-0 flex items-start justify-start p-6">
-          <Link href="/" className="flex items-center gap-4 px-6 py-4 bg-background/80 backdrop-blur-md rounded-xl border border-border/50 shadow-2xl hover-elevate">
-            <img src={logoImg} alt="IGS Logo" className="w-16 h-16 rounded-xl" />
-            <h1 className="text-xl font-bold tracking-tight">InfraGuard Security</h1>
-          </Link>
+        <div className="absolute inset-0 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <img src={logoImg} alt="IGS Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
+            </Link>
+            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>InfraGuard Security</h1>
+          </div>
+          <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Link>
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12 max-w-md">
-        <Button variant="ghost" size="sm" asChild className="mb-6" data-testid="button-back">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
-          </Link>
-        </Button>
+      <div className="container mx-auto px-4 py-12 max-w-md flex-1">
 
         <Card>
           <CardHeader className="text-center">
@@ -239,6 +243,8 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Footer />
     </div>
   );
 }
