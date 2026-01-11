@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info } from "lucide-react";
 import type { Script } from "@shared/schema";
+import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
+import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 
 function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: string[]; command: string; prerequisites: string[] } {
   const filename = script.filename;
@@ -116,18 +118,35 @@ export default function Documentation() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" asChild>
+      {/* Header with logo */}
+      <div className="relative h-32 md:h-40 w-full overflow-hidden">
+        <img 
+          src={bannerImg} 
+          alt="Security Infrastructure" 
+          className="w-full h-full object-cover brightness-[0.4]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
             <Link href="/">
-              <ArrowLeft className="h-5 w-5" />
+              <img src={logoImg} alt="IGS Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
+            </Link>
+            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>InfraGuard Security</h1>
+          </div>
+          <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
             </Link>
           </Button>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <BookOpen className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <BookOpen className="h-8 w-8" />
-              Documentation
-            </h1>
+            <h2 className="text-2xl font-bold">Documentation</h2>
             <p className="text-muted-foreground">Consultez la documentation de chaque toolkit</p>
           </div>
         </div>
