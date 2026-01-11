@@ -12,6 +12,49 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
 
+// Rate limiting for login attempts
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip: string): { allowed: boolean; remainingTime?: number } {
+  const now = Date.now();
+  const attempts = loginAttempts.get(ip);
+  
+  if (!attempts) {
+    return { allowed: true };
+  }
+  
+  // Reset if lockout time has passed
+  if (now - attempts.lastAttempt > LOCKOUT_TIME) {
+    loginAttempts.delete(ip);
+    return { allowed: true };
+  }
+  
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    const remainingTime = Math.ceil((LOCKOUT_TIME - (now - attempts.lastAttempt)) / 1000 / 60);
+    return { allowed: false, remainingTime };
+  }
+  
+  return { allowed: true };
+}
+
+function recordLoginAttempt(ip: string, success: boolean) {
+  if (success) {
+    loginAttempts.delete(ip);
+    return;
+  }
+  
+  const now = Date.now();
+  const attempts = loginAttempts.get(ip);
+  
+  if (!attempts || now - attempts.lastAttempt > LOCKOUT_TIME) {
+    loginAttempts.set(ip, { count: 1, lastAttempt: now });
+  } else {
+    loginAttempts.set(ip, { count: attempts.count + 1, lastAttempt: now });
+  }
+}
+
 // Middleware to check if user is admin
 const isAdmin = async (req: any, res: any, next: any) => {
   const userId = req.user?.claims?.sub;
@@ -102,6 +145,15 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req, res) => {
     try {
+      // Rate limiting check
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const rateCheck = checkRateLimit(clientIp);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ 
+          message: `Trop de tentatives de connexion. Réessayez dans ${rateCheck.remainingTime} minutes.` 
+        });
+      }
+
       const result = loginSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: result.error.errors[0].message });
@@ -112,14 +164,19 @@ export async function registerRoutes(
       // Find user
       const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (!user || !user.password) {
+        recordLoginAttempt(clientIp, false);
         return res.status(401).json({ message: "Email ou mot de passe incorrect" });
       }
 
       // Verify password
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
+        recordLoginAttempt(clientIp, false);
         return res.status(401).json({ message: "Email ou mot de passe incorrect" });
       }
+
+      // Successful login - clear rate limiting
+      recordLoginAttempt(clientIp, true);
 
       // Regenerate session to prevent session fixation attacks
       const session = req.session as any;
@@ -311,7 +368,12 @@ export async function registerRoutes(
 
   const changePasswordSchema = z.object({
     currentPassword: z.string().min(1, "Mot de passe actuel requis"),
-    newPassword: z.string().min(6, "Le nouveau mot de passe doit contenir au moins 6 caractères"),
+    newPassword: z.string()
+      .min(8, "Le mot de passe doit contenir au moins 8 caractères")
+      .regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule")
+      .regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule")
+      .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"),
   });
 
   app.post("/api/profile/change-password", isAuthenticated, async (req, res) => {
