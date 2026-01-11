@@ -1,15 +1,18 @@
+import { useState } from "react";
 import { Hero } from "@/components/Hero";
 import { ScriptCard } from "@/components/ScriptCard";
 import { useScripts } from "@/hooks/use-scripts";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
   const { data: scripts, isLoading, error } = useScripts();
   const { user, isLoading: authLoading, logout } = useAuth();
+  const [supportOpen, setSupportOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,11 +119,52 @@ export default function Home() {
             <div className="flex gap-6">
               <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Politique de Confidentialité</Link>
               <span className="hover:text-primary cursor-pointer transition-colors">Documentation</span>
-              <span className="hover:text-primary cursor-pointer transition-colors">Support</span>
+              <span 
+                className="hover:text-primary cursor-pointer transition-colors" 
+                onClick={() => setSupportOpen(true)}
+                data-testid="button-support"
+              >
+                Support
+              </span>
             </div>
           </div>
         </div>
       </footer>
+
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Contacter le Support
+            </DialogTitle>
+            <DialogDescription>
+              Pour toute question ou assistance, contactez-nous par email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Notre équipe support est disponible pour vous aider avec :
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>Questions sur les scripts et leur utilisation</li>
+              <li>Problèmes de paiement ou d'abonnement</li>
+              <li>Demandes de fonctionnalités</li>
+              <li>Signalement de bugs</li>
+            </ul>
+            <div className="pt-4 border-t">
+              <a 
+                href="mailto:cyrilallegretb@gmail.com" 
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                data-testid="link-email-support"
+              >
+                <Mail className="h-4 w-4" />
+                cyrilallegretb@gmail.com
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
