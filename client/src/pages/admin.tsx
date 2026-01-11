@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, ShieldOff, Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest } from "@shared/schema";
 import { Link } from "wouter";
@@ -101,19 +101,6 @@ export default function AdminPage() {
     },
     onError: () => {
       toast({ title: "Erreur", description: "Impossible de supprimer la demande", variant: "destructive" });
-    },
-  });
-
-  const toggleAdminMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      await apiRequest("PATCH", `/api/admin/users/${userId}/toggle-admin`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Utilisateur mis à jour" });
-    },
-    onError: () => {
-      toast({ title: "Erreur", description: "Impossible de modifier l'utilisateur", variant: "destructive" });
     },
   });
 
@@ -242,25 +229,6 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant={u.isAdmin ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => toggleAdminMutation.mutate(u.id)}
-                      disabled={u.id === user.id || toggleAdminMutation.isPending}
-                      data-testid={`button-toggle-admin-${u.id}`}
-                    >
-                      {u.isAdmin ? (
-                        <>
-                          <ShieldOff className="h-4 w-4 mr-1" />
-                          Retirer admin
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="h-4 w-4 mr-1" />
-                          Rendre admin
-                        </>
-                      )}
-                    </Button>
                     <Button
                       variant="destructive"
                       size="icon"
