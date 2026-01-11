@@ -11,6 +11,7 @@ import CheckoutSuccess from "@/pages/checkout-success";
 import CheckoutCancel from "@/pages/checkout-cancel";
 import AuthPage from "@/pages/auth";
 import Profile from "@/pages/profile";
+import Privacy from "@/pages/Privacy";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/admin" component={AdminPage} />
       <Route path="/purchases" component={Purchases} />
       <Route path="/profile" component={Profile} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route component={NotFound} />

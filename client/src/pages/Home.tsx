@@ -114,7 +114,7 @@ export default function Home() {
               &copy; {new Date().getFullYear()} Security Verification Sys.
             </div>
             <div className="flex gap-6">
-              <span className="hover:text-primary cursor-pointer transition-colors">Privacy Protocol</span>
+              <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Politique de Confidentialité</Link>
               <span className="hover:text-primary cursor-pointer transition-colors">Documentation</span>
               <span className="hover:text-primary cursor-pointer transition-colors">Support</span>
             </div>
