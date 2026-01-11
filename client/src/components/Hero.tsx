@@ -42,7 +42,7 @@ export function Hero() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Audit de sécurité complet et vérification de conformité des configurations selon les standards ANSSI-BP-028 et CIS Benchmark.
+                Audit de sécurité complet selon les standards ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker et CIS Kubernetes.
               </p>
             </CardContent>
           </Card>
