@@ -3,6 +3,7 @@ import { db } from "./db";
 import { eq, and, sql, ne, inArray } from "drizzle-orm";
 import * as fs from "fs";
 import * as path from "path";
+import { getUncachableStripeClient } from "./stripeClient";
 
 export interface IStorage {
   getScripts(): Promise<Script[]>;
@@ -145,26 +146,50 @@ export class DatabaseStorage implements IStorage {
     return null;
   }
 
+  private stripePricesCache: Map<string, {oneTimePrice: string | null, recurringPrice: string | null, timestamp: number}> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   async getStripePricesForProduct(productName: string): Promise<{oneTimePrice: string | null, recurringPrice: string | null}> {
-    const result = await db.execute(sql`
-      SELECT pr.id, pr.recurring
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id
-      WHERE p.name = ${productName} AND p.active = true AND pr.active = true
-    `);
-    
-    let oneTimePrice: string | null = null;
-    let recurringPrice: string | null = null;
-    
-    for (const row of result.rows as any[]) {
-      if (row.recurring) {
-        recurringPrice = row.id;
-      } else {
-        oneTimePrice = row.id;
-      }
+    // Check cache first
+    const cached = this.stripePricesCache.get(productName);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return { oneTimePrice: cached.oneTimePrice, recurringPrice: cached.recurringPrice };
     }
-    
-    return { oneTimePrice, recurringPrice };
+
+    try {
+      const stripe = await getUncachableStripeClient();
+      
+      // Find the product by name
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      const product = products.data.find(p => p.name === productName);
+      
+      if (!product) {
+        console.log(`Stripe product not found: ${productName}`);
+        return { oneTimePrice: null, recurringPrice: null };
+      }
+      
+      // Get prices for this product
+      const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+      
+      let oneTimePrice: string | null = null;
+      let recurringPrice: string | null = null;
+      
+      for (const price of prices.data) {
+        if (price.recurring) {
+          recurringPrice = price.id;
+        } else {
+          oneTimePrice = price.id;
+        }
+      }
+      
+      // Cache the result
+      this.stripePricesCache.set(productName, { oneTimePrice, recurringPrice, timestamp: Date.now() });
+      
+      return { oneTimePrice, recurringPrice };
+    } catch (error) {
+      console.error(`Error fetching Stripe prices for ${productName}:`, error);
+      return { oneTimePrice: null, recurringPrice: null };
+    }
   }
 
   async updatePurchaseSubscription(subscriptionId: string, expiresAt: Date | null): Promise<void> {
