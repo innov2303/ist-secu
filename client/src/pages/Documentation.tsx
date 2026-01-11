@@ -128,7 +128,7 @@ export default function Documentation() {
               <BookOpen className="h-8 w-8" />
               Documentation
             </h1>
-            <p className="text-muted-foreground">Consultez la documentation de chaque script</p>
+            <p className="text-muted-foreground">Consultez la documentation de chaque toolkit</p>
           </div>
         </div>
 
