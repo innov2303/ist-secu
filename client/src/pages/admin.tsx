@@ -20,6 +20,8 @@ export default function AdminPage() {
   const { toast } = useToast();
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactPage, setContactPage] = useState(1);
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -51,6 +53,29 @@ export default function AdminPage() {
   const handleSearchChange = (value: string) => {
     setUserSearch(value);
     setUserPage(1);
+  };
+
+  const filteredContacts = useMemo(() => {
+    if (!contactRequests) return [];
+    if (!contactSearch.trim()) return contactRequests;
+    const search = contactSearch.toLowerCase();
+    return contactRequests.filter(c => 
+      c.name?.toLowerCase().includes(search) ||
+      c.email?.toLowerCase().includes(search) ||
+      c.subject?.toLowerCase().includes(search) ||
+      c.ticketNumber?.toLowerCase().includes(search)
+    );
+  }, [contactRequests, contactSearch]);
+
+  const totalContactPages = Math.ceil(filteredContacts.length / USERS_PER_PAGE);
+  const paginatedContacts = useMemo(() => {
+    const start = (contactPage - 1) * USERS_PER_PAGE;
+    return filteredContacts.slice(start, start + USERS_PER_PAGE);
+  }, [filteredContacts, contactPage]);
+
+  const handleContactSearchChange = (value: string) => {
+    setContactSearch(value);
+    setContactPage(1);
   };
 
   const updateContactStatusMutation = useMutation({
@@ -285,24 +310,40 @@ export default function AdminPage() {
       {/* Contact Requests Section */}
       <Card className="mt-8">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Demandes de contact
-          </CardTitle>
-          <CardDescription>
-            {contactRequests?.filter(c => c.status === "pending").length || 0} demande(s) en attente
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Demandes de contact
+              </CardTitle>
+              <CardDescription>
+                {filteredContacts.filter(c => c.status === "pending").length} en attente sur {filteredContacts.length} demande(s)
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher..."
+                value={contactSearch}
+                onChange={(e) => handleContactSearchChange(e.target.value)}
+                className="pl-9"
+                data-testid="input-contact-search"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {contactLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : contactRequests?.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Aucune demande de contact</p>
+          ) : paginatedContacts.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {contactSearch ? "Aucune demande trouvée" : "Aucune demande de contact"}
+            </p>
           ) : (
             <div className="space-y-4">
-              {contactRequests?.map((request) => (
+              {paginatedContacts.map((request) => (
                 <div
                   key={request.id}
                   className="p-4 rounded-lg border bg-card"
@@ -370,6 +411,35 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {totalContactPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {contactPage} sur {totalContactPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setContactPage(p => Math.max(1, p - 1))}
+                  disabled={contactPage === 1}
+                  data-testid="button-contact-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
+                  disabled={contactPage === totalContactPages}
+                  data-testid="button-contact-next-page"
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
