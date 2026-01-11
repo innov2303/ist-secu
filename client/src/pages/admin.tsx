@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -5,15 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, ShieldOff, Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail } from "lucide-react";
+import { Shield, ShieldOff, Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest } from "@shared/schema";
 import { Link } from "wouter";
 
+const USERS_PER_PAGE = 10;
+
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -24,6 +30,28 @@ export default function AdminPage() {
     queryKey: ["/api/admin/contact-requests"],
     enabled: !!user?.isAdmin,
   });
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    if (!userSearch.trim()) return users;
+    const search = userSearch.toLowerCase();
+    return users.filter(u => 
+      u.firstName?.toLowerCase().includes(search) ||
+      u.lastName?.toLowerCase().includes(search) ||
+      u.email?.toLowerCase().includes(search)
+    );
+  }, [users, userSearch]);
+
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const start = (userPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [filteredUsers, userPage]);
+
+  const handleSearchChange = (value: string) => {
+    setUserSearch(value);
+    setUserPage(1);
+  };
 
   const updateContactStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
@@ -128,19 +156,37 @@ export default function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Utilisateurs enregistrés</CardTitle>
-          <CardDescription>
-            {users?.length || 0} utilisateur(s) dans le système
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Utilisateurs enregistrés</CardTitle>
+              <CardDescription>
+                {filteredUsers.length} sur {users?.length || 0} utilisateur(s)
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher..."
+                value={userSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-9"
+                data-testid="input-user-search"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+          ) : paginatedUsers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              {userSearch ? "Aucun utilisateur trouvé" : "Aucun utilisateur"}
+            </p>
           ) : (
             <div className="space-y-4">
-              {users?.map((u) => (
+              {paginatedUsers.map((u) => (
                 <div
                   key={u.id}
                   className="flex items-center justify-between p-4 rounded-lg border bg-card"
@@ -202,6 +248,35 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {userPage} sur {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                  disabled={userPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
+                  disabled={userPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
