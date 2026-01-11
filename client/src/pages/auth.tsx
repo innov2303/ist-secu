@@ -84,7 +84,7 @@ export default function AuthPage() {
           <CardHeader className="text-center">
             <CardTitle>Authentification</CardTitle>
             <CardDescription>
-              Connectez-vous ou créez un compte pour accéder aux scripts
+              Connectez-vous ou créez un compte pour accéder aux toolkit
             </CardDescription>
           </CardHeader>
           <CardContent>
