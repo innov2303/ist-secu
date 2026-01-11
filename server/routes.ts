@@ -391,9 +391,16 @@ export async function registerRoutes(
     // Check if user is admin - admins have free access to all products
     const user = await authStorage.getUser(userId);
     if (!user?.isAdmin) {
-      // Check if user has an active purchase
-      const activePurchase = await storage.getActivePurchase(userId, id);
-      if (!activePurchase) {
+      // Check if this is a bundle - if so, check bundle purchases
+      let hasPurchased = false;
+      if (script.bundledScriptIds && script.bundledScriptIds.length > 0) {
+        hasPurchased = await storage.hasPurchasedBundle(userId, script.bundledScriptIds);
+      } else {
+        const activePurchase = await storage.getActivePurchase(userId, id);
+        hasPurchased = !!activePurchase;
+      }
+      
+      if (!hasPurchased) {
         return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
       }
     }
