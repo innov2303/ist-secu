@@ -411,6 +411,21 @@ export async function registerRoutes(
         script.bundledScriptIds.map(id => storage.getScript(id))
       );
       
+      // Validate all bundled scripts exist and have content
+      const missingScripts = script.bundledScriptIds.filter(
+        (id, index) => !bundledScripts[index]
+      );
+      if (missingScripts.length > 0) {
+        console.error(`Bundle ${script.id} missing scripts: ${missingScripts.join(', ')}`);
+        return res.status(500).json({ message: "Erreur lors de la préparation du téléchargement" });
+      }
+      
+      const emptyScripts = bundledScripts.filter(s => s && (!s.content || s.content.trim() === ''));
+      if (emptyScripts.length > 0) {
+        console.error(`Bundle ${script.id} has empty script content: ${emptyScripts.map(s => s?.id).join(', ')}`);
+        return res.status(500).json({ message: "Erreur lors de la préparation du téléchargement" });
+      }
+      
       const separator = script.os === "Windows" 
         ? "#".repeat(80) + "\n# " 
         : "#".repeat(80) + "\n# ";
