@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
 import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
@@ -39,6 +40,175 @@ function isExpired(purchase: PurchaseWithScript): boolean {
   if (purchase.purchaseType === "direct") return false;
   if (!purchase.expiresAt) return false;
   return new Date(purchase.expiresAt) < new Date();
+}
+
+interface ToolkitBundle {
+  id: number;
+  name: string;
+  os: string;
+  icon: string;
+  compliance: string;
+  purchaseType: string;
+  purchasedAt: Date | string;
+  expiresAt: Date | string | null;
+  priceCents: number;
+  expired: boolean;
+  scripts: PurchaseWithScript[];
+}
+
+function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Script[]): { bundles: ToolkitBundle[], standalone: PurchaseWithScript[] } {
+  const bundles: ToolkitBundle[] = [];
+  const standalone: PurchaseWithScript[] = [];
+  const usedPurchaseIds = new Set<number>();
+
+  const toolkitScripts = scripts.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0);
+
+  for (const toolkit of toolkitScripts) {
+    const bundledIds = toolkit.bundledScriptIds || [];
+    const matchingPurchases = purchases.filter(p => bundledIds.includes(p.scriptId));
+    
+    if (matchingPurchases.length > 0) {
+      matchingPurchases.forEach(p => usedPurchaseIds.add(p.id));
+      
+      const firstPurchase = matchingPurchases[0];
+      const anyExpired = matchingPurchases.some(p => isExpired(p));
+      
+      bundles.push({
+        id: toolkit.id,
+        name: toolkit.name,
+        os: toolkit.os,
+        icon: toolkit.icon,
+        compliance: toolkit.compliance,
+        purchaseType: firstPurchase.purchaseType,
+        purchasedAt: firstPurchase.purchasedAt,
+        expiresAt: firstPurchase.expiresAt,
+        priceCents: toolkit.monthlyPriceCents || 0,
+        expired: anyExpired,
+        scripts: matchingPurchases,
+      });
+    }
+  }
+
+  for (const purchase of purchases) {
+    if (!usedPurchaseIds.has(purchase.id)) {
+      standalone.push(purchase);
+    }
+  }
+
+  return { bundles, standalone };
+}
+
+function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
+  const Icon = iconMap[bundle.icon] || Monitor;
+
+  return (
+    <Card data-testid={`card-toolkit-${bundle.id}`}>
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="scripts" className="border-0">
+          <CardHeader className="pb-0">
+            <div className="flex flex-row items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">{bundle.name}</CardTitle>
+                  <CardDescription className="mt-1">{bundle.os}</CardDescription>
+                </div>
+              </div>
+              <Badge variant={bundle.expired ? "destructive" : "secondary"} className="shrink-0">
+                {bundle.purchaseType === "direct" ? (
+                  <>
+                    <Infinity className="h-3 w-3 mr-1" />
+                    Permanent
+                  </>
+                ) : bundle.expired ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Expiré
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Abonnement
+                  </>
+                )}
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="space-y-4 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{bundle.compliance}</Badge>
+              <Badge variant="outline" className="text-xs">
+                {bundle.scripts.length} scripts inclus
+              </Badge>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{formatDate(bundle.purchasedAt)}</span>
+                </div>
+                <span className="hidden sm:inline mx-1">-</span>
+                <span className="font-medium">{formatPrice(bundle.priceCents)}/mois</span>
+                {bundle.purchaseType === "monthly" && bundle.expiresAt && (
+                  <span className="text-xs text-orange-600 dark:text-orange-400">
+                    Expire le {formatDate(bundle.expiresAt)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline" data-testid={`button-expand-toolkit-${bundle.id}`}>
+              <div className="flex items-center gap-2">
+                <FileCode className="h-4 w-4" />
+                Voir les scripts à télécharger
+              </div>
+            </AccordionTrigger>
+            
+            <AccordionContent>
+              <div className="space-y-3 pt-2">
+                {bundle.scripts.map((purchase) => (
+                  <div 
+                    key={purchase.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 gap-4"
+                    data-testid={`script-item-${purchase.script.id}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{purchase.script.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{purchase.script.filename}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant={bundle.expired ? "secondary" : "outline"}
+                      asChild={!bundle.expired}
+                      disabled={bundle.expired}
+                      data-testid={`button-download-script-${purchase.script.id}`}
+                    >
+                      {bundle.expired ? (
+                        <span>
+                          <Download className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <a href={`/api/scripts/${purchase.script.id}/download`} download>
+                          <Download className="h-4 w-4" />
+                        </a>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </CardContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
+  );
 }
 
 function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
@@ -161,6 +331,15 @@ export default function Purchases() {
     enabled: !!user,
   });
 
+  const { data: scripts } = useQuery<Script[]>({
+    queryKey: ["/api/scripts"],
+    enabled: !!user,
+  });
+
+  const { bundles, standalone } = purchases && scripts 
+    ? groupPurchasesByToolkit(purchases, scripts) 
+    : { bundles: [], standalone: [] };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -249,9 +428,12 @@ export default function Purchases() {
 
         {isLoading ? (
           <LoadingSkeleton />
-        ) : purchases && purchases.length > 0 ? (
+        ) : (bundles.length > 0 || standalone.length > 0) ? (
           <div className="space-y-4">
-            {purchases.map((purchase) => (
+            {bundles.map((bundle) => (
+              <ToolkitCard key={bundle.id} bundle={bundle} />
+            ))}
+            {standalone.map((purchase) => (
               <PurchaseCard key={purchase.id} purchase={purchase} />
             ))}
           </div>
