@@ -125,12 +125,11 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           {script.description}
         </p>
 
-        <div className="text-xs text-muted-foreground mb-4 flex flex-wrap gap-2">
-          <Badge variant="outline">{script.compliance}</Badge>
-          {isInDevelopment && (
+        {isInDevelopment && (
+          <div className="text-xs text-muted-foreground mb-4">
             <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">En développement</Badge>
-          )}
-        </div>
+          </div>
+        )}
 
         {user && !isInDevelopment && !isAdmin && (
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
