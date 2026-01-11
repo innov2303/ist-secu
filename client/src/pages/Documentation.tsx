@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, Download, BookOpen, FileCode } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle } from "lucide-react";
 import type { Script } from "@shared/schema";
 
 export default function Documentation() {
@@ -34,14 +34,6 @@ export default function Documentation() {
     setSelectedToolkit(value);
   };
 
-  const handleDownloadPdf = (script: Script) => {
-    const pdfFilename = script.filename.replace(/\.(sh|ps1|py)$/, ".pdf");
-    const link = document.createElement("a");
-    link.href = `/docs/${pdfFilename}`;
-    link.download = pdfFilename;
-    link.click();
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -56,7 +48,7 @@ export default function Documentation() {
               <BookOpen className="h-8 w-8" />
               Documentation
             </h1>
-            <p className="text-muted-foreground">Téléchargez la documentation PDF de chaque script</p>
+            <p className="text-muted-foreground">Consultez la documentation de chaque script</p>
           </div>
         </div>
 
@@ -67,7 +59,7 @@ export default function Documentation() {
               Sélectionner un toolkit
             </CardTitle>
             <CardDescription>
-              Choisissez un toolkit pour afficher la liste des scripts et leur documentation
+              Choisissez un toolkit pour afficher la documentation des scripts associés
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -97,31 +89,53 @@ export default function Documentation() {
                 </div>
 
                 {selectedToolkit && bundledScripts.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t">
+                  <div className="space-y-6 pt-4 border-t">
                     <h3 className="font-semibold flex items-center gap-2">
                       <FileCode className="h-4 w-4" />
                       Scripts inclus dans {selectedToolkitData?.name}
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-6">
                       {bundledScripts.map((script) => (
                         <div 
                           key={script.id} 
-                          className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                          className="p-5 rounded-lg border bg-card"
                           data-testid={`script-row-${script.id}`}
                         >
-                          <div className="flex-1">
-                            <h4 className="font-medium">{script.name}</h4>
-                            <p className="text-sm text-muted-foreground">{script.description}</p>
-                            <p className="text-xs text-muted-foreground mt-1 font-mono">{script.filename}</p>
+                          <div className="flex items-start gap-3 mb-4">
+                            <Terminal className="h-5 w-5 mt-1 text-primary" />
+                            <div>
+                              <h4 className="font-semibold text-lg">{script.name}</h4>
+                              <p className="text-sm text-muted-foreground font-mono">{script.filename}</p>
+                            </div>
                           </div>
-                          <Button 
-                            onClick={() => handleDownloadPdf(script)} 
-                            variant="outline"
-                            data-testid={`button-download-pdf-${script.id}`}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            PDF
-                          </Button>
+                          
+                          <div className="pl-8 space-y-4">
+                            <div>
+                              <h5 className="text-sm font-medium mb-2">Description</h5>
+                              <p className="text-sm text-muted-foreground whitespace-pre-line">{script.description}</p>
+                            </div>
+                            
+                            {script.features && script.features.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-medium mb-2">Fonctionnalités</h5>
+                                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  {script.features.map((feature, idx) => (
+                                    <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                      {feature}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {script.compliance && (
+                              <div>
+                                <h5 className="text-sm font-medium mb-2">Standards de conformité</h5>
+                                <p className="text-sm text-muted-foreground">{script.compliance}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
