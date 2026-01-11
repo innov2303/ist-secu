@@ -54,6 +54,7 @@ export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 // Contact requests table
 export const contactRequests = pgTable("contact_requests", {
   id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number").notNull(),
   userId: varchar("user_id"),
   name: text("name").notNull(),
   email: text("email").notNull(),
@@ -63,7 +64,7 @@ export const contactRequests = pgTable("contact_requests", {
   status: text("status").notNull().default("pending"),
 });
 
-export const insertContactRequestSchema = createInsertSchema(contactRequests).omit({ id: true, createdAt: true, status: true });
+export const insertContactRequestSchema = createInsertSchema(contactRequests).omit({ id: true, ticketNumber: true, createdAt: true, status: true });
 
 export type ContactRequest = typeof contactRequests.$inferSelect;
 export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;

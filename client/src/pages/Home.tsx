@@ -21,6 +21,7 @@ export default function Home() {
   const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", description: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState("");
   const { toast } = useToast();
 
   return (
@@ -144,6 +145,7 @@ export default function Home() {
         setSupportOpen(open);
         if (!open) {
           setSent(false);
+          setTicketNumber("");
           setContactForm({ name: "", email: "", subject: "", description: "" });
         }
       }}>
@@ -161,23 +163,29 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
               <h3 className="text-lg font-semibold mb-2">Message envoyé</h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-4">
                 Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.
               </p>
+              <div className="bg-muted px-4 py-2 rounded-md">
+                <p className="text-xs text-muted-foreground mb-1">Numéro de ticket</p>
+                <p className="font-mono font-semibold text-primary">{ticketNumber}</p>
+              </div>
             </div>
           ) : (
             <form onSubmit={async (e) => {
               e.preventDefault();
               setSending(true);
               try {
-                await apiRequest("POST", "/api/contact", {
+                const response = await apiRequest("POST", "/api/contact", {
                   ...contactForm,
                   userId: user?.id || null,
                   name: contactForm.name || user?.firstName || "",
                   email: contactForm.email || user?.email || "",
                 });
+                const data = await response.json();
+                setTicketNumber(data.ticketNumber);
                 setSent(true);
-                toast({ title: "Message envoyé", description: "Nous vous répondrons rapidement." });
+                toast({ title: "Message envoyé", description: `Ticket: ${data.ticketNumber}` });
               } catch (error) {
                 toast({ title: "Erreur", description: "Impossible d'envoyer le message.", variant: "destructive" });
               } finally {

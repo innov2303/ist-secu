@@ -38,6 +38,19 @@ export default function AdminPage() {
     },
   });
 
+  const deleteContactMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/admin/contact-requests/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-requests"] });
+      toast({ title: "Demande supprimée" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de supprimer la demande", variant: "destructive" });
+    },
+  });
+
   const toggleAdminMutation = useMutation({
     mutationFn: async (userId: string) => {
       await apiRequest("PATCH", `/api/admin/users/${userId}/toggle-admin`);
@@ -223,6 +236,7 @@ export default function AdminPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
                         <span className="font-medium">{request.name}</span>
                         <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
                           <Mail className="h-3 w-3" />
@@ -254,16 +268,28 @@ export default function AdminPage() {
                           Marquer traité
                         </Button>
                       ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
-                          disabled={updateContactStatusMutation.isPending}
-                          data-testid={`button-unresolve-${request.id}`}
-                        >
-                          <Clock className="h-4 w-4 mr-1" />
-                          Rouvrir
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
+                            disabled={updateContactStatusMutation.isPending}
+                            data-testid={`button-unresolve-${request.id}`}
+                          >
+                            <Clock className="h-4 w-4 mr-1" />
+                            Rouvrir
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteContactMutation.mutate(request.id)}
+                            disabled={deleteContactMutation.isPending}
+                            data-testid={`button-delete-contact-${request.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Supprimer
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

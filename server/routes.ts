@@ -776,8 +776,17 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const [contactRequest] = await db.insert(contactRequests).values(result.data).returning();
-      res.status(201).json({ success: true, id: contactRequest.id });
+      // Generate ticket number: IGS-YYYYMMDD-XXXX
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const ticketNumber = `IGS-${dateStr}-${randomSuffix}`;
+
+      const [contactRequest] = await db.insert(contactRequests).values({
+        ...result.data,
+        ticketNumber,
+      }).returning();
+      res.status(201).json({ success: true, id: contactRequest.id, ticketNumber: contactRequest.ticketNumber });
     } catch (error) {
       console.error("Contact request error:", error);
       res.status(500).json({ message: "Erreur lors de l'envoi du message" });
@@ -811,6 +820,20 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating contact request:", error);
       res.status(500).json({ message: "Error updating contact request" });
+    }
+  });
+
+  // Admin: Delete contact request
+  app.delete("/api/admin/contact-requests/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      await db.delete(contactRequests).where(eq(contactRequests.id, parseInt(id)));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting contact request:", error);
+      res.status(500).json({ message: "Error deleting contact request" });
     }
   });
 
