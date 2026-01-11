@@ -1173,10 +1173,24 @@ function Test-DisaSTIGCatII {
     
     # STIG ESXI-80-000014: SSH FIPS 140-2
     Write-Info "Vérification SSH FIPS..."
-    $sshFips = Get-EsxiAdvancedSetting -Name "UserVars.ESXiShellInteractiveTimeOut"
-    Write-Pass "Configuration SSH vérifiée"
-    Add-Result -Id "STIG-ESXI-80-000014" -Category "DISA-STIG-CAT2" -Title "SSH FIPS 140-2" -Status "PASS" -Severity "high" `
-        -Description "Configuration SSH analysée" -Reference "DISA STIG ESXI-80-000014"
+    try {
+        $fipsStatus = $script:esxcli.system.security.fips140.ssh.get.Invoke()
+        if ($fipsStatus.Enabled -eq $true) {
+            Write-Pass "SSH FIPS 140-2 activé"
+            Add-Result -Id "STIG-ESXI-80-000014" -Category "DISA-STIG-CAT2" -Title "SSH FIPS 140-2" -Status "PASS" -Severity "high" `
+                -Description "FIPS 140-2 activé pour SSH" -Reference "DISA STIG ESXI-80-000014"
+        } else {
+            Write-Fail "SSH FIPS 140-2 non activé"
+            Add-Result -Id "STIG-ESXI-80-000014" -Category "DISA-STIG-CAT2" -Title "SSH FIPS 140-2" -Status "FAIL" -Severity "high" `
+                -Description "FIPS 140-2 non activé pour SSH" `
+                -Remediation "Activer FIPS 140-2: esxcli system security fips140 ssh set -e true" -Reference "DISA STIG ESXI-80-000014"
+        }
+    } catch {
+        Write-Warn "Impossible de vérifier FIPS SSH"
+        Add-Result -Id "STIG-ESXI-80-000014" -Category "DISA-STIG-CAT2" -Title "SSH FIPS 140-2" -Status "WARN" -Severity "high" `
+            -Description "Vérification FIPS non disponible via esxcli" `
+            -Remediation "Vérifier manuellement: esxcli system security fips140 ssh get" -Reference "DISA STIG ESXI-80-000014"
+    }
     
     # STIG ESXI-80-000160: Isolation vMotion
     Write-Info "Vérification isolation vMotion..."
@@ -1207,16 +1221,35 @@ function Test-DisaSTIGCatII {
     
     # STIG ESXI-80-000212: SNMP v1/v2c désactivé
     Write-Info "Vérification SNMP..."
-    $snmpEnable = Get-EsxiAdvancedSetting -Name "SNMP.Enable"
-    if (-not $snmpEnable -or $snmpEnable -eq $false) {
-        Write-Pass "SNMP désactivé"
-        Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "PASS" -Severity "medium" `
-            -Description "SNMP désactivé ou v3 uniquement" -Reference "DISA STIG ESXI-80-000212"
-    } else {
-        Write-Warn "SNMP activé"
-        Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "WARN" -Severity "medium" `
-            -Description "SNMP activé - vérifier version v3" `
-            -Remediation "Désactiver SNMP v1/v2c, utiliser v3 uniquement" -Reference "DISA STIG ESXI-80-000212"
+    try {
+        $snmpConfig = $script:esxcli.system.snmp.get.Invoke()
+        if ($snmpConfig.Enable -eq $false -or [int]$snmpConfig.Enable -eq 0) {
+            Write-Pass "SNMP désactivé"
+            Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "PASS" -Severity "medium" `
+                -Description "SNMP désactivé" -Reference "DISA STIG ESXI-80-000212"
+        } elseif ($snmpConfig.V3targets -and $snmpConfig.Communities -eq "") {
+            Write-Pass "SNMP v3 uniquement"
+            Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "PASS" -Severity "medium" `
+                -Description "SNMP v3 configuré sans communautés v1/v2c" -Reference "DISA STIG ESXI-80-000212"
+        } else {
+            Write-Warn "SNMP v1/v2c potentiellement activé"
+            Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "WARN" -Severity "medium" `
+                -Description "SNMP activé avec communautés v1/v2c possibles" `
+                -Remediation "Désactiver SNMP v1/v2c, utiliser v3 uniquement" -Reference "DISA STIG ESXI-80-000212"
+        }
+    } catch {
+        $snmpEnable = Get-EsxiAdvancedSetting -Name "SNMP.Enable"
+        $snmpValue = [int]$snmpEnable
+        if ($snmpValue -eq 0 -or $null -eq $snmpEnable) {
+            Write-Pass "SNMP désactivé"
+            Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "PASS" -Severity "medium" `
+                -Description "SNMP désactivé" -Reference "DISA STIG ESXI-80-000212"
+        } else {
+            Write-Warn "SNMP potentiellement activé"
+            Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "WARN" -Severity "medium" `
+                -Description "SNMP activé - vérifier configuration" `
+                -Remediation "Vérifier: esxcli system snmp get" -Reference "DISA STIG ESXI-80-000212"
+        }
     }
     
     # STIG ESXI-80-000214: Pare-feu par défaut bloquant
@@ -1275,9 +1308,30 @@ function Test-DisaSTIGCatII {
     
     # STIG ESXI-80-000230: SSH port forwarding désactivé
     Write-Info "Vérification SSH port forwarding..."
-    Write-Pass "Configuration SSH avancée vérifiée"
-    Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "PASS" -Severity "medium" `
-        -Description "Port forwarding vérifié via sshd_config" -Reference "DISA STIG ESXI-80-000230"
+    try {
+        $sshConfig = $script:esxcli.system.ssh.server.config.list.Invoke()
+        $allowTcpForwarding = $sshConfig | Where-Object { $_.Key -eq "allowtcpforwarding" }
+        if ($allowTcpForwarding -and $allowTcpForwarding.Value -eq "no") {
+            Write-Pass "SSH port forwarding désactivé"
+            Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "PASS" -Severity "medium" `
+                -Description "AllowTcpForwarding = no" -Reference "DISA STIG ESXI-80-000230"
+        } elseif ($allowTcpForwarding) {
+            Write-Fail "SSH port forwarding activé"
+            Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "FAIL" -Severity "medium" `
+                -Description "AllowTcpForwarding = $($allowTcpForwarding.Value)" `
+                -Remediation "Désactiver: esxcli system ssh server config set -k allowtcpforwarding -v no" -Reference "DISA STIG ESXI-80-000230"
+        } else {
+            Write-Warn "Configuration SSH port forwarding non trouvée"
+            Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "WARN" -Severity "medium" `
+                -Description "Paramètre AllowTcpForwarding non trouvé" `
+                -Remediation "Vérifier: esxcli system ssh server config list" -Reference "DISA STIG ESXI-80-000230"
+        }
+    } catch {
+        Write-Warn "Impossible de vérifier SSH port forwarding"
+        Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "WARN" -Severity "medium" `
+            -Description "Vérification esxcli non disponible" `
+            -Remediation "Vérifier manuellement sshd_config ou esxcli" -Reference "DISA STIG ESXI-80-000230"
+    }
 }
 
 #===============================================================================
