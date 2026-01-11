@@ -4,45 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info } from "lucide-react";
 import type { Script } from "@shared/schema";
 
-function getExecutionInstructions(script: Script): { steps: string[]; command: string; prerequisites: string[] } {
+function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: string[]; command: string; prerequisites: string[] } {
   const filename = script.filename;
-  const os = script.os;
-
-  if (os === "Linux" || filename.endsWith(".sh")) {
-    return {
-      prerequisites: [
-        "Système Linux (Debian/Ubuntu, RHEL/CentOS, Fedora, SUSE)",
-        "Accès root ou sudo",
-        "Bash 4.0 ou supérieur"
-      ],
-      steps: [
-        "Téléchargez le script sur votre serveur Linux",
-        "Rendez le script exécutable avec chmod",
-        "Exécutez le script avec les privilèges root"
-      ],
-      command: `chmod +x ${filename}\nsudo ./${filename}`
-    };
-  }
-
-  if (os === "Windows" || filename.endsWith(".ps1")) {
-    return {
-      prerequisites: [
-        "Windows Server 2016, 2019, 2022 ou 2025",
-        "PowerShell 5.1 ou supérieur",
-        "Privilèges administrateur"
-      ],
-      steps: [
-        "Téléchargez le script sur votre serveur Windows",
-        "Ouvrez PowerShell en tant qu'administrateur",
-        "Autorisez l'exécution de scripts si nécessaire",
-        "Exécutez le script"
-      ],
-      command: `Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process\n.\\${filename}`
-    };
-  }
+  const os = toolkitOs || script.os;
 
   if (os === "VMware") {
     return {
@@ -77,6 +44,39 @@ function getExecutionInstructions(script: Script): { steps: string[]; command: s
         "Exécutez le script avec les permissions appropriées"
       ],
       command: `chmod +x ${filename}\nsudo ./${filename}`
+    };
+  }
+
+  if (os === "Linux" || filename.endsWith(".sh")) {
+    return {
+      prerequisites: [
+        "Système Linux (Debian/Ubuntu, RHEL/CentOS, Fedora, SUSE)",
+        "Accès root ou sudo",
+        "Bash 4.0 ou supérieur"
+      ],
+      steps: [
+        "Téléchargez le script sur votre serveur Linux",
+        "Rendez le script exécutable avec chmod",
+        "Exécutez le script avec les privilèges root"
+      ],
+      command: `chmod +x ${filename}\nsudo ./${filename}`
+    };
+  }
+
+  if (os === "Windows" || filename.endsWith(".ps1")) {
+    return {
+      prerequisites: [
+        "Windows Server 2016, 2019, 2022 ou 2025",
+        "PowerShell 5.1 ou supérieur",
+        "Privilèges administrateur"
+      ],
+      steps: [
+        "Téléchargez le script sur votre serveur Windows",
+        "Ouvrez PowerShell en tant qu'administrateur",
+        "Autorisez l'exécution de scripts si nécessaire",
+        "Exécutez le script"
+      ],
+      command: `Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process\n.\\${filename}`
     };
   }
 
@@ -168,15 +168,46 @@ export default function Documentation() {
                   </Select>
                 </div>
 
+                {selectedToolkitData && (
+                  <div className="p-4 rounded-lg border bg-muted/50">
+                    <div className="flex items-start gap-3 mb-3">
+                      <Info className="h-5 w-5 mt-0.5 text-primary" />
+                      <div>
+                        <h4 className="font-semibold">{selectedToolkitData.name}</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line mt-1">{selectedToolkitData.description}</p>
+                      </div>
+                    </div>
+                    
+                    {selectedToolkitData.features && selectedToolkitData.features.length > 0 && (
+                      <div className="pl-8 mt-3">
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {selectedToolkitData.features.map((feature, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {selectedToolkitData.compliance && (
+                      <div className="pl-8 mt-3">
+                        <span className="text-xs font-medium text-primary">{selectedToolkitData.compliance}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {selectedToolkit && bundledScripts.length > 0 && (
                   <div className="space-y-6 pt-4 border-t">
                     <h3 className="font-semibold flex items-center gap-2">
                       <FileCode className="h-4 w-4" />
-                      Scripts inclus dans {selectedToolkitData?.name}
+                      Scripts inclus ({bundledScripts.length})
                     </h3>
                     <div className="space-y-6">
                       {bundledScripts.map((script) => {
-                        const instructions = getExecutionInstructions(script);
+                        const instructions = getExecutionInstructions(script, selectedToolkitData?.os);
                         return (
                           <div 
                             key={script.id} 
@@ -251,7 +282,7 @@ export default function Documentation() {
 
                                   <div>
                                     <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Commande</h6>
-                                    <pre className="bg-muted p-3 rounded-md text-sm font-mono overflow-x-auto">
+                                    <pre className="bg-muted p-3 rounded-md text-sm font-mono overflow-x-auto whitespace-pre-wrap">
                                       {instructions.command}
                                     </pre>
                                   </div>
