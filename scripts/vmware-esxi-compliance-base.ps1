@@ -1,11 +1,11 @@
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité VMware ESXi (BASE)
-# Basé sur les recommandations CIS Benchmark VMware ESXi 7.0/8.0
-# Version: 1.0.0
-# Niveau: BASE (~55 contrôles essentiels)
+# Basé sur les recommandations CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I
+# Version: 1.1.0
+# Niveau: BASE (~60 contrôles essentiels)
 # 
 # Ce script effectue un audit de sécurité de base d'un hôte VMware ESXi
-# en suivant les recommandations CIS Benchmark
+# en suivant les recommandations CIS Benchmark et DISA STIG (CAT I - High)
 #
 # Prérequis: VMware PowerCLI installé
 # Usage: .\vmware-esxi-compliance-base.ps1 -Server <ESXi_Host> -Credential <PSCredential>
@@ -29,8 +29,8 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$Version = "1.0.0"
-$ScriptName = "InfraGuard VMware ESXi Compliance Audit - BASE (CIS Benchmark)"
+$Version = "1.1.0"
+$ScriptName = "InfraGuard VMware ESXi Compliance Audit - BASE (CIS Benchmark + DISA STIG CAT I)"
 $AuditLevel = "BASE"
 
 # Compteurs globaux
@@ -50,8 +50,8 @@ function Write-Header {
     Write-Host "╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
     Write-Host "║   InfraGuard Security - Audit VMware ESXi v$Version (BASE)          ║" -ForegroundColor Cyan
-    Write-Host "║              CIS Benchmark VMware ESXi 7.0/8.0                     ║" -ForegroundColor Cyan
-    Write-Host "║                  ~55 contrôles essentiels                          ║" -ForegroundColor Cyan
+    Write-Host "║         CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I        ║" -ForegroundColor Cyan
+    Write-Host "║                  ~60 contrôles essentiels                          ║" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
     Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
@@ -741,6 +741,104 @@ function Test-CertificatesSecurity {
 }
 
 #===============================================================================
+# Catégorie 9: DISA STIG CAT I (Vulnérabilités Critiques)
+#===============================================================================
+
+function Test-DisaSTIGCatI {
+    Write-Section "9. DISA STIG CAT I (VULNERABILITES CRITIQUES)"
+    
+    # STIG V-258732: Secure Boot activé
+    Write-Info "Vérification du Secure Boot..."
+    try {
+        $secureBoot = Get-EsxiAdvancedSetting -Name "Boot.secureBoot"
+        if ($secureBoot -eq $true -or $secureBoot -eq "TRUE") {
+            Write-Pass "Secure Boot activé"
+            Add-Result -Id "STIG-V-258732" -Category "DISA-STIG-CAT1" -Title "Secure Boot" -Status "PASS" -Severity "critical" `
+                -Description "UEFI Secure Boot est activé" -Reference "DISA STIG V-258732"
+        } else {
+            Write-Fail "Secure Boot non activé"
+            Add-Result -Id "STIG-V-258732" -Category "DISA-STIG-CAT1" -Title "Secure Boot" -Status "FAIL" -Severity "critical" `
+                -Description "UEFI Secure Boot n'est pas activé" `
+                -Remediation "Activer Secure Boot dans le BIOS/UEFI de l'hôte" -Reference "DISA STIG V-258732"
+        }
+    } catch {
+        Write-Warn "Impossible de vérifier Secure Boot"
+        Add-Result -Id "STIG-V-258732" -Category "DISA-STIG-CAT1" -Title "Secure Boot" -Status "WARN" -Severity "critical" `
+            -Description "Vérification Secure Boot non disponible" -Reference "DISA STIG V-258732"
+    }
+    
+    # STIG V-258733: TPM 2.0 présent et activé
+    Write-Info "Vérification du TPM..."
+    try {
+        $tpm = $script:VMHost.ExtensionData.Capability.TpmSupported
+        if ($tpm) {
+            Write-Pass "TPM supporté sur cet hôte"
+            Add-Result -Id "STIG-V-258733" -Category "DISA-STIG-CAT1" -Title "TPM 2.0" -Status "PASS" -Severity "critical" `
+                -Description "Module TPM 2.0 détecté et supporté" -Reference "DISA STIG V-258733"
+        } else {
+            Write-Fail "TPM non détecté"
+            Add-Result -Id "STIG-V-258733" -Category "DISA-STIG-CAT1" -Title "TPM 2.0" -Status "FAIL" -Severity "critical" `
+                -Description "Module TPM 2.0 non détecté sur l'hôte" `
+                -Remediation "Installer et activer un TPM 2.0 compatible" -Reference "DISA STIG V-258733"
+        }
+    } catch {
+        Write-Warn "Impossible de vérifier le TPM"
+        Add-Result -Id "STIG-V-258733" -Category "DISA-STIG-CAT1" -Title "TPM 2.0" -Status "WARN" -Severity "critical" `
+            -Description "Vérification TPM non disponible" -Reference "DISA STIG V-258733"
+    }
+    
+    # STIG V-258734: Exécutables non signés bloqués
+    Write-Info "Vérification de l'Acceptance Level..."
+    try {
+        $acceptanceLevel = (Get-VMHostImageProfile).AcceptanceLevel
+        if ($acceptanceLevel -eq "VMwareCertified" -or $acceptanceLevel -eq "VMwareAccepted") {
+            Write-Pass "Acceptance Level: $acceptanceLevel"
+            Add-Result -Id "STIG-V-258734" -Category "DISA-STIG-CAT1" -Title "Acceptance Level" -Status "PASS" -Severity "critical" `
+                -Description "Seuls les VIBs $acceptanceLevel sont autorisés" -Reference "DISA STIG V-258734"
+        } else {
+            Write-Fail "Acceptance Level trop permissif: $acceptanceLevel"
+            Add-Result -Id "STIG-V-258734" -Category "DISA-STIG-CAT1" -Title "Acceptance Level" -Status "FAIL" -Severity "critical" `
+                -Description "Acceptance Level $acceptanceLevel permet des VIBs non signés" `
+                -Remediation "Configurer Acceptance Level à VMwareCertified ou VMwareAccepted" -Reference "DISA STIG V-258734"
+        }
+    } catch {
+        Write-Info "Vérification Acceptance Level"
+        Add-Result -Id "STIG-V-258734" -Category "DISA-STIG-CAT1" -Title "Acceptance Level" -Status "WARN" -Severity "critical" `
+            -Description "Impossible de vérifier l'Acceptance Level" -Reference "DISA STIG V-258734"
+    }
+    
+    # STIG V-258774: SSH désactivé par défaut
+    Write-Info "Vérification du service SSH..."
+    $sshService = Get-VMHostService -VMHost $script:VMHost | Where-Object { $_.Key -eq "TSM-SSH" }
+    
+    if (-not $sshService.Running) {
+        Write-Pass "Service SSH désactivé"
+        Add-Result -Id "STIG-V-258774" -Category "DISA-STIG-CAT1" -Title "Service SSH" -Status "PASS" -Severity "critical" `
+            -Description "Le service SSH est désactivé comme requis" -Reference "DISA STIG V-258774"
+    } else {
+        Write-Fail "Service SSH actif"
+        Add-Result -Id "STIG-V-258774" -Category "DISA-STIG-CAT1" -Title "Service SSH" -Status "FAIL" -Severity "critical" `
+            -Description "Le service SSH est actif - risque de sécurité" `
+            -Remediation "Désactiver le service SSH sauf nécessité absolue" -Reference "DISA STIG V-258774"
+    }
+    
+    # STIG V-258775: ESXi Shell désactivé par défaut
+    Write-Info "Vérification de l'ESXi Shell..."
+    $shellService = Get-VMHostService -VMHost $script:VMHost | Where-Object { $_.Key -eq "TSM" }
+    
+    if (-not $shellService.Running) {
+        Write-Pass "ESXi Shell désactivé"
+        Add-Result -Id "STIG-V-258775" -Category "DISA-STIG-CAT1" -Title "ESXi Shell" -Status "PASS" -Severity "critical" `
+            -Description "L'ESXi Shell est désactivé comme requis" -Reference "DISA STIG V-258775"
+    } else {
+        Write-Fail "ESXi Shell actif"
+        Add-Result -Id "STIG-V-258775" -Category "DISA-STIG-CAT1" -Title "ESXi Shell" -Status "FAIL" -Severity "critical" `
+            -Description "L'ESXi Shell est actif - risque de sécurité" `
+            -Remediation "Désactiver l'ESXi Shell sauf nécessité absolue" -Reference "DISA STIG V-258775"
+    }
+}
+
+#===============================================================================
 # Génération du rapport
 #===============================================================================
 
@@ -941,7 +1039,7 @@ function Export-Report {
     # Export JSON
     $report = @{
         report_type = "vmware_esxi_security_audit"
-        framework = "CIS Benchmark VMware ESXi 7.0/8.0"
+        framework = "CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I"
         audit_level = $AuditLevel
         system_info = @{
             hostname = $script:VMHost.Name
@@ -1000,6 +1098,7 @@ function Main {
         Test-StorageConfiguration
         Test-VMSecurity
         Test-CertificatesSecurity
+        Test-DisaSTIGCatI
         
         Export-Report
         

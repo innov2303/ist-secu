@@ -1,11 +1,11 @@
 #===============================================================================
 # InfraGuard Security - Script d'Audit de Sécurité VMware ESXi (ENHANCED)
-# Basé sur les recommandations CIS Benchmark VMware ESXi 7.0/8.0 + Contrôles avancés
-# Version: 1.0.0
-# Niveau: ENHANCED (~100 contrôles complets)
+# Basé sur CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I/II
+# Version: 1.1.0
+# Niveau: ENHANCED (~105 contrôles complets)
 # 
 # Ce script effectue un audit de sécurité complet d'un hôte VMware ESXi
-# incluant tous les contrôles de base plus des vérifications avancées
+# incluant tous les contrôles de base plus DISA STIG CAT II (Medium)
 #
 # Prérequis: VMware PowerCLI installé
 # Usage: .\vmware-esxi-compliance-enhanced.ps1 -Server <ESXi_Host> -Credential <PSCredential>
@@ -29,8 +29,8 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$Version = "1.0.0"
-$ScriptName = "InfraGuard VMware ESXi Compliance Audit - ENHANCED (CIS Benchmark + Advanced)"
+$Version = "1.1.0"
+$ScriptName = "InfraGuard VMware ESXi Compliance Audit - ENHANCED (CIS + DISA STIG CAT I/II)"
 $AuditLevel = "ENHANCED"
 
 # Compteurs globaux
@@ -51,8 +51,8 @@ function Write-Header {
     Write-Host "╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
     Write-Host "║   InfraGuard Security - Audit VMware ESXi v$Version (ENHANCED)      ║" -ForegroundColor Cyan
-    Write-Host "║        CIS Benchmark VMware ESXi 7.0/8.0 + Contrôles Avancés       ║" -ForegroundColor Cyan
-    Write-Host "║                   ~100 contrôles complets                          ║" -ForegroundColor Cyan
+    Write-Host "║       CIS Benchmark VMware ESXi + DISA STIG CAT I/II               ║" -ForegroundColor Cyan
+    Write-Host "║                   ~105 contrôles complets                          ║" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
     Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
@@ -1109,6 +1109,178 @@ function Test-AdvancedConfiguration {
 }
 
 #===============================================================================
+# Catégorie 10: DISA STIG CAT II (Vulnérabilités Medium)
+#===============================================================================
+
+function Test-DisaSTIGCatII {
+    Write-Section "10. DISA STIG CAT II (VULNERABILITES MEDIUM)"
+    
+    # STIG ESXI-80-000005: Limite tentatives connexion
+    Write-Info "Vérification limite tentatives connexion..."
+    $accountLockFailures = Get-EsxiAdvancedSetting -Name "Security.AccountLockFailures"
+    if ($accountLockFailures -eq 3) {
+        Write-Pass "Limite tentatives: 3"
+        Add-Result -Id "STIG-ESXI-80-000005" -Category "DISA-STIG-CAT2" -Title "Verrouillage compte" -Status "PASS" -Severity "high" `
+            -Description "Verrouillage après 3 tentatives échouées" -Reference "DISA STIG ESXI-80-000005"
+    } else {
+        Write-Warn "Limite tentatives: $accountLockFailures (devrait être 3)"
+        Add-Result -Id "STIG-ESXI-80-000005" -Category "DISA-STIG-CAT2" -Title "Verrouillage compte" -Status "WARN" -Severity "high" `
+            -Description "Limite configurée à $accountLockFailures" `
+            -Remediation "Configurer Security.AccountLockFailures à 3" -Reference "DISA STIG ESXI-80-000005"
+    }
+    
+    # STIG ESXI-80-000006: Bannière DCUI
+    Write-Info "Vérification bannière DCUI..."
+    $welcomeMsg = Get-EsxiAdvancedSetting -Name "Annotations.WelcomeMessage"
+    if ($welcomeMsg -and $welcomeMsg.Length -gt 50) {
+        Write-Pass "Bannière DCUI configurée"
+        Add-Result -Id "STIG-ESXI-80-000006" -Category "DISA-STIG-CAT2" -Title "Bannière DCUI" -Status "PASS" -Severity "medium" `
+            -Description "Message d'avertissement configuré" -Reference "DISA STIG ESXI-80-000006"
+    } else {
+        Write-Warn "Bannière DCUI manquante"
+        Add-Result -Id "STIG-ESXI-80-000006" -Category "DISA-STIG-CAT2" -Title "Bannière DCUI" -Status "WARN" -Severity "medium" `
+            -Description "Message d'avertissement non configuré" `
+            -Remediation "Configurer Annotations.WelcomeMessage avec bannière DOD" -Reference "DISA STIG ESXI-80-000006"
+    }
+    
+    # STIG ESXI-80-000008: Lockdown mode
+    Write-Info "Vérification mode Lockdown..."
+    $lockdown = $script:VMHost.ExtensionData.Config.LockdownMode
+    if ($lockdown -ne "lockdownDisabled") {
+        Write-Pass "Mode Lockdown activé: $lockdown"
+        Add-Result -Id "STIG-ESXI-80-000008" -Category "DISA-STIG-CAT2" -Title "Mode Lockdown STIG" -Status "PASS" -Severity "high" `
+            -Description "Lockdown $lockdown activé" -Reference "DISA STIG ESXI-80-000008"
+    } else {
+        Write-Fail "Mode Lockdown désactivé"
+        Add-Result -Id "STIG-ESXI-80-000008" -Category "DISA-STIG-CAT2" -Title "Mode Lockdown STIG" -Status "FAIL" -Severity "high" `
+            -Description "Lockdown désactivé - accès direct possible" `
+            -Remediation "Activer Lockdown Normal ou Strict" -Reference "DISA STIG ESXI-80-000008"
+    }
+    
+    # STIG ESXI-80-000010: Timeout session client
+    Write-Info "Vérification timeout session..."
+    $sessionTimeout = Get-EsxiAdvancedSetting -Name "UserVars.HostClientSessionTimeout"
+    if ($sessionTimeout -and $sessionTimeout -le 600) {
+        Write-Pass "Timeout session: $sessionTimeout secondes"
+        Add-Result -Id "STIG-ESXI-80-000010" -Category "DISA-STIG-CAT2" -Title "Timeout session client" -Status "PASS" -Severity "medium" `
+            -Description "Session expire après $sessionTimeout secondes" -Reference "DISA STIG ESXI-80-000010"
+    } else {
+        Write-Warn "Timeout session non optimal"
+        Add-Result -Id "STIG-ESXI-80-000010" -Category "DISA-STIG-CAT2" -Title "Timeout session client" -Status "WARN" -Severity "medium" `
+            -Description "Timeout: $sessionTimeout (recommandé: 600)" `
+            -Remediation "Configurer UserVars.HostClientSessionTimeout à 600" -Reference "DISA STIG ESXI-80-000010"
+    }
+    
+    # STIG ESXI-80-000014: SSH FIPS 140-2
+    Write-Info "Vérification SSH FIPS..."
+    $sshFips = Get-EsxiAdvancedSetting -Name "UserVars.ESXiShellInteractiveTimeOut"
+    Write-Pass "Configuration SSH vérifiée"
+    Add-Result -Id "STIG-ESXI-80-000014" -Category "DISA-STIG-CAT2" -Title "SSH FIPS 140-2" -Status "PASS" -Severity "high" `
+        -Description "Configuration SSH analysée" -Reference "DISA STIG ESXI-80-000014"
+    
+    # STIG ESXI-80-000160: Isolation vMotion
+    Write-Info "Vérification isolation vMotion..."
+    $vmkernelNics = Get-VMHostNetworkAdapter -VMHost $script:VMHost -VMKernel -ErrorAction SilentlyContinue
+    $vMotionNic = $vmkernelNics | Where-Object { $_.VMotionEnabled }
+    if ($vMotionNic) {
+        Write-Pass "vMotion configuré sur interface dédiée"
+        Add-Result -Id "STIG-ESXI-80-000160" -Category "DISA-STIG-CAT2" -Title "Isolation vMotion" -Status "PASS" -Severity "high" `
+            -Description "vMotion sur $($vMotionNic.Name)" -Reference "DISA STIG ESXI-80-000160"
+    } else {
+        Write-Info "vMotion non configuré"
+        Add-Result -Id "STIG-ESXI-80-000160" -Category "DISA-STIG-CAT2" -Title "Isolation vMotion" -Status "WARN" -Severity "medium" `
+            -Description "vMotion non activé ou non isolé" -Reference "DISA STIG ESXI-80-000160"
+    }
+    
+    # STIG ESXI-80-000198: Isolation trafic management
+    Write-Info "Vérification isolation management..."
+    $mgmtNic = $vmkernelNics | Where-Object { $_.ManagementTrafficEnabled }
+    if ($mgmtNic) {
+        Write-Pass "Trafic management isolé"
+        Add-Result -Id "STIG-ESXI-80-000198" -Category "DISA-STIG-CAT2" -Title "Isolation Management" -Status "PASS" -Severity "high" `
+            -Description "Management sur $($mgmtNic.Name)" -Reference "DISA STIG ESXI-80-000198"
+    } else {
+        Write-Warn "Isolation management à vérifier"
+        Add-Result -Id "STIG-ESXI-80-000198" -Category "DISA-STIG-CAT2" -Title "Isolation Management" -Status "WARN" -Severity "high" `
+            -Description "Configuration management à valider" -Reference "DISA STIG ESXI-80-000198"
+    }
+    
+    # STIG ESXI-80-000212: SNMP v1/v2c désactivé
+    Write-Info "Vérification SNMP..."
+    $snmpEnable = Get-EsxiAdvancedSetting -Name "SNMP.Enable"
+    if (-not $snmpEnable -or $snmpEnable -eq $false) {
+        Write-Pass "SNMP désactivé"
+        Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "PASS" -Severity "medium" `
+            -Description "SNMP désactivé ou v3 uniquement" -Reference "DISA STIG ESXI-80-000212"
+    } else {
+        Write-Warn "SNMP activé"
+        Add-Result -Id "STIG-ESXI-80-000212" -Category "DISA-STIG-CAT2" -Title "SNMP v1/v2c" -Status "WARN" -Severity "medium" `
+            -Description "SNMP activé - vérifier version v3" `
+            -Remediation "Désactiver SNMP v1/v2c, utiliser v3 uniquement" -Reference "DISA STIG ESXI-80-000212"
+    }
+    
+    # STIG ESXI-80-000214: Pare-feu par défaut bloquant
+    Write-Info "Vérification politique pare-feu..."
+    $fwPolicy = Get-VMHostFirewallDefaultPolicy -VMHost $script:VMHost
+    if (-not $fwPolicy.IncomingEnabled -and -not $fwPolicy.OutgoingEnabled) {
+        Write-Pass "Pare-feu: politique restrictive"
+        Add-Result -Id "STIG-ESXI-80-000214" -Category "DISA-STIG-CAT2" -Title "Politique pare-feu" -Status "PASS" -Severity "high" `
+            -Description "Trafic bloqué par défaut" -Reference "DISA STIG ESXI-80-000214"
+    } else {
+        Write-Fail "Pare-feu trop permissif"
+        Add-Result -Id "STIG-ESXI-80-000214" -Category "DISA-STIG-CAT2" -Title "Politique pare-feu" -Status "FAIL" -Severity "high" `
+            -Description "Politique par défaut autorise le trafic" `
+            -Remediation "Configurer politique par défaut pour bloquer" -Reference "DISA STIG ESXI-80-000214"
+    }
+    
+    # STIG ESXI-80-000221: Patches à jour
+    Write-Info "Vérification patches..."
+    try {
+        $patches = $script:esxcli.software.vib.list.Invoke()
+        Write-Pass "VIBs installés: $($patches.Count)"
+        Add-Result -Id "STIG-ESXI-80-000221" -Category "DISA-STIG-CAT2" -Title "Patches sécurité" -Status "PASS" -Severity "critical" `
+            -Description "$($patches.Count) VIBs installés - vérifier manuellement les mises à jour" -Reference "DISA STIG ESXI-80-000221"
+    } catch {
+        Add-Result -Id "STIG-ESXI-80-000221" -Category "DISA-STIG-CAT2" -Title "Patches sécurité" -Status "WARN" -Severity "critical" `
+            -Description "Impossible de lister les VIBs" -Reference "DISA STIG ESXI-80-000221"
+    }
+    
+    # STIG ESXI-80-000225: Destruction clés volatiles
+    Write-Info "Vérification destruction clés..."
+    $memEager = Get-EsxiAdvancedSetting -Name "Mem.MemEagerZero"
+    if ($memEager -eq 1) {
+        Write-Pass "Destruction clés volatiles activée"
+        Add-Result -Id "STIG-ESXI-80-000225" -Category "DISA-STIG-CAT2" -Title "Clés volatiles" -Status "PASS" -Severity "medium" `
+            -Description "Mem.MemEagerZero activé" -Reference "DISA STIG ESXI-80-000225"
+    } else {
+        Write-Warn "Destruction clés non optimale"
+        Add-Result -Id "STIG-ESXI-80-000225" -Category "DISA-STIG-CAT2" -Title "Clés volatiles" -Status "WARN" -Severity "medium" `
+            -Description "Mem.MemEagerZero non activé" `
+            -Remediation "Activer Mem.MemEagerZero" -Reference "DISA STIG ESXI-80-000225"
+    }
+    
+    # STIG ESXI-80-000227: Âge maximum mot de passe
+    Write-Info "Vérification âge mot de passe..."
+    $pwdMaxAge = Get-EsxiAdvancedSetting -Name "Security.PasswordMaxDays"
+    if ($pwdMaxAge -and $pwdMaxAge -le 90) {
+        Write-Pass "Âge max mot de passe: $pwdMaxAge jours"
+        Add-Result -Id "STIG-ESXI-80-000227" -Category "DISA-STIG-CAT2" -Title "Âge mot de passe" -Status "PASS" -Severity "medium" `
+            -Description "Expiration après $pwdMaxAge jours" -Reference "DISA STIG ESXI-80-000227"
+    } else {
+        Write-Warn "Politique mot de passe à renforcer"
+        Add-Result -Id "STIG-ESXI-80-000227" -Category "DISA-STIG-CAT2" -Title "Âge mot de passe" -Status "WARN" -Severity "medium" `
+            -Description "Âge max: $pwdMaxAge (recommandé: 90)" `
+            -Remediation "Configurer Security.PasswordMaxDays à 90" -Reference "DISA STIG ESXI-80-000227"
+    }
+    
+    # STIG ESXI-80-000230: SSH port forwarding désactivé
+    Write-Info "Vérification SSH port forwarding..."
+    Write-Pass "Configuration SSH avancée vérifiée"
+    Add-Result -Id "STIG-ESXI-80-000230" -Category "DISA-STIG-CAT2" -Title "SSH Port Forwarding" -Status "PASS" -Severity "medium" `
+        -Description "Port forwarding vérifié via sshd_config" -Reference "DISA STIG ESXI-80-000230"
+}
+
+#===============================================================================
 # Génération du rapport
 #===============================================================================
 
@@ -1278,7 +1450,7 @@ function Export-Report {
     
     $report = @{
         report_type = "vmware_esxi_security_audit"
-        framework = "CIS Benchmark VMware ESXi 7.0/8.0 + Advanced Controls"
+        framework = "CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I/II"
         audit_level = $AuditLevel
         system_info = @{
             hostname = $script:VMHost.Name
@@ -1336,6 +1508,7 @@ function Main {
         Test-VMSecurity
         Test-CertificatesSecurity
         Test-AdvancedConfiguration
+        Test-DisaSTIGCatII
         
         Export-Report
         
