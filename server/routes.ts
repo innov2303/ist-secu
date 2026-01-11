@@ -405,6 +405,33 @@ export async function registerRoutes(
       }
     }
 
+    // Handle bundle downloads - combine all bundled scripts into one file
+    if (script.bundledScriptIds && script.bundledScriptIds.length > 0) {
+      const bundledScripts = await Promise.all(
+        script.bundledScriptIds.map(id => storage.getScript(id))
+      );
+      
+      const separator = script.os === "Windows" 
+        ? "#".repeat(80) + "\n# " 
+        : "#".repeat(80) + "\n# ";
+      
+      let combinedContent = "";
+      for (const bundledScript of bundledScripts) {
+        if (bundledScript) {
+          combinedContent += `${separator}${bundledScript.name}\n# Fichier: ${bundledScript.filename}\n${"#".repeat(80)}\n\n`;
+          combinedContent += bundledScript.content;
+          combinedContent += "\n\n";
+        }
+      }
+      
+      const extension = script.os === "Windows" ? "ps1" : "sh";
+      const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}-combined.${extension}`;
+      
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      return res.send(combinedContent);
+    }
+
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.send(script.content);
