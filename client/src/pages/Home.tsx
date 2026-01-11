@@ -9,6 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const CONTACT_SUBJECTS = [
+  { value: "question", label: "Question générale", description: "Renseignements sur nos produits ou services" },
+  { value: "technical", label: "Support technique", description: "Aide à l'installation ou utilisation des scripts" },
+  { value: "billing", label: "Facturation", description: "Questions sur les paiements, factures ou abonnements" },
+  { value: "enterprise", label: "Licence entreprise", description: "Déploiement multi-sites ou licences volume" },
+  { value: "partnership", label: "Partenariat", description: "Propositions de collaboration ou intégration" },
+  { value: "feedback", label: "Suggestion", description: "Idées d'amélioration ou nouvelles fonctionnalités" },
+  { value: "other", label: "Autre", description: "Tout autre sujet non listé ci-dessus" },
+];
 import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -176,8 +187,10 @@ export default function Home() {
               e.preventDefault();
               setSending(true);
               try {
+                const subjectLabel = CONTACT_SUBJECTS.find(s => s.value === contactForm.subject)?.label || contactForm.subject;
                 const response = await apiRequest("POST", "/api/contact", {
                   ...contactForm,
+                  subject: subjectLabel,
                   userId: user?.id || null,
                   name: contactForm.name || user?.firstName || "",
                   email: contactForm.email || user?.email || "",
@@ -216,15 +229,25 @@ export default function Home() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact-subject">Sujet</Label>
-                <Input
-                  id="contact-subject"
+                <Label htmlFor="contact-subject">Motif de contact</Label>
+                <Select
                   value={contactForm.subject}
-                  onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                  placeholder="Sujet de votre message"
-                  required
-                  data-testid="input-contact-subject"
-                />
+                  onValueChange={(value) => setContactForm({ ...contactForm, subject: value })}
+                >
+                  <SelectTrigger data-testid="select-contact-subject">
+                    <SelectValue placeholder="Sélectionnez un motif" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTACT_SUBJECTS.map((subject) => (
+                      <SelectItem key={subject.value} value={subject.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{subject.label}</span>
+                          <span className="text-xs text-muted-foreground">{subject.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact-description">Description</Label>
