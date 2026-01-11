@@ -50,3 +50,20 @@ export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: tru
 
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
+
+// Contact requests table
+export const contactRequests = pgTable("contact_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  status: text("status").notNull().default("pending"),
+});
+
+export const insertContactRequestSchema = createInsertSchema(contactRequests).omit({ id: true, createdAt: true, status: true });
+
+export type ContactRequest = typeof contactRequests.$inferSelect;
+export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;

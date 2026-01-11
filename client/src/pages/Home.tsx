@@ -6,13 +6,22 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Home() {
   const { data: scripts, isLoading, error } = useScripts();
   const { user, isLoading: authLoading, logout } = useAuth();
   const [supportOpen, setSupportOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", description: "" });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const { toast } = useToast();
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,38 +140,111 @@ export default function Home() {
         </div>
       </footer>
 
-      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+      <Dialog open={supportOpen} onOpenChange={(open) => {
+        setSupportOpen(open);
+        if (!open) {
+          setSent(false);
+          setContactForm({ name: "", email: "", subject: "", description: "" });
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-primary" />
-              Contacter le Support
+              Nous contacter
             </DialogTitle>
             <DialogDescription>
-              Pour toute question ou assistance, contactez-nous par email.
+              Envoyez-nous un message et nous vous répondrons rapidement.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              Notre équipe support est disponible pour vous aider avec :
-            </p>
-            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-              <li>Questions sur les scripts et leur utilisation</li>
-              <li>Problèmes de paiement ou d'abonnement</li>
-              <li>Demandes de fonctionnalités</li>
-              <li>Signalement de bugs</li>
-            </ul>
-            <div className="pt-4 border-t">
-              <a 
-                href="mailto:cyrilallegretb@gmail.com" 
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                data-testid="link-email-support"
-              >
-                <Mail className="h-4 w-4" />
-                cyrilallegretb@gmail.com
-              </a>
+          {sent ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Message envoyé</h3>
+              <p className="text-sm text-muted-foreground">
+                Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.
+              </p>
             </div>
-          </div>
+          ) : (
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSending(true);
+              try {
+                await apiRequest("POST", "/api/contact", {
+                  ...contactForm,
+                  userId: user?.id || null,
+                  name: contactForm.name || user?.firstName || "",
+                  email: contactForm.email || user?.email || "",
+                });
+                setSent(true);
+                toast({ title: "Message envoyé", description: "Nous vous répondrons rapidement." });
+              } catch (error) {
+                toast({ title: "Erreur", description: "Impossible d'envoyer le message.", variant: "destructive" });
+              } finally {
+                setSending(false);
+              }
+            }} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="contact-name">Nom</Label>
+                <Input
+                  id="contact-name"
+                  value={contactForm.name || user?.firstName || ""}
+                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                  placeholder="Votre nom"
+                  required
+                  data-testid="input-contact-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact-email">Email</Label>
+                <Input
+                  id="contact-email"
+                  type="email"
+                  value={contactForm.email || user?.email || ""}
+                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                  placeholder="votre@email.com"
+                  required
+                  data-testid="input-contact-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact-subject">Sujet</Label>
+                <Input
+                  id="contact-subject"
+                  value={contactForm.subject}
+                  onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
+                  placeholder="Sujet de votre message"
+                  required
+                  data-testid="input-contact-subject"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact-description">Description</Label>
+                <Textarea
+                  id="contact-description"
+                  value={contactForm.description}
+                  onChange={(e) => setContactForm({ ...contactForm, description: e.target.value })}
+                  placeholder="Décrivez votre demande..."
+                  rows={4}
+                  required
+                  data-testid="input-contact-description"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={sending} data-testid="button-send-contact">
+                {sending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Envoyer
+                  </>
+                )}
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

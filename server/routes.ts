@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, registerSchema, loginSchema } from "@shared/schema";
+import { users, purchases, registerSchema, loginSchema, contactRequests, insertContactRequestSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
@@ -765,6 +765,52 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Checkout success error:', error);
       res.status(500).json({ message: "Error verifying payment" });
+    }
+  });
+
+  // Contact request endpoint
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const result = insertContactRequestSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const [contactRequest] = await db.insert(contactRequests).values(result.data).returning();
+      res.status(201).json({ success: true, id: contactRequest.id });
+    } catch (error) {
+      console.error("Contact request error:", error);
+      res.status(500).json({ message: "Erreur lors de l'envoi du message" });
+    }
+  });
+
+  // Admin: Get all contact requests
+  app.get("/api/admin/contact-requests", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const requests = await db.select().from(contactRequests).orderBy(sql`${contactRequests.createdAt} DESC`);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching contact requests:", error);
+      res.status(500).json({ message: "Error fetching contact requests" });
+    }
+  });
+
+  // Admin: Update contact request status
+  app.patch("/api/admin/contact-requests/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const [updated] = await db
+        .update(contactRequests)
+        .set({ status })
+        .where(eq(contactRequests.id, parseInt(id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating contact request:", error);
+      res.status(500).json({ message: "Error updating contact request" });
     }
   });
 
