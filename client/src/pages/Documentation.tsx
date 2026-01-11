@@ -47,17 +47,19 @@ function getExecutionInstructions(script: Script): { steps: string[]; command: s
   if (os === "VMware") {
     return {
       prerequisites: [
-        "Windows avec PowerShell 5.1+",
-        "VMware PowerCLI installé",
-        "Accès administrateur à vCenter/ESXi",
+        "Machine Windows avec PowerShell 5.1 ou supérieur",
+        "Module VMware PowerCLI installé (cmdlets PowerShell pour VMware)",
+        "Accès réseau vers vCenter Server ou hôte ESXi",
+        "Compte avec privilèges administrateur sur vCenter/ESXi",
         "ESXi 7.0 ou 8.0"
       ],
       steps: [
-        "Installez VMware PowerCLI si nécessaire",
-        "Connectez-vous à votre vCenter ou hôte ESXi",
-        "Exécutez le script d'audit"
+        "Ouvrez PowerShell en tant qu'administrateur sur votre machine Windows",
+        "Installez le module VMware PowerCLI si ce n'est pas déjà fait",
+        "Connectez-vous à votre vCenter Server ou hôte ESXi via PowerCLI",
+        "Exécutez le script d'audit qui utilise les commandes PowerCLI"
       ],
-      command: `Install-Module -Name VMware.PowerCLI -Scope CurrentUser\nConnect-VIServer -Server <vcenter_ou_esxi>\n.\\${filename}`
+      command: `# Installation de PowerCLI (une seule fois)\nInstall-Module -Name VMware.PowerCLI -Scope CurrentUser -Force\n\n# Connexion à vCenter/ESXi\nConnect-VIServer -Server <adresse_vcenter_ou_esxi> -User <utilisateur> -Password <motdepasse>\n\n# Exécution du script d'audit\n.\\${filename}`
     };
   }
 
