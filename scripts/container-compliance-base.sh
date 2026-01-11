@@ -70,14 +70,22 @@ detect_container_runtime() {
     PODMAN_AVAILABLE=false
     KUBERNETES_AVAILABLE=false
     CONTAINERD_AVAILABLE=false
+    CONTAINER_CMD=""
+    CONTAINER_RUNTIME=""
     
     if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
         DOCKER_AVAILABLE=true
+        CONTAINER_CMD="docker"
+        CONTAINER_RUNTIME="docker"
         write_info "Docker détecté"
     fi
     
-    if command -v podman &>/dev/null; then
+    if command -v podman &>/dev/null && podman info &>/dev/null 2>&1; then
         PODMAN_AVAILABLE=true
+        if [[ -z "$CONTAINER_CMD" ]]; then
+            CONTAINER_CMD="podman"
+            CONTAINER_RUNTIME="podman"
+        fi
         write_info "Podman détecté"
     fi
     
@@ -86,24 +94,46 @@ detect_container_runtime() {
         write_info "Kubernetes détecté"
     fi
     
+    if command -v oc &>/dev/null && oc whoami &>/dev/null 2>&1; then
+        OPENSHIFT_AVAILABLE=true
+        write_info "OpenShift détecté"
+    else
+        OPENSHIFT_AVAILABLE=false
+    fi
+    
     if command -v ctr &>/dev/null || [[ -S /run/containerd/containerd.sock ]]; then
         CONTAINERD_AVAILABLE=true
         write_info "Containerd détecté"
     fi
     
-    if ! $DOCKER_AVAILABLE && ! $PODMAN_AVAILABLE && ! $KUBERNETES_AVAILABLE; then
+    if [[ -z "$CONTAINER_CMD" ]] && ! $KUBERNETES_AVAILABLE; then
         write_warn "Aucun runtime de conteneur détecté"
+    else
+        write_info "Runtime principal: $CONTAINER_RUNTIME"
     fi
+}
+
+container_exec() {
+    if [[ -n "$CONTAINER_CMD" ]]; then
+        $CONTAINER_CMD "$@" 2>/dev/null
+    else
+        return 1
+    fi
+}
+
+container_available() {
+    [[ -n "$CONTAINER_CMD" ]]
 }
 
 #===============================================================================
 # Vérifications Docker CIS Level 1
 #===============================================================================
 
-check_docker_host_configuration() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+check_container_host_configuration() {
+    if ! container_available; then return; fi
     
-    echo -e "\n${CYAN}=== Docker Host Configuration (CIS Section 1) ===${NC}\n"
+    echo -e "\n${CYAN}=== Container Host Configuration (CIS Section 1) ===${NC}\n"
+    write_info "Runtime: $CONTAINER_RUNTIME"
     
     # 1.1.1 - Partition séparée pour /var/lib/docker
     write_info "Vérification partition Docker..."
@@ -172,16 +202,16 @@ check_docker_host_configuration() {
 }
 
 check_docker_daemon_configuration() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Docker Daemon Configuration (CIS Section 2) ===${NC}\n"
     
     local docker_info
-    docker_info=$(docker info 2>/dev/null)
+    docker_info=$(container_exec info 2>/dev/null)
     
     # 2.1 - Network traffic entre containers
     write_info "Vérification trafic inter-conteneurs..."
-    if docker network inspect bridge 2>/dev/null | grep -q '"com.docker.network.bridge.enable_icc": "false"'; then
+    if container_exec network inspect bridge 2>/dev/null | grep -q '"com.docker.network.bridge.enable_icc": "false"'; then
         write_pass "ICC désactivé sur bridge"
         add_result "CIS-DOCKER-2.1" "Docker-Daemon" "Inter-container Communication" "PASS" "high" \
             "Communication inter-conteneurs restreinte" "" "CIS Docker 2.1"
@@ -391,7 +421,7 @@ check_docker_daemon_configuration() {
 }
 
 check_docker_daemon_files() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Docker Daemon Files (CIS Section 3) ===${NC}\n"
     
@@ -506,7 +536,7 @@ check_docker_daemon_files() {
 }
 
 check_container_images() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Container Images (CIS Section 4) ===${NC}\n"
     
@@ -519,12 +549,12 @@ check_container_images() {
         if [[ -n "$container_id" ]]; then
             ((total_containers++))
             local user
-            user=$(docker inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null)
+            user=$(container_exec inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null)
             if [[ -z "$user" || "$user" == "root" || "$user" == "0" ]]; then
                 ((root_containers++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total_containers -eq 0 ]]; then
         write_info "Aucun conteneur en cours d'exécution"
@@ -563,12 +593,12 @@ check_container_images() {
         if [[ -n "$container_id" ]]; then
             ((total_containers++))
             local healthcheck
-            healthcheck=$(docker inspect --format '{{.Config.Healthcheck}}' "$container_id" 2>/dev/null)
+            healthcheck=$(container_exec inspect --format '{{.Config.Healthcheck}}' "$container_id" 2>/dev/null)
             if [[ -z "$healthcheck" || "$healthcheck" == "<nil>" ]]; then
                 ((no_healthcheck++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total_containers -eq 0 ]]; then
         add_result "CIS-DOCKER-4.3" "Container-Images" "HEALTHCHECK" "PASS" "medium" \
@@ -586,7 +616,7 @@ check_container_images() {
 }
 
 check_container_runtime() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Container Runtime (CIS Section 5) ===${NC}\n"
     
@@ -599,12 +629,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local apparmor
-            apparmor=$(docker inspect --format '{{.AppArmorProfile}}' "$container_id" 2>/dev/null)
+            apparmor=$(container_exec inspect --format '{{.AppArmorProfile}}' "$container_id" 2>/dev/null)
             if [[ -z "$apparmor" || "$apparmor" == "unconfined" ]]; then
                 ((no_apparmor++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.1" "Container-Runtime" "AppArmor Profile" "PASS" "high" \
@@ -646,12 +676,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local caps
-            caps=$(docker inspect --format '{{.HostConfig.CapAdd}}' "$container_id" 2>/dev/null)
+            caps=$(container_exec inspect --format '{{.HostConfig.CapAdd}}' "$container_id" 2>/dev/null)
             if [[ -n "$caps" && "$caps" != "[]" && "$caps" != "<nil>" ]]; then
                 ((elevated_caps++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.3" "Container-Runtime" "Linux Capabilities" "PASS" "high" \
@@ -676,12 +706,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local priv
-            priv=$(docker inspect --format '{{.HostConfig.Privileged}}' "$container_id" 2>/dev/null)
+            priv=$(container_exec inspect --format '{{.HostConfig.Privileged}}' "$container_id" 2>/dev/null)
             if [[ "$priv" == "true" ]]; then
                 ((privileged++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.4" "Container-Runtime" "Privileged Containers" "PASS" "critical" \
@@ -709,7 +739,7 @@ check_container_runtime() {
                 ((ssh_found++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.5" "Container-Runtime" "SSH in Containers" "PASS" "high" \
@@ -742,7 +772,7 @@ check_container_runtime() {
                 fi
             done
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.6" "Container-Runtime" "Privileged Ports" "PASS" "medium" \
@@ -767,12 +797,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local netmode
-            netmode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$container_id" 2>/dev/null)
+            netmode=$(container_exec inspect --format '{{.HostConfig.NetworkMode}}' "$container_id" 2>/dev/null)
             if [[ "$netmode" == "host" ]]; then
                 ((host_net++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.7" "Container-Runtime" "Host Network Mode" "PASS" "high" \
@@ -797,12 +827,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local mem
-            mem=$(docker inspect --format '{{.HostConfig.Memory}}' "$container_id" 2>/dev/null)
+            mem=$(container_exec inspect --format '{{.HostConfig.Memory}}' "$container_id" 2>/dev/null)
             if [[ "$mem" == "0" ]]; then
                 ((no_mem_limit++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.8" "Container-Runtime" "Memory Limits" "PASS" "medium" \
@@ -827,12 +857,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local cpu
-            cpu=$(docker inspect --format '{{.HostConfig.NanoCpus}}' "$container_id" 2>/dev/null)
+            cpu=$(container_exec inspect --format '{{.HostConfig.NanoCpus}}' "$container_id" 2>/dev/null)
             if [[ "$cpu" == "0" ]]; then
                 ((no_cpu_limit++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.9" "Container-Runtime" "CPU Limits" "PASS" "medium" \
@@ -857,12 +887,12 @@ check_container_runtime() {
         if [[ -n "$container_id" ]]; then
             ((total++))
             local readonly_fs
-            readonly_fs=$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container_id" 2>/dev/null)
+            readonly_fs=$(container_exec inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container_id" 2>/dev/null)
             if [[ "$readonly_fs" != "true" ]]; then
                 ((rw_root++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         add_result "CIS-DOCKER-5.10" "Container-Runtime" "Read-only Root FS" "PASS" "medium" \

@@ -70,14 +70,22 @@ detect_container_runtime() {
     PODMAN_AVAILABLE=false
     KUBERNETES_AVAILABLE=false
     CONTAINERD_AVAILABLE=false
+    CONTAINER_CMD=""
+    CONTAINER_RUNTIME=""
     
     if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
         DOCKER_AVAILABLE=true
+        CONTAINER_CMD="docker"
+        CONTAINER_RUNTIME="docker"
         write_info "Docker détecté"
     fi
     
-    if command -v podman &>/dev/null; then
+    if command -v podman &>/dev/null && podman info &>/dev/null 2>&1; then
         PODMAN_AVAILABLE=true
+        if [[ -z "$CONTAINER_CMD" ]]; then
+            CONTAINER_CMD="podman"
+            CONTAINER_RUNTIME="podman"
+        fi
         write_info "Podman détecté"
     fi
     
@@ -86,10 +94,35 @@ detect_container_runtime() {
         write_info "Kubernetes détecté"
     fi
     
+    if command -v oc &>/dev/null && oc whoami &>/dev/null 2>&1; then
+        OPENSHIFT_AVAILABLE=true
+        write_info "OpenShift détecté"
+    else
+        OPENSHIFT_AVAILABLE=false
+    fi
+    
     if command -v ctr &>/dev/null || [[ -S /run/containerd/containerd.sock ]]; then
         CONTAINERD_AVAILABLE=true
         write_info "Containerd détecté"
     fi
+    
+    if [[ -z "$CONTAINER_CMD" ]] && ! $KUBERNETES_AVAILABLE; then
+        write_warn "Aucun runtime de conteneur détecté"
+    else
+        write_info "Runtime principal: $CONTAINER_RUNTIME"
+    fi
+}
+
+container_exec() {
+    if [[ -n "$CONTAINER_CMD" ]]; then
+        $CONTAINER_CMD "$@" 2>/dev/null
+    else
+        return 1
+    fi
+}
+
+container_available() {
+    [[ -n "$CONTAINER_CMD" ]]
 }
 
 #===============================================================================
@@ -97,7 +130,7 @@ detect_container_runtime() {
 #===============================================================================
 
 check_docker_host_configuration() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Docker Host Configuration (CIS Section 1) ===${NC}\n"
     
@@ -170,16 +203,16 @@ check_docker_host_configuration() {
 #===============================================================================
 
 check_docker_daemon_configuration() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Docker Daemon Configuration (CIS Section 2) ===${NC}\n"
     
     local docker_info
-    docker_info=$(docker info 2>/dev/null)
+    docker_info=$(container_exec info 2>/dev/null)
     
     # 2.1 - Network traffic entre containers
     write_info "Vérification trafic inter-conteneurs..."
-    if docker network inspect bridge 2>/dev/null | grep -q '"com.docker.network.bridge.enable_icc": "false"'; then
+    if container_exec network inspect bridge 2>/dev/null | grep -q '"com.docker.network.bridge.enable_icc": "false"'; then
         write_pass "ICC désactivé sur bridge"
         add_result "CIS-DOCKER-2.1" "Docker-Daemon" "Inter-container Communication" "PASS" "high" \
             "Communication inter-conteneurs restreinte" "" "CIS Docker 2.1"
@@ -406,7 +439,7 @@ check_docker_daemon_configuration() {
 #===============================================================================
 
 check_docker_daemon_files() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Docker Daemon Files (CIS Section 3) ===${NC}\n"
     
@@ -484,7 +517,7 @@ check_docker_daemon_files() {
 #===============================================================================
 
 check_container_images() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Container Images (CIS Section 4) ===${NC}\n"
     
@@ -497,12 +530,12 @@ check_container_images() {
         if [[ -n "$container_id" ]]; then
             ((total_containers++))
             local user
-            user=$(docker inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null)
+            user=$(container_exec inspect --format '{{.Config.User}}' "$container_id" 2>/dev/null)
             if [[ -z "$user" || "$user" == "root" || "$user" == "0" ]]; then
                 ((root_containers++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total_containers -eq 0 ]]; then
         add_result "CIS-DOCKER-4.1" "Container-Images" "Non-root Users" "PASS" "high" \
@@ -540,12 +573,12 @@ check_container_images() {
         if [[ -n "$container_id" ]]; then
             ((total_containers++))
             local healthcheck
-            healthcheck=$(docker inspect --format '{{.Config.Healthcheck}}' "$container_id" 2>/dev/null)
+            healthcheck=$(container_exec inspect --format '{{.Config.Healthcheck}}' "$container_id" 2>/dev/null)
             if [[ -z "$healthcheck" || "$healthcheck" == "<nil>" ]]; then
                 ((no_healthcheck++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total_containers -gt 0 && $no_healthcheck -gt 0 ]]; then
         write_warn "$no_healthcheck/$total_containers sans HEALTHCHECK"
@@ -581,7 +614,7 @@ check_container_images() {
                 ((setuid_found++))
             fi
         fi
-    done < <(docker images -q 2>/dev/null | head -5)
+    done < <(container_exec images -q 2>/dev/null | head -5)
     
     if [[ $setuid_found -eq 0 ]]; then
         write_pass "Pas de binaires setuid/setgid excessifs"
@@ -607,7 +640,7 @@ check_container_images() {
         if [[ -n "$repo" && ! "$repo" =~ ^(docker\.io/)?library/ && ! "$repo" =~ ^gcr\.io/ && ! "$repo" =~ ^registry\.k8s\.io/ ]]; then
             ((unofficial++))
         fi
-    done < <(docker images --format '{{.Repository}}' 2>/dev/null | head -20)
+    done < <(container_exec images --format '{{.Repository}}' 2>/dev/null | head -20)
     
     if [[ $unofficial -lt 5 ]]; then
         write_pass "Majorité d'images officielles/vérifiées"
@@ -633,7 +666,7 @@ check_container_images() {
         if [[ "$tag" == "latest" ]]; then
             ((latest_count++))
         fi
-    done < <(docker images --format '{{.Tag}}' 2>/dev/null)
+    done < <(container_exec images --format '{{.Tag}}' 2>/dev/null)
     
     if [[ $latest_count -lt 3 ]]; then
         write_pass "Peu d'images avec tag latest"
@@ -652,7 +685,7 @@ check_container_images() {
 #===============================================================================
 
 check_container_runtime() {
-    if ! $DOCKER_AVAILABLE; then return; fi
+    if ! container_available; then return; fi
     
     echo -e "\n${CYAN}=== Container Runtime (CIS Section 5) ===${NC}\n"
     
@@ -661,7 +694,7 @@ check_container_runtime() {
     # Count running containers
     while IFS= read -r container_id; do
         [[ -n "$container_id" ]] && ((total++))
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $total -eq 0 ]]; then
         write_info "Aucun conteneur en cours d'exécution"
@@ -677,12 +710,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local apparmor
-            apparmor=$(docker inspect --format '{{.AppArmorProfile}}' "$container_id" 2>/dev/null)
+            apparmor=$(container_exec inspect --format '{{.AppArmorProfile}}' "$container_id" 2>/dev/null)
             if [[ -z "$apparmor" || "$apparmor" == "unconfined" ]]; then
                 ((no_apparmor++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $no_apparmor -eq 0 ]]; then
         write_pass "Tous les conteneurs ont AppArmor"
@@ -718,12 +751,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local caps
-            caps=$(docker inspect --format '{{.HostConfig.CapAdd}}' "$container_id" 2>/dev/null)
+            caps=$(container_exec inspect --format '{{.HostConfig.CapAdd}}' "$container_id" 2>/dev/null)
             if [[ -n "$caps" && "$caps" != "[]" && "$caps" != "<nil>" ]]; then
                 ((elevated_caps++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $elevated_caps -eq 0 ]]; then
         write_pass "Aucun conteneur avec capabilities additionnelles"
@@ -743,12 +776,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local priv
-            priv=$(docker inspect --format '{{.HostConfig.Privileged}}' "$container_id" 2>/dev/null)
+            priv=$(container_exec inspect --format '{{.HostConfig.Privileged}}' "$container_id" 2>/dev/null)
             if [[ "$priv" == "true" ]]; then
                 ((privileged++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $privileged -eq 0 ]]; then
         write_pass "Aucun conteneur privilégié"
@@ -771,7 +804,7 @@ check_container_runtime() {
                 ((ssh_found++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $ssh_found -eq 0 ]]; then
         write_pass "Aucun serveur SSH dans les conteneurs"
@@ -799,7 +832,7 @@ check_container_runtime() {
                 fi
             done
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $priv_ports -eq 0 ]]; then
         write_pass "Aucun port privilégié mappé"
@@ -819,12 +852,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local netmode
-            netmode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$container_id" 2>/dev/null)
+            netmode=$(container_exec inspect --format '{{.HostConfig.NetworkMode}}' "$container_id" 2>/dev/null)
             if [[ "$netmode" == "host" ]]; then
                 ((host_net++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $host_net -eq 0 ]]; then
         write_pass "Aucun conteneur en mode host network"
@@ -844,12 +877,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local mem
-            mem=$(docker inspect --format '{{.HostConfig.Memory}}' "$container_id" 2>/dev/null)
+            mem=$(container_exec inspect --format '{{.HostConfig.Memory}}' "$container_id" 2>/dev/null)
             if [[ "$mem" == "0" ]]; then
                 ((no_mem_limit++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $no_mem_limit -eq 0 ]]; then
         write_pass "Tous les conteneurs ont une limite mémoire"
@@ -869,12 +902,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local cpu
-            cpu=$(docker inspect --format '{{.HostConfig.NanoCpus}}' "$container_id" 2>/dev/null)
+            cpu=$(container_exec inspect --format '{{.HostConfig.NanoCpus}}' "$container_id" 2>/dev/null)
             if [[ "$cpu" == "0" ]]; then
                 ((no_cpu_limit++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $no_cpu_limit -eq 0 ]]; then
         write_pass "Tous les conteneurs ont une limite CPU"
@@ -894,12 +927,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local readonly_fs
-            readonly_fs=$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container_id" 2>/dev/null)
+            readonly_fs=$(container_exec inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$container_id" 2>/dev/null)
             if [[ "$readonly_fs" != "true" ]]; then
                 ((rw_root++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $rw_root -eq 0 ]]; then
         write_pass "Tous les conteneurs ont un FS root read-only"
@@ -919,12 +952,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local ipcmode
-            ipcmode=$(docker inspect --format '{{.HostConfig.IpcMode}}' "$container_id" 2>/dev/null)
+            ipcmode=$(container_exec inspect --format '{{.HostConfig.IpcMode}}' "$container_id" 2>/dev/null)
             if [[ "$ipcmode" == "host" ]]; then
                 ((host_ipc++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $host_ipc -eq 0 ]]; then
         write_pass "Aucun conteneur en mode IPC host"
@@ -944,12 +977,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local pidmode
-            pidmode=$(docker inspect --format '{{.HostConfig.PidMode}}' "$container_id" 2>/dev/null)
+            pidmode=$(container_exec inspect --format '{{.HostConfig.PidMode}}' "$container_id" 2>/dev/null)
             if [[ "$pidmode" == "host" ]]; then
                 ((host_pid++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $host_pid -eq 0 ]]; then
         write_pass "Aucun conteneur en mode PID host"
@@ -969,12 +1002,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local utsmode
-            utsmode=$(docker inspect --format '{{.HostConfig.UTSMode}}' "$container_id" 2>/dev/null)
+            utsmode=$(container_exec inspect --format '{{.HostConfig.UTSMode}}' "$container_id" 2>/dev/null)
             if [[ "$utsmode" == "host" ]]; then
                 ((host_uts++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $host_uts -eq 0 ]]; then
         write_pass "Aucun conteneur en mode UTS host"
@@ -994,12 +1027,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local seccomp
-            seccomp=$(docker inspect --format '{{.HostConfig.SecurityOpt}}' "$container_id" 2>/dev/null)
+            seccomp=$(container_exec inspect --format '{{.HostConfig.SecurityOpt}}' "$container_id" 2>/dev/null)
             if echo "$seccomp" | grep -q "seccomp=unconfined"; then
                 ((no_seccomp++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $no_seccomp -eq 0 ]]; then
         write_pass "Tous les conteneurs ont Seccomp actif"
@@ -1019,12 +1052,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local pids_limit
-            pids_limit=$(docker inspect --format '{{.HostConfig.PidsLimit}}' "$container_id" 2>/dev/null)
+            pids_limit=$(container_exec inspect --format '{{.HostConfig.PidsLimit}}' "$container_id" 2>/dev/null)
             if [[ "$pids_limit" == "0" || "$pids_limit" == "-1" || "$pids_limit" == "<nil>" ]]; then
                 ((no_pids_limit++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $no_pids_limit -eq 0 ]]; then
         write_pass "Tous les conteneurs ont une limite PIDs"
@@ -1044,12 +1077,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local mounts
-            mounts=$(docker inspect --format '{{range .Mounts}}{{.Source}} {{end}}' "$container_id" 2>/dev/null)
+            mounts=$(container_exec inspect --format '{{range .Mounts}}{{.Source}} {{end}}' "$container_id" 2>/dev/null)
             if echo "$mounts" | grep -q "docker.sock"; then
                 ((docker_sock_mounted++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $docker_sock_mounted -eq 0 ]]; then
         write_pass "Aucun conteneur n'a accès au socket Docker"
@@ -1069,12 +1102,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local cgroup
-            cgroup=$(docker inspect --format '{{.HostConfig.CgroupParent}}' "$container_id" 2>/dev/null)
+            cgroup=$(container_exec inspect --format '{{.HostConfig.CgroupParent}}' "$container_id" 2>/dev/null)
             if [[ -n "$cgroup" && "$cgroup" != "" ]]; then
                 ((custom_cgroup++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     write_pass "Configuration cgroup vérifiée"
     add_result "CIS-DOCKER-5.17" "Container-Runtime" "Cgroup Parent" "PASS" "low" \
@@ -1087,12 +1120,12 @@ check_container_runtime() {
     while IFS= read -r container_id; do
         if [[ -n "$container_id" ]]; then
             local secopt
-            secopt=$(docker inspect --format '{{.HostConfig.SecurityOpt}}' "$container_id" 2>/dev/null)
+            secopt=$(container_exec inspect --format '{{.HostConfig.SecurityOpt}}' "$container_id" 2>/dev/null)
             if ! echo "$secopt" | grep -q "no-new-privileges"; then
                 ((allows_new_priv++))
             fi
         fi
-    done < <(docker ps -q 2>/dev/null)
+    done < <(container_exec ps -q 2>/dev/null)
     
     if [[ $allows_new_priv -eq 0 ]]; then
         write_pass "Tous les conteneurs ont no-new-privileges"
