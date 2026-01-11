@@ -197,8 +197,10 @@ export class DatabaseStorage implements IStorage {
   async updateScriptsFromFiles(): Promise<void> {
     const existingScripts = await this.getScripts();
     const scriptFiles: Record<string, string> = {
-      "linux-security-base-anssi.sh": this.loadScriptContent("linux-security-base-anssi.sh"),
-      "linux-security-enhanced-anssi.sh": this.loadScriptContent("linux-security-enhanced-anssi.sh"),
+      "linux-compliance-base.sh": this.loadScriptContent("linux-compliance-base.sh"),
+      "linux-compliance-enhanced.sh": this.loadScriptContent("linux-compliance-enhanced.sh"),
+      "windows-compliance-base.ps1": this.loadScriptContent("windows-compliance-base.ps1"),
+      "windows-compliance-enhanced.ps1": this.loadScriptContent("windows-compliance-enhanced.ps1"),
     };
 
     for (const script of existingScripts) {
