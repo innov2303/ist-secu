@@ -15,10 +15,7 @@ const CONTACT_SUBJECTS = [
   { value: "question", label: "Question générale", description: "Renseignements sur nos produits ou services" },
   { value: "technical", label: "Support technique", description: "Aide à l'installation ou utilisation des scripts" },
   { value: "billing", label: "Facturation", description: "Questions sur les paiements, factures ou abonnements" },
-  { value: "enterprise", label: "Licence entreprise", description: "Déploiement multi-sites ou licences volume" },
-  { value: "partnership", label: "Partenariat", description: "Propositions de collaboration ou intégration" },
   { value: "feedback", label: "Suggestion", description: "Idées d'amélioration ou nouvelles fonctionnalités" },
-  { value: "other", label: "Autre", description: "Tout autre sujet non listé ci-dessus" },
 ];
 import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
