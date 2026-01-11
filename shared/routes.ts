@@ -16,6 +16,13 @@ export const api = {
         200: z.array(z.custom<typeof scripts.$inferSelect>()),
       },
     },
+    all: {
+      method: 'GET' as const,
+      path: '/api/scripts/all',
+      responses: {
+        200: z.array(z.custom<typeof scripts.$inferSelect>()),
+      },
+    },
     download: {
       method: 'GET' as const,
       path: '/api/scripts/:id/download',

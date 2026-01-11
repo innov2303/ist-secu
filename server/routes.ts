@@ -372,6 +372,11 @@ export async function registerRoutes(
     res.json(scripts);
   });
 
+  app.get(api.scripts.all.path, async (req, res) => {
+    const scripts = await storage.getScripts();
+    res.json(scripts);
+  });
+
   app.get(api.scripts.download.path, isAuthenticated, async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     if (!userId) {

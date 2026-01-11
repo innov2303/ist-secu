@@ -11,7 +11,7 @@ export default function Documentation() {
   const [selectedToolkit, setSelectedToolkit] = useState<string>("");
 
   const { data: scripts, isLoading } = useQuery<Script[]>({
-    queryKey: ["/api/scripts"],
+    queryKey: ["/api/scripts/all"],
   });
 
   const toolkits = useMemo(() => {
