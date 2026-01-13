@@ -12,6 +12,9 @@ import { Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Sear
 import type { User } from "@shared/models/auth";
 import type { ContactRequest } from "@shared/schema";
 import { Link } from "wouter";
+import { Footer } from "@/components/Footer";
+import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
+import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
 const USERS_PER_PAGE = 10;
 
@@ -150,21 +153,39 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Users className="h-8 w-8" />
-            Gestion des utilisateurs
-          </h1>
-          <p className="text-muted-foreground">Gérer les comptes et les permissions administrateur</p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header with logo */}
+      <div className="relative h-32 md:h-40 w-full overflow-hidden">
+        <img 
+          src={bannerImg} 
+          alt="Security Infrastructure" 
+          className="w-full h-full object-cover brightness-[0.4]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <img src={logoImg} alt="IST Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
+            </Link>
+            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
+          </div>
+          <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Link>
+          </Button>
         </div>
       </div>
+
+      <div className="container mx-auto px-4 py-8 flex-1">
+        <div className="flex items-center gap-3 mb-8">
+          <Users className="h-8 w-8 text-primary" />
+          <div>
+            <h2 className="text-2xl font-bold">Administration</h2>
+            <p className="text-muted-foreground">Gérer les utilisateurs et les demandes de contact</p>
+          </div>
+        </div>
 
       <Card>
         <CardHeader>
@@ -412,6 +433,9 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
+      </div>
+
+      <Footer />
     </div>
   );
 }
