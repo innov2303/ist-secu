@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, Mail, Lock, User } from "lucide-react";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
-import logoImg from "@assets/generated_images/ist_logo_white_on_black.png";
+import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 export default function AuthPage() {

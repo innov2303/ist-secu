@@ -8,7 +8,7 @@ import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, I
 import type { Script } from "@shared/schema";
 import { Footer } from "@/components/Footer";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/ist_logo_white_on_black.png";
+import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
 function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: string[]; command: string; prerequisites: string[] } {
   const filename = script.filename;
