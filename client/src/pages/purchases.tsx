@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield } from "lucide-react";
+import { SiLinux, SiNetapp } from "react-icons/si";
+import { FaWindows } from "react-icons/fa";
 import type { Purchase, Script } from "@shared/schema";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
@@ -16,9 +18,14 @@ type PurchaseWithScript = Purchase & { script: Script };
 
 const iconMap: Record<string, any> = {
   Monitor,
+  FaWindows,
   Terminal,
   Server,
   Container,
+  SiLinux,
+  SiNetapp,
+  sinetapp: SiNetapp,
+  netapp: SiNetapp,
 };
 
 function formatDate(date: Date | string) {
@@ -323,6 +330,53 @@ function LoadingSkeleton() {
   );
 }
 
+function AdminScriptCard({ script }: { script: Script }) {
+  const Icon = iconMap[script.icon] || iconMap[script.icon.toLowerCase()] || Monitor;
+
+  return (
+    <Card data-testid={`card-admin-script-${script.id}`}>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-md bg-primary/10">
+            <Icon className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-lg">{script.name}</CardTitle>
+            <CardDescription className="mt-1">{script.os}</CardDescription>
+          </div>
+        </div>
+        <Badge variant="default" className="shrink-0 bg-green-600">
+          <Shield className="h-3 w-3 mr-1" />
+          Accès Admin
+        </Badge>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-3">{script.description}</p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{script.compliance}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t gap-4">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium">{formatPrice(script.monthlyPriceCents)}/mois</span>
+          </div>
+          <Button 
+            size="sm" 
+            asChild
+            data-testid={`button-admin-download-${script.id}`}
+          >
+            <a href={`/api/scripts/${script.id}/download`} download>
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Purchases() {
   const { user, isLoading: authLoading, logout } = useAuth();
 
@@ -428,6 +482,19 @@ export default function Purchases() {
 
         {isLoading ? (
           <LoadingSkeleton />
+        ) : user?.isAdmin ? (
+          // Admin view - show all available toolkits
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="h-5 w-5 text-green-600" />
+              <h2 className="text-xl font-semibold">Accès Administrateur - Tous les Toolkits</h2>
+            </div>
+            <div className="space-y-4">
+              {scripts?.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0).map((script) => (
+                <AdminScriptCard key={script.id} script={script} />
+              ))}
+            </div>
+          </div>
         ) : (bundles.length > 0 || standalone.length > 0) ? (
           <div className="space-y-4">
             {bundles.map((bundle) => (
