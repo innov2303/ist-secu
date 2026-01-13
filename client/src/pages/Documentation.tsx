@@ -33,6 +33,25 @@ function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: 
     };
   }
 
+  if (os === "NetApp") {
+    return {
+      prerequisites: [
+        "Machine Windows avec PowerShell 5.1 ou supérieur",
+        "Module NetApp.ONTAP installé (NetApp PowerShell Toolkit)",
+        "Accès réseau vers le cluster NetApp ONTAP",
+        "Compte avec privilèges administrateur sur le cluster",
+        "ONTAP 9.x"
+      ],
+      steps: [
+        "Ouvrez PowerShell en tant qu'administrateur sur votre machine Windows",
+        "Installez le module NetApp.ONTAP si ce n'est pas déjà fait",
+        "Exécutez le script avec l'adresse IP du cluster",
+        "Le script vous demandera les identifiants de connexion"
+      ],
+      command: `# Installation du module NetApp (une seule fois)\nInstall-Module -Name NetApp.ONTAP -Scope CurrentUser -Force\n\n# Exécution du script d'audit\n.\\${filename} -ClusterIP <adresse_ip_cluster>`
+    };
+  }
+
   if (os === "Containers") {
     return {
       prerequisites: [
