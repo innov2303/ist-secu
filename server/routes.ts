@@ -11,6 +11,7 @@ import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClie
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
+import archiver from "archiver";
 
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -494,7 +495,6 @@ export async function registerRoutes(
       }
       
       // Create a zip file containing all bundled scripts
-      const archiver = require('archiver');
       const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}.zip`;
       
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
