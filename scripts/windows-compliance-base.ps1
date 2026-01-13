@@ -133,7 +133,7 @@ function Test-SystemConfiguration {
         if ($daysSinceUpdate -le 30) {
             Write-Pass "Derniere mise a jour: $($lastUpdate.HotFixID) il y a $($daysSinceUpdate) jours"
             Add-Result -Id "SYS-001" -Category "ANSSI" -Title "Mises a jour systeme" -Status "PASS" -Severity "critical" `
-                -Description "Systeme mis a jour recemment (il y a $($daysSinceUpdate) jours)" -Reference "ANSSI R1"
+                -Description "Systeme mis a jour recemment, il y a $($daysSinceUpdate) jours" -Reference "ANSSI R1"
         } elseif ($daysSinceUpdate -le 90) {
             Write-Warn "Derniere mise a jour il y a $($daysSinceUpdate) jours"
             Add-Result -Id "SYS-001" -Category "ANSSI" -Title "Mises a jour systeme" -Status "WARN" -Severity "critical" `
@@ -347,7 +347,7 @@ function Test-AccountManagement {
     } elseif ([int]$($lockoutThreshold) -gt 5) {
         Write-Warn "Seuil de verrouillage trop eleve: $($lockoutThreshold)"
         Add-Result -Id "ACC-005" -Category "CIS" -Title "Seuil de verrouillage de compte" -Status "WARN" -Severity "high" `
-            -Description "Seuil de verrouillage trop permissif ($lockoutThreshold tentatives)" `
+            -Description "Seuil de verrouillage trop permissif - $($lockoutThreshold) tentatives" `
             -Remediation "Reduire le seuil a 5 tentatives maximum" -Reference "CIS 1.2.1"
     } else {
         Write-Fail "Verrouillage de compte non configure"
@@ -454,16 +454,16 @@ function Test-ServicesConfiguration {
         $daysSinceUpdate = ((Get-Date) - $defStatus.AntivirusSignatureLastUpdated).Days
         
         if ($daysSinceUpdate -le 1) {
-            Write-Pass "Definitions antivirus a jour (mise a jour il y a $($daysSinceUpdate) jour(s))"
+            Write-Pass "Definitions antivirus a jour - mise a jour il y a $($daysSinceUpdate) jours"
             Add-Result -Id "SVC-003" -Category "ANSSI" -Title "Definitions antivirus" -Status "PASS" -Severity "high" `
-                -Description "Definitions mises a jour il y a $($daysSinceUpdate) jour(s)" -Reference "ANSSI R4"
+                -Description "Definitions mises a jour il y a $($daysSinceUpdate) jours" -Reference "ANSSI R4"
         } elseif ($daysSinceUpdate -le 7) {
             Write-Warn "Definitions antivirus datant de $($daysSinceUpdate) jours"
             Add-Result -Id "SVC-003" -Category "ANSSI" -Title "Definitions antivirus" -Status "WARN" -Severity "high" `
                 -Description "Derniere mise a jour il y a $($daysSinceUpdate) jours" `
                 -Remediation "Mettre a jour les definitions Windows Defender" -Reference "ANSSI R4"
         } else {
-            Write-Fail "Definitions antivirus obsoletes ($($daysSinceUpdate) jours)"
+            Write-Fail "Definitions antivirus obsoletes - $($daysSinceUpdate) jours"
             Add-Result -Id "SVC-003" -Category "ANSSI" -Title "Definitions antivirus" -Status "FAIL" -Severity "high" `
                 -Description "Definitions non mises a jour depuis $($daysSinceUpdate) jours" `
                 -Remediation "Mettre a jour immediatement les definitions antivirus" -Reference "ANSSI R4"
