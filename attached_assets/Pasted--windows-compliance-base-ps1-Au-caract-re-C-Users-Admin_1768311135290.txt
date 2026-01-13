@@ -1,0 +1,50 @@
+.\windows-compliance-base.ps1
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:466 : 77
++ ... ite-Fail "DÃ©finitions antivirus obsolÃ¨tes ($daysSinceUpdate jours)"
++                                                                   ~~~~~
+Jeton inattendu « jours » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:466 : 76
++ ... ite-Fail "DÃ©finitions antivirus obsolÃ¨tes ($daysSinceUpdate jours)"
++                                                                  ~
+Parenthèse fermante « ) » manquante dans l’expression.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:43 : 23
++ function Write-Header {
++                       ~
+Accolade fermante « } » manquante dans le bloc d'instruction ou définition du type manquante.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:466 : 82
++ ... ite-Fail "DÃ©finitions antivirus obsolÃ¨tes ($daysSinceUpdate jours)"
++                                                                        ~
+Jeton inattendu « ) » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:467 : 29
++ ... d-Result -Id "SVC-003" -Category "ANSSI" -Title "DÃ©finitions antivir ...
++                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Jeton inattendu « SVC-003" -Category "ANSSI" -Title "DÃ©finitions » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:702 : 1
++ }
++ ~
+Jeton inattendu « } » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:821 : 14
++             "WARN" { "!" }
++              ~~~~~~~~~~~~~
+Jeton inattendu « WARN" { "!" }
+            "FAIL" { "âœ—" }
+        }
+
+        $remediationHtml = ""
+        if ($result.remediation -and $result.status -ne "PASS") {
+            $remediationHtml = "<div » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:827 : 113
++ ... ation'><strong>Recommandation:</strong> $($result.remediation)</div>"
++                                                                   ~
+L’opérateur « < » est réservé à une utilisation future.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:899 : 68
++ ...          <h1>Rapport d'Audit de SÃ©curitÃ© Windows Server (BASE)</h1>
++                                                                     ~
+L’opérateur « < » est réservé à une utilisation future.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:946 : 38
++             <p>Rapport gÃ©nÃ©rÃ© par <strong>Infra Shield Tools</stro ...
++                                      ~
+L’opérateur « < » est réservé à une utilisation future.
+Les erreurs d’analyse n’ont pas toutes été signalées. Corrigez les erreurs signalées, puis recommencez.
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
