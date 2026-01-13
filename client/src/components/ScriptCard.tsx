@@ -1,6 +1,6 @@
 import { Script } from "@shared/schema";
 import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw } from "lucide-react";
-import { SiLinux } from "react-icons/si";
+import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -32,6 +32,8 @@ const IconMap: Record<string, any> = {
   server: Server,
   docker: Container,
   container: Container,
+  sinetapp: SiNetapp,
+  netapp: SiNetapp,
 };
 
 function formatPrice(cents: number) {
