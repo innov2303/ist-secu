@@ -494,34 +494,35 @@ export async function registerRoutes(
         return res.status(500).json({ message: "Erreur lors de la préparation du téléchargement" });
       }
       
-      // Create a zip file in memory
+      // Create a zip file and send it
       const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}.zip`;
-      const { PassThrough } = await import('stream');
-      const chunks: Buffer[] = [];
-      const passThrough = new PassThrough();
       
-      passThrough.on('data', (chunk) => chunks.push(chunk));
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Type", "application/zip");
       
       const archive = archiver('zip', { zlib: { level: 9 } });
-      archive.pipe(passThrough);
       
+      // Handle archive errors
+      archive.on('error', (err) => {
+        console.error('Archive error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: "Erreur lors de la création de l'archive" });
+        }
+      });
+      
+      // Pipe the archive to the response
+      archive.pipe(res);
+      
+      // Add all bundled scripts to the archive
       for (const bundledScript of bundledScripts) {
         if (bundledScript) {
           archive.append(bundledScript.content, { name: bundledScript.filename });
         }
       }
       
-      await archive.finalize();
-      
-      // Wait for the stream to finish
-      await new Promise<void>((resolve) => passThrough.on('end', resolve));
-      
-      const zipBuffer = Buffer.concat(chunks);
-      
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.setHeader("Content-Type", "application/zip");
-      res.setHeader("Content-Length", zipBuffer.length);
-      return res.send(zipBuffer);
+      // Finalize the archive (this will close the stream)
+      archive.finalize();
+      return;
     }
 
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
