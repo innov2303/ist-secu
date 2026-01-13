@@ -472,7 +472,7 @@ export async function registerRoutes(
       }
     }
 
-    // Handle bundle downloads - combine all bundled scripts into one file
+    // Handle bundle downloads - create a zip file with all bundled scripts
     if (script.bundledScriptIds && script.bundledScriptIds.length > 0) {
       const bundledScripts = await Promise.all(
         script.bundledScriptIds.map(id => storage.getScript(id))
@@ -493,25 +493,29 @@ export async function registerRoutes(
         return res.status(500).json({ message: "Erreur lors de la préparation du téléchargement" });
       }
       
-      const separator = script.os === "Windows" 
-        ? "#".repeat(80) + "\n# " 
-        : "#".repeat(80) + "\n# ";
+      // Create a zip file containing all bundled scripts
+      const archiver = require('archiver');
+      const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}.zip`;
       
-      let combinedContent = "";
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Type", "application/zip");
+      
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('error', (err: any) => {
+        console.error('Archive error:', err);
+        res.status(500).json({ message: "Erreur lors de la création de l'archive" });
+      });
+      
+      archive.pipe(res);
+      
       for (const bundledScript of bundledScripts) {
         if (bundledScript) {
-          combinedContent += `${separator}${bundledScript.name}\n# Fichier: ${bundledScript.filename}\n${"#".repeat(80)}\n\n`;
-          combinedContent += bundledScript.content;
-          combinedContent += "\n\n";
+          archive.append(bundledScript.content, { name: bundledScript.filename });
         }
       }
       
-      const extension = (script.os === "Windows" || script.os === "VMware") ? "ps1" : "sh";
-      const filename = `${script.name.toLowerCase().replace(/\s+/g, '-')}-combined.${extension}`;
-      
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      return res.send(combinedContent);
+      await archive.finalize();
+      return;
     }
 
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
