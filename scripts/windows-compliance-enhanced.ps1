@@ -42,13 +42,13 @@ $script:Results = @()
 
 function Write-Header {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║                                                                    ║" -ForegroundColor Cyan
-    Write-Host "║   Infra Shield Tools - Audit Windows Server v$Version (ENHANCED)   ║" -ForegroundColor Cyan
-    Write-Host "║            ANSSI + CIS Benchmark Level 2                           ║" -ForegroundColor Cyan
-    Write-Host "║               ~100 controles complets                              ║" -ForegroundColor Cyan
-    Write-Host "║                                                                    ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "+====================================================================+" -ForegroundColor Cyan
+    Write-Host "|                                                                    |" -ForegroundColor Cyan
+    Write-Host "|   Infra Shield Tools - Audit Windows Server v$Version (ENHANCED)   |" -ForegroundColor Cyan
+    Write-Host "|            ANSSI + CIS Benchmark Level 2                           |" -ForegroundColor Cyan
+    Write-Host "|               ~100 controles complets                              |" -ForegroundColor Cyan
+    Write-Host "|                                                                    |" -ForegroundColor Cyan
+    Write-Host "+====================================================================+" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -1362,16 +1362,16 @@ function New-JsonReport {
     }
     
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════════════╗"
-    Write-Host "║                       RESUME DE L'AUDIT                            ║"
-    Write-Host "╠════════════════════════════════════════════════════════════════════╣"
-    Write-Host ("║  Score Global: {0,-3}%                                    Note: {1,-1}   ║" -f $score, $grade)
-    Write-Host "╠════════════════════════════════════════════════════════════════════╣"
-    Write-Host ("║  OK Controles reussis:    {0,-3}                                      ║" -f $script:PassedChecks)
-    Write-Host ("║  ⚠ Avertissements:       {0,-3}                                      ║" -f $script:WarningChecks)
-    Write-Host ("║  X Controles echoues:    {0,-3}                                      ║" -f $script:FailedChecks)
-    Write-Host ("║  Total:                  {0,-3}                                      ║" -f $script:TotalChecks)
-    Write-Host "╚════════════════════════════════════════════════════════════════════╝"
+    Write-Host "+====================================================================+"
+    Write-Host "|                       RESUME DE L'AUDIT                            |"
+    Write-Host "+====================================================================+"
+    Write-Host ("|  Score Global: {0,-3}%                                    Note: {1,-1}   |" -f $score, $grade)
+    Write-Host "+====================================================================+"
+    Write-Host ("|  OK Controles reussis:    {0,-3}                                      |" -f $script:PassedChecks)
+    Write-Host ("|  ! Avertissements:       {0,-3}                                      |" -f $script:WarningChecks)
+    Write-Host ("|  X Controles echoues:    {0,-3}                                      |" -f $script:FailedChecks)
+    Write-Host ("|  Total:                  {0,-3}                                      |" -f $script:TotalChecks)
+    Write-Host "+====================================================================+"
     
     $osInfo = Get-CimInstance Win32_OperatingSystem
     
