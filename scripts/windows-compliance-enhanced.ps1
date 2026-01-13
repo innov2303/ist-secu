@@ -55,9 +55,9 @@ function Write-Header {
 function Write-Section {
     param([string]$Title)
     Write-Host ""
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host "---------------------------------------------------------------------" -ForegroundColor DarkGray
     Write-Host "  $Title" -ForegroundColor White
-    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host "---------------------------------------------------------------------" -ForegroundColor DarkGray
 }
 
 function Write-Pass {
