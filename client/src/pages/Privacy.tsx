@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
+import logoImg from "@assets/generated_images/ist_logo_white_on_black.png";
 
 export default function Privacy() {
   return (

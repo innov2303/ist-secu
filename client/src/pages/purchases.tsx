@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode } from "lucide-react";
 import type { Purchase, Script } from "@shared/schema";
-import logoImg from "@assets/generated_images/white_igs_logo_black_bg.png";
+import logoImg from "@assets/generated_images/ist_logo_white_on_black.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 type PurchaseWithScript = Purchase & { script: Script };
