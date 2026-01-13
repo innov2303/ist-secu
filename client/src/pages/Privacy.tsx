@@ -19,9 +19,9 @@ export default function Privacy() {
         <div className="absolute inset-0 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <Link href="/">
-              <img src={logoImg} alt="IGS Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
+              <img src={logoImg} alt="IST Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
             </Link>
-            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>InfraGuard Security</h1>
+            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
           </div>
           <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back-home">
             <Link href="/">
@@ -39,7 +39,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold mb-3">1. Collecte des données</h2>
             <p className="text-muted-foreground">
-              InfraGuard Security collecte uniquement les données nécessaires au fonctionnement du service :
+              Infra Shield Tools collecte uniquement les données nécessaires au fonctionnement du service :
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-1">
               <li>Informations de compte (email, nom)</li>

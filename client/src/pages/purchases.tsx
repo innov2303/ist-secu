@@ -410,7 +410,7 @@ export default function Purchases() {
             <Link href="/">
               <img 
                 src={logoImg} 
-                alt="IGS Logo" 
+                alt="IST Logo" 
                 className="w-56 h-56 drop-shadow-lg mix-blend-screen"
               />
             </Link>
@@ -456,7 +456,7 @@ export default function Purchases() {
       {/* Footer */}
       <footer className="border-t border-border/40 py-8 mt-16">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>InfraGuard Security - Operating System Toolkit</p>
+          <p>Infra Shield Tools - Security Compliance Toolkit</p>
         </div>
       </footer>
     </div>

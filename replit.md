@@ -1,8 +1,10 @@
-# InfraGuard Security
+# Infra Shield Tools (IST)
 
 ## Overview
 
-InfraGuard Security is a web application for selling and distributing security verification scripts for various operating systems (Windows, Linux, VMware ESXi, Docker). Users can browse available scripts, purchase them via Stripe payments (one-time or subscription), and download purchased scripts. The application features Replit Auth for authentication and includes an admin panel for user management.
+Infra Shield Tools (IST) is a web application for selling and distributing security verification scripts for various operating systems (Windows, Linux, VMware ESXi, Docker). Users can browse available scripts, purchase them via Stripe payments (subscription-based), and download purchased scripts. The application features local email/password authentication and includes an admin panel for user management.
+
+**Domain**: ist-security.fr (planned)
 
 ## Security Scripts
 

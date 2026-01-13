@@ -1,5 +1,5 @@
 #===============================================================================
-# InfraGuard Security - Script d'Audit de Sécurité VMware ESXi (ENHANCED)
+# Infra Shield Tools - Script d'Audit de Sécurité VMware ESXi (ENHANCED)
 # Basé sur CIS Benchmark VMware ESXi 7.0/8.0 + DISA STIG CAT I/II
 # Version: 1.1.0
 # Niveau: ENHANCED (~105 contrôles complets)
@@ -10,7 +10,7 @@
 # Prérequis: VMware PowerCLI installé
 # Usage: .\vmware-esxi-compliance-enhanced.ps1 -Server <ESXi_Host> -Credential <PSCredential>
 #
-# Licence: Propriétaire InfraGuard Security
+# Licence: Propriétaire Infra Shield Tools
 #===============================================================================
 
 [CmdletBinding()]
@@ -30,7 +30,7 @@ param(
 
 $ErrorActionPreference = "Continue"
 $Version = "1.1.0"
-$ScriptName = "InfraGuard VMware ESXi Compliance Audit - ENHANCED (CIS + DISA STIG CAT I/II)"
+$ScriptName = "IST VMware ESXi Compliance Audit - ENHANCED (CIS + DISA STIG CAT I/II)"
 $AuditLevel = "ENHANCED"
 
 # Compteurs globaux
@@ -50,7 +50,7 @@ function Write-Header {
     Write-Host ""
     Write-Host "╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
-    Write-Host "║   InfraGuard Security - Audit VMware ESXi v$Version (ENHANCED)      ║" -ForegroundColor Cyan
+    Write-Host "║   Infra Shield Tools - Audit VMware ESXi v$Version (ENHANCED)      ║" -ForegroundColor Cyan
     Write-Host "║       CIS Benchmark VMware ESXi + DISA STIG CAT I/II               ║" -ForegroundColor Cyan
     Write-Host "║                   ~105 contrôles complets                          ║" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
@@ -1357,7 +1357,7 @@ function Export-HtmlReport {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapport d'Audit Securite VMware ESXi ENHANCED - InfraGuard Security</title>
+    <title>Rapport d'Audit Securite VMware ESXi ENHANCED - Infra Shield Tools</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
@@ -1405,7 +1405,7 @@ function Export-HtmlReport {
     <div class="container">
         <div class="header">
             <h1>Rapport d'Audit de Securite VMware ESXi (ENHANCED)</h1>
-            <div class="subtitle">Genere par InfraGuard Security - ~100 controles complets</div>
+            <div class="subtitle">Genere par Infra Shield Tools - ~100 controles complets</div>
             <div class="framework">CIS Benchmark VMware ESXi 7.0/8.0 + Controles Avances</div>
         </div>
 
@@ -1466,7 +1466,7 @@ function Export-HtmlReport {
     $html += @"
         </div>
         <div class="footer">
-            <p>Rapport genere par <strong>InfraGuard Security</strong></p>
+            <p>Rapport genere par <strong>Infra Shield Tools</strong></p>
             <p>Base sur CIS Benchmark pour VMware ESXi + Controles Avances</p>
         </div>
     </div>

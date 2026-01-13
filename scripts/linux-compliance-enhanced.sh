@@ -1,6 +1,6 @@
 #!/bin/bash
 #===============================================================================
-# InfraGuard Security - Script d'Audit de Sécurité Linux (RENFORCÉ)
+# Infra Shield Tools - Script d'Audit de Sécurité Linux (RENFORCÉ)
 # Basé sur les recommandations ANSSI-BP-028 + CIS Benchmark Level 2
 # Version: 1.0.0
 # Niveau: RENFORCÉ (~100 contrôles complets)
@@ -25,7 +25,7 @@
 #   -v, --verbose           Mode verbeux
 #   -h, --help              Afficher l'aide
 #
-# Licence: Propriétaire InfraGuard Security
+# Licence: Propriétaire Infra Shield Tools
 #===============================================================================
 
 set -euo pipefail
@@ -34,7 +34,7 @@ set -euo pipefail
 OUTPUT_FILE="audit_enhanced_$(date +%Y%m%d_%H%M%S).json"
 VERBOSE=false
 VERSION="1.0.0"
-SCRIPT_NAME="InfraGuard Linux Compliance Audit - ENHANCED (ANSSI-BP-028 + CIS L2)"
+SCRIPT_NAME="IST Linux Compliance Audit - ENHANCED (ANSSI-BP-028 + CIS L2)"
 AUDIT_LEVEL="ENHANCED"
 
 # Couleurs pour l'affichage
@@ -79,7 +79,7 @@ print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                                                                    ║"
-    echo "║   InfraGuard Security - Audit Linux v${VERSION} (RENFORCÉ)           ║"
+    echo "║   Infra Shield Tools - Audit Linux v${VERSION} (RENFORCÉ)           ║"
     echo "║          ANSSI-BP-028 + CIS Benchmark Level 2                      ║"
     echo "║              ~100 contrôles complets                               ║"
     echo "║                                                                    ║"
@@ -2275,7 +2275,7 @@ generate_html_report() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapport d'Audit Sécurité Linux - InfraGuard Security</title>
+    <title>Rapport d'Audit Sécurité Linux - Infra Shield Tools</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
@@ -2326,7 +2326,7 @@ HTMLHEAD
     cat >> "$html_file" << HTMLHEADER
         <div class="header">
             <h1>Rapport d'Audit de Sécurité Linux (RENFORCÉ)</h1>
-            <div class="subtitle">Généré par InfraGuard Security - ~80 contrôles complets</div>
+            <div class="subtitle">Généré par Infra Shield Tools - ~80 contrôles complets</div>
             <div class="framework">Référentiel ANSSI-BP-028 v2.0</div>
         </div>
 
@@ -2413,7 +2413,7 @@ HTMLRESULTEND
         </div>
 
         <div class="footer">
-            <p>Rapport généré par <strong>InfraGuard Security</strong></p>
+            <p>Rapport généré par <strong>Infra Shield Tools</strong></p>
             <p>Basé sur les recommandations ANSSI pour la sécurisation des systèmes GNU/Linux</p>
         </div>
     </div>

@@ -1,5 +1,5 @@
 #===============================================================================
-# InfraGuard Security - Script d'Audit de Sécurité Windows Server (BASE)
+# Infra Shield Tools - Script d'Audit de Sécurité Windows Server (BASE)
 # Basé sur les recommandations ANSSI et CIS Benchmark Level 1
 # Version: 1.0.0
 # Niveau: BASE (~55 contrôles essentiels)
@@ -9,7 +9,7 @@
 #
 # Usage: .\windows-compliance-base.ps1 [-OutputFile <fichier>] [-Verbose]
 #
-# Licence: Propriétaire InfraGuard Security
+# Licence: Propriétaire Infra Shield Tools
 #===============================================================================
 
 #Requires -RunAsAdministrator
@@ -26,7 +26,7 @@ param(
 
 $ErrorActionPreference = "Continue"
 $Version = "1.0.0"
-$ScriptName = "InfraGuard Windows Compliance Audit - BASE (ANSSI + CIS L1)"
+$ScriptName = "IST Windows Compliance Audit - BASE (ANSSI + CIS L1)"
 $AuditLevel = "BASE"
 
 # Compteurs globaux
@@ -44,7 +44,7 @@ function Write-Header {
     Write-Host ""
     Write-Host "╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
-    Write-Host "║   InfraGuard Security - Audit Windows Server v$Version (BASE)       ║" -ForegroundColor Cyan
+    Write-Host "║   Infra Shield Tools - Audit Windows Server v$Version (BASE)       ║" -ForegroundColor Cyan
     Write-Host "║            ANSSI + CIS Benchmark Level 1                           ║" -ForegroundColor Cyan
     Write-Host "║               ~55 contrôles essentiels                             ║" -ForegroundColor Cyan
     Write-Host "║                                                                    ║" -ForegroundColor Cyan
@@ -849,7 +849,7 @@ function New-HtmlReport {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapport d'Audit Sécurité Windows Server - InfraGuard Security</title>
+    <title>Rapport d'Audit Sécurité Windows Server - Infra Shield Tools</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
@@ -897,7 +897,7 @@ function New-HtmlReport {
     <div class="container">
         <div class="header">
             <h1>Rapport d'Audit de Sécurité Windows Server (BASE)</h1>
-            <div class="subtitle">Généré par InfraGuard Security - ~55 contrôles essentiels</div>
+            <div class="subtitle">Généré par Infra Shield Tools - ~55 contrôles essentiels</div>
             <div class="framework">Référentiel ANSSI + CIS Benchmark Level 1</div>
         </div>
 
@@ -943,7 +943,7 @@ function New-HtmlReport {
         </div>
 
         <div class="footer">
-            <p>Rapport généré par <strong>InfraGuard Security</strong></p>
+            <p>Rapport généré par <strong>Infra Shield Tools</strong></p>
             <p>Basé sur les recommandations ANSSI et CIS Benchmark pour Windows Server</p>
         </div>
     </div>

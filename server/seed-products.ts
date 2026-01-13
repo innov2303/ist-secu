@@ -3,7 +3,7 @@ import { getUncachableStripeClient } from './stripeClient';
 async function createProducts() {
   const stripe = await getUncachableStripeClient();
 
-  console.log('Creating InfraGuard Security products in Stripe...');
+  console.log('Creating Infra Shield Tools products in Stripe...');
 
   // Check if products already exist
   const existingProducts = await stripe.products.list({ limit: 10 });
