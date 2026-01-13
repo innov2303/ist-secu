@@ -1,16 +1,15 @@
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { downloadScript } from "@/hooks/use-scripts";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 interface ScriptCardProps {
   script: Script;
@@ -44,7 +43,6 @@ function formatPrice(cents: number) {
 }
 
 export function ScriptCard({ script, index }: ScriptCardProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const Icon = IconMap[script.icon.toLowerCase()] || FileCode;
@@ -74,29 +72,9 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
     },
   });
 
-  const handleDownload = async () => {
-    try {
-      setIsDownloading(true);
-      await downloadScript(script.id, script.filename);
-      toast({
-        title: "Téléchargement démarré",
-        description: `${script.filename} a été sauvegardé.`,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Téléchargement échoué",
-        description: "Une erreur s'est produite. Veuillez réessayer.",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   const hasPurchased = purchaseStatus?.hasPurchased || false;
   const purchaseType = purchaseStatus?.purchaseType;
   const isAdmin = user?.isAdmin || false;
-  const canDownload = hasPurchased || isAdmin;
   const isInDevelopment = script.description.includes("En développement");
 
   return (
@@ -190,22 +168,14 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 <span>Accès Admin</span>
               </div>
               <Button
-                onClick={handleDownload}
-                disabled={isDownloading}
+                asChild
                 className="w-full"
-                data-testid={`button-download-${script.id}`}
+                data-testid={`button-goto-products-${script.id}`}
               >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Téléchargement...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Télécharger
-                  </>
-                )}
+                <Link href="/purchases">
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Mes Produits
+                </Link>
               </Button>
             </>
           )}
@@ -219,22 +189,14 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 </span>
               </div>
               <Button
-                onClick={handleDownload}
-                disabled={isDownloading}
+                asChild
                 className="w-full"
-                data-testid={`button-download-${script.id}`}
+                data-testid={`button-goto-products-${script.id}`}
               >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Téléchargement...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Télécharger
-                  </>
-                )}
+                <Link href="/purchases">
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Mes Produits
+                </Link>
               </Button>
             </>
           )}
