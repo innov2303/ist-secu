@@ -1205,9 +1205,9 @@ function New-HtmlReport {
     foreach ($result in $script:Results) {
         $statusClass = $result.status.ToLower()
         $statusIcon = switch ($result.status) {
-            "PASS" { "✓" }
+            "PASS" { "OK" }
             "WARN" { "!" }
-            "FAIL" { "✗" }
+            "FAIL" { "X" }
         }
         
         $remediationHtml = ""
@@ -1367,9 +1367,9 @@ function New-JsonReport {
     Write-Host "╠════════════════════════════════════════════════════════════════════╣"
     Write-Host ("║  Score Global: {0,-3}%                                    Note: {1,-1}   ║" -f $score, $grade)
     Write-Host "╠════════════════════════════════════════════════════════════════════╣"
-    Write-Host ("║  ✓ Controles reussis:    {0,-3}                                      ║" -f $script:PassedChecks)
+    Write-Host ("║  OK Controles reussis:    {0,-3}                                      ║" -f $script:PassedChecks)
     Write-Host ("║  ⚠ Avertissements:       {0,-3}                                      ║" -f $script:WarningChecks)
-    Write-Host ("║  ✗ Controles echoues:    {0,-3}                                      ║" -f $script:FailedChecks)
+    Write-Host ("║  X Controles echoues:    {0,-3}                                      ║" -f $script:FailedChecks)
     Write-Host ("║  Total:                  {0,-3}                                      ║" -f $script:TotalChecks)
     Write-Host "╚════════════════════════════════════════════════════════════════════╝"
     

@@ -1,0 +1,49 @@
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:821 : 14
++             "WARN" { "!" }
++              ~~~~~~~~~~~~~
+Jeton inattendu « WARN" { "!" }
+            "FAIL" { "âœ—" }
+        }
+
+        $remediationHtml = ""
+        if ($result.remediation -and $result.status -ne "PASS") {
+            $remediationHtml = "<div » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:827 : 113
++ ... ation'><strong>Recommandation:</strong> $($result.remediation)</div>"
++                                                                   ~
+L’opérateur « < » est réservé à une utilisation future.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:899 : 66
++ ...            <h1>Rapport d'Audit de Securite Windows Server (BASE)</h1>
++                                                                     ~
+L’opérateur « < » est réservé à une utilisation future.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:946 : 35
++             <p>Rapport genere par <strong>Infra Shield Tools</strong> ...
++                                   ~
+L’opérateur « < » est réservé à une utilisation future.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:955 : 18
++     Write-Host "[OK] Rapport HTML genere: $htmlFile" -ForegroundColor ...
++                  ~
+L’expression d’index de tableau est manquante ou non valide.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:955 : 18
++     Write-Host "[OK] Rapport HTML genere: $htmlFile" -ForegroundColor ...
++                  ~~~
+Jeton inattendu « OK] » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:982 : 27
++     Write-Host ("â•‘  âœ“ Controles reussis:    {0,-3}                ...
++                           ~~~~~~~~~
+Jeton inattendu « Controles » dans l’expression ou l’instruction.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:982 : 26
++     Write-Host ("â•‘  âœ“ Controles reussis:    {0,-3}                ...
++                          ~
+Parenthèse fermante « ) » manquante dans l’expression.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:1029 : 55
++ ... ite-Host "Pour creer un PDF: Fichier > Imprimer > Enregistrer en PDF"
++                                                     ~~~~~~~~~~~~~
+Le flux de sortie de cette commande est toujours redirigé.
+Au caractère C:\Users\Administrateur\Downloads\windows-compliance-base.ps1:1037 : 27
++ ...  "Demarrage de l'audit de securite Windows Server (~55 controles)..."
++                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Le terminateur ' est manquant dans la chaîne.
+Les erreurs d’analyse n’ont pas toutes été signalées. Corrigez les erreurs signalées, puis recommencez.
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
