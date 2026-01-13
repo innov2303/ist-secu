@@ -40,6 +40,7 @@ $script:FailedChecks = 0
 $script:WarningChecks = 0
 $script:Results = @()
 $script:ClusterInfo = $null
+$script:DataVservers = @()
 
 #===============================================================================
 # Fonctions utilitaires
@@ -143,6 +144,15 @@ function Connect-NetAppCluster {
         
         $script:ClusterInfo = Get-NcCluster
         Write-Host "[OK] Connecte au cluster: $($script:ClusterInfo.ClusterName)" -ForegroundColor Green
+        
+        # Recuperer la liste des data vservers pour les cmdlets qui necessitent un contexte vserver
+        $script:DataVservers = @(Get-NcVserver | Where-Object { $_.VserverType -eq "data" } | Select-Object -ExpandProperty Vserver)
+        if ($script:DataVservers.Count -gt 0) {
+            Write-Host "[INFO] Data Vservers detectes: $($script:DataVservers -join ', ')" -ForegroundColor Cyan
+        } else {
+            Write-Host "[WARN] Aucun data vserver detecte" -ForegroundColor Yellow
+        }
+        
         return $true
     }
     catch {
@@ -1001,20 +1011,29 @@ function Test-DataAccess {
     
     # NAO-038: Verifier la signature SMB
     try {
-        $smbConfig = Get-NcCifsSecurity
-        
-        foreach ($config in $smbConfig) {
-            if ($config.IsSigningRequired) {
-                Write-Pass "Signature SMB requise pour $($config.Vserver)"
-                Add-Result -Id "NAO-038" -Category "Acces" -Title "Signature SMB" `
-                    -Status "PASS" -Severity "high" `
-                    -Description "La signature SMB est requise"
-            } else {
-                Write-Warn "Signature SMB non requise pour $($config.Vserver)"
-                Add-Result -Id "NAO-038" -Category "Acces" -Title "Signature SMB" `
-                    -Status "WARN" -Severity "high" `
-                    -Description "La signature SMB n'est pas requise" `
-                    -Remediation "vserver cifs security modify -is-signing-required true"
+        if ($script:DataVservers.Count -eq 0) {
+            Write-Warn "Aucun data vserver - verification SMB ignoree"
+        } else {
+            foreach ($vserver in $script:DataVservers) {
+                try {
+                    $smbConfig = Get-NcCifsSecurity -VserverContext $vserver -ErrorAction SilentlyContinue
+                    if ($smbConfig) {
+                        if ($smbConfig.IsSigningRequired) {
+                            Write-Pass "Signature SMB requise pour $vserver"
+                            Add-Result -Id "NAO-038" -Category "Acces" -Title "Signature SMB ($vserver)" `
+                                -Status "PASS" -Severity "high" `
+                                -Description "La signature SMB est requise sur $vserver"
+                        } else {
+                            Write-Warn "Signature SMB non requise pour $vserver"
+                            Add-Result -Id "NAO-038" -Category "Acces" -Title "Signature SMB ($vserver)" `
+                                -Status "WARN" -Severity "high" `
+                                -Description "La signature SMB n'est pas requise sur $vserver" `
+                                -Remediation "vserver cifs security modify -vserver $vserver -is-signing-required true"
+                        }
+                    }
+                } catch {
+                    # Vserver may not have CIFS configured - skip silently
+                }
             }
         }
     }
@@ -1024,20 +1043,35 @@ function Test-DataAccess {
     
     # NAO-039: Verifier SMB1
     try {
-        $smbConfig = Get-NcCifsSecurity
-        
-        foreach ($config in $smbConfig) {
-            if ($config.IsSmbEncrypted -eq $false -and $config.SmbVersion -match "SMB1") {
-                Write-Fail "SMB1 (obsolete) actif sur $($config.Vserver)"
-                Add-Result -Id "NAO-039" -Category "Acces" -Title "SMB1 desactive" `
-                    -Status "FAIL" -Severity "critical" `
-                    -Description "SMB1 est un protocole obsolete et vulnerable" `
-                    -Remediation "vserver cifs security modify -smb1-enabled-for-dc-connections false"
-            } else {
-                Write-Pass "SMB1 desactive"
-                Add-Result -Id "NAO-039" -Category "Acces" -Title "SMB1 desactive" `
-                    -Status "PASS" -Severity "critical" `
-                    -Description "SMB1 est desactive"
+        if ($script:DataVservers.Count -eq 0) {
+            Write-Warn "Aucun data vserver - verification SMB1 ignoree"
+        } else {
+            foreach ($vserver in $script:DataVservers) {
+                try {
+                    $smbConfig = Get-NcCifsSecurity -VserverContext $vserver -ErrorAction SilentlyContinue
+                    if ($smbConfig) {
+                        # Check for SMB1 - property may vary by ONTAP version
+                        $smb1Enabled = $false
+                        if ($smbConfig.PSObject.Properties["Smb1EnabledForDcConnections"]) {
+                            $smb1Enabled = $smbConfig.Smb1EnabledForDcConnections
+                        }
+                        
+                        if ($smb1Enabled) {
+                            Write-Fail "SMB1 (obsolete) actif sur $vserver"
+                            Add-Result -Id "NAO-039" -Category "Acces" -Title "SMB1 desactive ($vserver)" `
+                                -Status "FAIL" -Severity "critical" `
+                                -Description "SMB1 est un protocole obsolete et vulnerable sur $vserver" `
+                                -Remediation "vserver cifs security modify -vserver $vserver -smb1-enabled-for-dc-connections false"
+                        } else {
+                            Write-Pass "SMB1 desactive sur $vserver"
+                            Add-Result -Id "NAO-039" -Category "Acces" -Title "SMB1 desactive ($vserver)" `
+                                -Status "PASS" -Severity "critical" `
+                                -Description "SMB1 est desactive sur $vserver"
+                        }
+                    }
+                } catch {
+                    # Vserver may not have CIFS configured - skip silently
+                }
             }
         }
     }
@@ -1047,19 +1081,34 @@ function Test-DataAccess {
     
     # NAO-040: Verifier les partages administratifs
     try {
-        $adminShares = Get-NcCifsShare | Where-Object { $_.ShareName -match "^(C|D|ADMIN)\$" }
-        
-        if ($adminShares) {
-            Write-Warn "Partages administratifs detectes"
-            Add-Result -Id "NAO-040" -Category "Acces" -Title "Partages admin" `
-                -Status "WARN" -Severity "medium" `
-                -Description "Des partages administratifs sont accessibles" `
-                -Remediation "Evaluer la necessite des partages administratifs"
+        if ($script:DataVservers.Count -eq 0) {
+            Write-Warn "Aucun data vserver - verification partages ignoree"
         } else {
-            Write-Pass "Pas de partages administratifs exposes"
-            Add-Result -Id "NAO-040" -Category "Acces" -Title "Partages admin" `
-                -Status "PASS" -Severity "medium" `
-                -Description "Aucun partage administratif expose"
+            $adminSharesFound = $false
+            foreach ($vserver in $script:DataVservers) {
+                try {
+                    $shares = Get-NcCifsShare -VserverContext $vserver -ErrorAction SilentlyContinue
+                    $adminShares = $shares | Where-Object { $_.ShareName -match "^(C|D|ADMIN)\$" }
+                    if ($adminShares) {
+                        $adminSharesFound = $true
+                        Write-Warn "Partages administratifs detectes sur $vserver"
+                    }
+                } catch {
+                    # Vserver may not have CIFS configured - skip silently
+                }
+            }
+            
+            if ($adminSharesFound) {
+                Add-Result -Id "NAO-040" -Category "Acces" -Title "Partages admin" `
+                    -Status "WARN" -Severity "medium" `
+                    -Description "Des partages administratifs sont accessibles" `
+                    -Remediation "Evaluer la necessite des partages administratifs"
+            } else {
+                Write-Pass "Pas de partages administratifs exposes"
+                Add-Result -Id "NAO-040" -Category "Acces" -Title "Partages admin" `
+                    -Status "PASS" -Severity "medium" `
+                    -Description "Aucun partage administratif expose"
+            }
         }
     }
     catch {

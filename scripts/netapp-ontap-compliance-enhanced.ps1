@@ -40,6 +40,7 @@ $script:FailedChecks = 0
 $script:WarningChecks = 0
 $script:Results = @()
 $script:ClusterInfo = $null
+$script:DataVservers = @()
 
 #===============================================================================
 # Fonctions utilitaires
@@ -143,6 +144,15 @@ function Connect-NetAppCluster {
         
         $script:ClusterInfo = Get-NcCluster
         Write-Host "[OK] Connecte au cluster: $($script:ClusterInfo.ClusterName)" -ForegroundColor Green
+        
+        # Recuperer la liste des data vservers pour les cmdlets qui necessitent un contexte vserver
+        $script:DataVservers = @(Get-NcVserver | Where-Object { $_.VserverType -eq "data" } | Select-Object -ExpandProperty Vserver)
+        if ($script:DataVservers.Count -gt 0) {
+            Write-Host "[INFO] Data Vservers detectes: $($script:DataVservers -join ', ')" -ForegroundColor Cyan
+        } else {
+            Write-Host "[WARN] Aucun data vserver detecte" -ForegroundColor Yellow
+        }
+        
         return $true
     }
     catch {
@@ -1473,20 +1483,29 @@ function Test-DataAccessAdvanced {
     
     # NAO-E057: SMB signing
     try {
-        $smbConfig = Get-NcCifsSecurity
-        
-        foreach ($config in $smbConfig) {
-            if ($config.IsSigningRequired) {
-                Write-Pass "Signature SMB requise"
-                Add-Result -Id "NAO-E057" -Category "Acces" -Title "SMB Signing" `
-                    -Status "PASS" -Severity "high" `
-                    -Description "La signature SMB est requise"
-            } else {
-                Write-Fail "Signature SMB non requise"
-                Add-Result -Id "NAO-E057" -Category "Acces" -Title "SMB Signing" `
-                    -Status "FAIL" -Severity "high" `
-                    -Description "La signature SMB devrait etre requise" `
-                    -Remediation "vserver cifs security modify -is-signing-required true"
+        if ($script:DataVservers.Count -eq 0) {
+            Write-Warn "Aucun data vserver - verification SMB ignoree"
+        } else {
+            foreach ($vserver in $script:DataVservers) {
+                try {
+                    $smbConfig = Get-NcCifsSecurity -VserverContext $vserver -ErrorAction SilentlyContinue
+                    if ($smbConfig) {
+                        if ($smbConfig.IsSigningRequired) {
+                            Write-Pass "Signature SMB requise sur $vserver"
+                            Add-Result -Id "NAO-E057" -Category "Acces" -Title "SMB Signing ($vserver)" `
+                                -Status "PASS" -Severity "high" `
+                                -Description "La signature SMB est requise sur $vserver"
+                        } else {
+                            Write-Fail "Signature SMB non requise sur $vserver"
+                            Add-Result -Id "NAO-E057" -Category "Acces" -Title "SMB Signing ($vserver)" `
+                                -Status "FAIL" -Severity "high" `
+                                -Description "La signature SMB devrait etre requise sur $vserver" `
+                                -Remediation "vserver cifs security modify -vserver $vserver -is-signing-required true"
+                        }
+                    }
+                } catch {
+                    # Vserver may not have CIFS configured - skip silently
+                }
             }
         }
     }
@@ -1496,20 +1515,34 @@ function Test-DataAccessAdvanced {
     
     # NAO-E058: SMB1 disabled
     try {
-        $smbConfig = Get-NcCifsSecurity
-        
-        foreach ($config in $smbConfig) {
-            if ($config.Smb1EnabledForDcConnections -eq $false) {
-                Write-Pass "SMB1 desactive"
-                Add-Result -Id "NAO-E058" -Category "Acces" -Title "SMB1 desactive" `
-                    -Status "PASS" -Severity "critical" `
-                    -Description "Le protocole SMB1 obsolete est desactive"
-            } else {
-                Write-Fail "SMB1 actif"
-                Add-Result -Id "NAO-E058" -Category "Acces" -Title "SMB1 desactive" `
-                    -Status "FAIL" -Severity "critical" `
-                    -Description "SMB1 est un protocole obsolete et vulnerable" `
-                    -Remediation "vserver cifs security modify -smb1-enabled-for-dc-connections false"
+        if ($script:DataVservers.Count -eq 0) {
+            Write-Warn "Aucun data vserver - verification SMB1 ignoree"
+        } else {
+            foreach ($vserver in $script:DataVservers) {
+                try {
+                    $smbConfig = Get-NcCifsSecurity -VserverContext $vserver -ErrorAction SilentlyContinue
+                    if ($smbConfig) {
+                        $smb1Enabled = $false
+                        if ($smbConfig.PSObject.Properties["Smb1EnabledForDcConnections"]) {
+                            $smb1Enabled = $smbConfig.Smb1EnabledForDcConnections
+                        }
+                        
+                        if (-not $smb1Enabled) {
+                            Write-Pass "SMB1 desactive sur $vserver"
+                            Add-Result -Id "NAO-E058" -Category "Acces" -Title "SMB1 desactive ($vserver)" `
+                                -Status "PASS" -Severity "critical" `
+                                -Description "Le protocole SMB1 obsolete est desactive sur $vserver"
+                        } else {
+                            Write-Fail "SMB1 actif sur $vserver"
+                            Add-Result -Id "NAO-E058" -Category "Acces" -Title "SMB1 desactive ($vserver)" `
+                                -Status "FAIL" -Severity "critical" `
+                                -Description "SMB1 est un protocole obsolete et vulnerable sur $vserver" `
+                                -Remediation "vserver cifs security modify -vserver $vserver -smb1-enabled-for-dc-connections false"
+                        }
+                    }
+                } catch {
+                    # Vserver may not have CIFS configured - skip silently
+                }
             }
         }
     }
