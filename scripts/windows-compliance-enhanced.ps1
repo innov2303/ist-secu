@@ -131,18 +131,18 @@ function Test-SystemConfiguration {
         $daysSinceUpdate = ((Get-Date) - $lastUpdate.InstalledOn).Days
         
         if ($daysSinceUpdate -le 30) {
-            Write-Pass "Derniere mise a jour: $($lastUpdate.HotFixID) il y a $daysSinceUpdate jours"
+            Write-Pass "Derniere mise a jour: $($lastUpdate.HotFixID) il y a $($daysSinceUpdate) jours"
             Add-Result -Id "SYS-001" -Category "ANSSI" -Title "Mises a jour systeme" -Status "PASS" -Severity "critical" `
-                -Description "Systeme mis a jour recemment (il y a $daysSinceUpdate jours)" -Reference "ANSSI R1"
+                -Description "Systeme mis a jour recemment (il y a $($daysSinceUpdate) jours)" -Reference "ANSSI R1"
         } elseif ($daysSinceUpdate -le 90) {
-            Write-Warn "Derniere mise a jour il y a $daysSinceUpdate jours"
+            Write-Warn "Derniere mise a jour il y a $($daysSinceUpdate) jours"
             Add-Result -Id "SYS-001" -Category "ANSSI" -Title "Mises a jour systeme" -Status "WARN" -Severity "critical" `
-                -Description "Derniere mise a jour il y a $daysSinceUpdate jours" `
+                -Description "Derniere mise a jour il y a $($daysSinceUpdate) jours" `
                 -Remediation "Executer Windows Update pour installer les dernieres mises a jour de securite" -Reference "ANSSI R1"
         } else {
-            Write-Fail "Systeme non mis a jour depuis $daysSinceUpdate jours"
+            Write-Fail "Systeme non mis a jour depuis $($daysSinceUpdate) jours"
             Add-Result -Id "SYS-001" -Category "ANSSI" -Title "Mises a jour systeme" -Status "FAIL" -Severity "critical" `
-                -Description "Systeme non mis a jour depuis $daysSinceUpdate jours" `
+                -Description "Systeme non mis a jour depuis $($daysSinceUpdate) jours" `
                 -Remediation "Executer immediatement Windows Update" -Reference "ANSSI R1"
         }
     } catch {
@@ -373,19 +373,19 @@ function Test-AccountManagement {
     $secpolContent = Get-Content "$env:TEMP\secpol.cfg" -ErrorAction SilentlyContinue
     
     $minPwdLen = ($secpolContent | Select-String "MinimumPasswordLength").ToString().Split("=")[1].Trim()
-    if ([int]$minPwdLen -ge 14) {
-        Write-Pass "Longueur minimale du mot de passe: $minPwdLen caracteres"
+    if ([int]$($minPwdLen) -ge 14) {
+        Write-Pass "Longueur minimale du mot de passe: $($minPwdLen) caracteres"
         Add-Result -Id "ACC-003" -Category "ANSSI" -Title "Longueur minimale du mot de passe" -Status "PASS" -Severity "high" `
-            -Description "Longueur minimale configuree a $minPwdLen caracteres" -Reference "ANSSI R20"
-    } elseif ([int]$minPwdLen -ge 8) {
-        Write-Warn "Longueur minimale du mot de passe: $minPwdLen caracteres (recommande: 14)"
+            -Description "Longueur minimale configuree a $($minPwdLen) caracteres" -Reference "ANSSI R20"
+    } elseif ([int]$($minPwdLen) -ge 8) {
+        Write-Warn "Longueur minimale du mot de passe: $($minPwdLen) caracteres (recommande: 14)"
         Add-Result -Id "ACC-003" -Category "ANSSI" -Title "Longueur minimale du mot de passe" -Status "WARN" -Severity "high" `
-            -Description "Longueur minimale de $minPwdLen caracteres (recommande: 14)" `
+            -Description "Longueur minimale de $($minPwdLen) caracteres (recommande: 14)" `
             -Remediation "Augmenter la longueur minimale a 14 caracteres via GPO" -Reference "ANSSI R20"
     } else {
-        Write-Fail "Longueur minimale du mot de passe insuffisante: $minPwdLen"
+        Write-Fail "Longueur minimale du mot de passe insuffisante: $($minPwdLen)"
         Add-Result -Id "ACC-003" -Category "ANSSI" -Title "Longueur minimale du mot de passe" -Status "FAIL" -Severity "high" `
-            -Description "Longueur minimale de seulement $minPwdLen caracteres" `
+            -Description "Longueur minimale de seulement $($minPwdLen) caracteres" `
             -Remediation "Configurer une longueur minimale de 14 caracteres" -Reference "ANSSI R20"
     }
     
@@ -402,12 +402,12 @@ function Test-AccountManagement {
     }
     
     $lockoutThreshold = ($secpolContent | Select-String "LockoutBadCount").ToString().Split("=")[1].Trim()
-    if ([int]$lockoutThreshold -gt 0 -and [int]$lockoutThreshold -le 5) {
-        Write-Pass "Verrouillage apres $lockoutThreshold tentatives echouees"
+    if ([int]$($lockoutThreshold) -gt 0 -and [int]$($lockoutThreshold) -le 5) {
+        Write-Pass "Verrouillage apres $($lockoutThreshold) tentatives echouees"
         Add-Result -Id "ACC-005" -Category "CIS" -Title "Seuil de verrouillage de compte" -Status "PASS" -Severity "high" `
-            -Description "Verrouillage configure apres $lockoutThreshold tentatives" -Reference "CIS 1.2.1"
-    } elseif ([int]$lockoutThreshold -gt 5) {
-        Write-Warn "Seuil de verrouillage trop eleve: $lockoutThreshold"
+            -Description "Verrouillage configure apres $($lockoutThreshold) tentatives" -Reference "CIS 1.2.1"
+    } elseif ([int]$($lockoutThreshold) -gt 5) {
+        Write-Warn "Seuil de verrouillage trop eleve: $($lockoutThreshold)"
         Add-Result -Id "ACC-005" -Category "CIS" -Title "Seuil de verrouillage de compte" -Status "WARN" -Severity "high" `
             -Description "Seuil de verrouillage trop permissif ($lockoutThreshold tentatives)" `
             -Remediation "Reduire le seuil a 5 tentatives maximum" -Reference "CIS 1.2.1"
@@ -820,18 +820,18 @@ function Test-AuditConfiguration {
     $securityLogSizeMB = [math]::Round($securityLog.MaximumSizeInBytes / 1MB)
     
     if ($securityLogSizeMB -ge 1024) {
-        Write-Pass "Journal Securite: $securityLogSizeMB MB"
+        Write-Pass "Journal Securite: $($securityLogSizeMB) MB"
         Add-Result -Id "AUD-002" -Category "CIS L2" -Title "Taille journal Securite" -Status "PASS" -Severity "medium" `
-            -Description "Journal Securite configure a $securityLogSizeMB MB" -Reference "CIS 18.9.27.1"
+            -Description "Journal Securite configure a $($securityLogSizeMB) MB" -Reference "CIS 18.9.27.1"
     } elseif ($securityLogSizeMB -ge 196) {
-        Write-Warn "Journal Securite: $securityLogSizeMB MB (recommande: 1024+ MB)"
+        Write-Warn "Journal Securite: $($securityLogSizeMB) MB (recommande: 1024+ MB)"
         Add-Result -Id "AUD-002" -Category "CIS L2" -Title "Taille journal Securite" -Status "WARN" -Severity "medium" `
-            -Description "Journal Securite de $securityLogSizeMB MB (recommande: 1024+ MB)" `
+            -Description "Journal Securite de $($securityLogSizeMB) MB (recommande: 1024+ MB)" `
             -Remediation "Augmenter la taille du journal a 1 GB minimum" -Reference "CIS 18.9.27.1"
     } else {
-        Write-Fail "Journal Securite trop petit: $securityLogSizeMB MB"
+        Write-Fail "Journal Securite trop petit: $($securityLogSizeMB) MB"
         Add-Result -Id "AUD-002" -Category "CIS L2" -Title "Taille journal Securite" -Status "FAIL" -Severity "medium" `
-            -Description "Journal Securite de seulement $securityLogSizeMB MB" `
+            -Description "Journal Securite de seulement $($securityLogSizeMB) MB" `
             -Remediation "Configurer le journal Securite a 1 GB minimum" -Reference "CIS 18.9.27.1"
     }
     
