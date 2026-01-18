@@ -97,7 +97,24 @@ else
     print_status "PM2 déjà installé"
 fi
 
-# 7. Création du fichier .env
+# 7. Vérification du répertoire de l'application
+echo ""
+echo ">>> Vérification du répertoire..."
+if [ ! -d "$APP_DIR" ]; then
+    print_error "Le répertoire $APP_DIR n'existe pas !"
+    echo ""
+    echo "Clonez d'abord votre repo avec :"
+    echo "  sudo mkdir -p /var/www"
+    echo "  cd /var/www"
+    echo "  sudo git clone https://github.com/VOTRE-USERNAME/VOTRE-REPO.git ist-security"
+    echo "  sudo chown -R \$USER:\$USER /var/www/ist-security"
+    echo ""
+    echo "Puis relancez ce script."
+    exit 1
+fi
+print_status "Répertoire trouvé : $APP_DIR"
+
+# 8. Création du fichier .env
 echo ""
 echo ">>> Configuration de l'environnement..."
 if [ -f "$APP_DIR/.env" ]; then
