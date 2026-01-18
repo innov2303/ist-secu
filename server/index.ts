@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
-import { getStripeSync } from "./stripeClient";
+import { getStripeSync, isStripeAvailable } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 
 const app = express();
@@ -34,15 +34,26 @@ async function initStripe() {
     return;
   }
 
+  // Check if Stripe credentials are available
+  const stripeReady = await isStripeAvailable();
+  if (!stripeReady) {
+    console.log('Stripe credentials not configured, skipping Stripe initialization');
+    console.log('To enable payments, add STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY to your .env file');
+    return;
+  }
+
   try {
     console.log('Initializing Stripe schema...');
     await runMigrations({ 
-      databaseUrl,
-      schema: 'stripe'
+      databaseUrl
     });
     console.log('Stripe schema ready');
 
     const stripeSync = await getStripeSync();
+    if (!stripeSync) {
+      console.log('Stripe sync not available, skipping webhook setup');
+      return;
+    }
 
     console.log('Setting up managed webhook...');
     const domains = process.env.REPLIT_DOMAINS?.split(',');
