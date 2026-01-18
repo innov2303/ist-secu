@@ -8,8 +8,15 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
 
+export function isReplitAuthAvailable(): boolean {
+  return !!(process.env.REPL_ID && process.env.REPL_ID.trim() !== "");
+}
+
 const getOidcConfig = memoize(
   async () => {
+    if (!isReplitAuthAvailable()) {
+      throw new Error("Replit Auth not available - REPL_ID not set");
+    }
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
       process.env.REPL_ID!
@@ -67,6 +74,29 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+  if (!isReplitAuthAvailable()) {
+    console.log("Replit Auth not available (REPL_ID not set) - using local auth only");
+    
+    app.get("/api/login", (req, res) => {
+      res.redirect("/auth");
+    });
+
+    app.get("/api/callback", (req, res) => {
+      res.redirect("/");
+    });
+
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/");
+      });
+    });
+    
+    return;
+  }
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -79,10 +109,8 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
-  // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
@@ -99,9 +127,6 @@ export async function setupAuth(app: Express) {
       registeredStrategies.add(strategyName);
     }
   };
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
@@ -135,9 +160,13 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // Check for local auth session first
   const session = req.session as any;
   if (session?.userId) {
-    // Local auth user - set user info for downstream middleware
     (req as any).user = { claims: { sub: session.userId } };
     return next();
+  }
+
+  // If Replit Auth is not available, only local auth works
+  if (!isReplitAuthAvailable()) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   // Fall back to Replit OIDC auth
