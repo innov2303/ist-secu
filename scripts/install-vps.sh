@@ -3,7 +3,7 @@
 # ==============================================
 # Script d'installation VPS universel
 # Pour applications Node.js/Express avec PostgreSQL
-# Compatible Debian/Ubuntu
+# Compatible Debian/Ubuntu/CentOS/Rocky/AlmaLinux
 # ==============================================
 
 set -e
@@ -40,13 +40,75 @@ print_header() {
     echo ""
 }
 
+# ==========================================
+# DÉTECTION DE LA DISTRIBUTION
+# ==========================================
+
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO_ID="$ID"
+        DISTRO_VERSION="$VERSION_ID"
+        DISTRO_NAME="$PRETTY_NAME"
+    elif [ -f /etc/redhat-release ]; then
+        DISTRO_ID="rhel"
+        DISTRO_NAME=$(cat /etc/redhat-release)
+    else
+        DISTRO_ID="unknown"
+        DISTRO_NAME="Unknown"
+    fi
+
+    case "$DISTRO_ID" in
+        ubuntu|debian)
+            PKG_MANAGER="apt"
+            PKG_UPDATE="apt update"
+            PKG_UPGRADE="apt upgrade -y"
+            PKG_INSTALL="apt install -y"
+            FIREWALL_PKG="ufw"
+            FIREWALL_CMD="ufw"
+            SERVICE_CMD="systemctl"
+            ;;
+        centos|rhel|rocky|almalinux|fedora)
+            if command -v dnf &> /dev/null; then
+                PKG_MANAGER="dnf"
+                PKG_UPDATE="dnf check-update || true"
+                PKG_UPGRADE="dnf upgrade -y"
+                PKG_INSTALL="dnf install -y"
+            else
+                PKG_MANAGER="yum"
+                PKG_UPDATE="yum check-update || true"
+                PKG_UPGRADE="yum upgrade -y"
+                PKG_INSTALL="yum install -y"
+            fi
+            FIREWALL_PKG="firewalld"
+            FIREWALL_CMD="firewall-cmd"
+            SERVICE_CMD="systemctl"
+            ;;
+        *)
+            print_error "Distribution non supportée : $DISTRO_NAME"
+            print_info "Distributions supportées : Debian, Ubuntu, CentOS, Rocky Linux, AlmaLinux, Fedora"
+            exit 1
+            ;;
+    esac
+
+    print_info "Distribution détectée : $DISTRO_NAME"
+    print_info "Gestionnaire de paquets : $PKG_MANAGER"
+}
+
+# Détecter la distribution en premier
+detect_distro
+
 # Détection root
 if [ "$EUID" -eq 0 ]; then
     print_warning "Exécution en tant que root détectée"
     print_info "Il est recommandé d'utiliser un utilisateur non-root avec sudo"
     read -p "Continuer en tant que root ? (o/N): " CONTINUE_AS_ROOT
     if [[ ! "$CONTINUE_AS_ROOT" =~ ^[oOyY]$ ]]; then
-        echo "Créez un utilisateur avec : adduser monuser && usermod -aG sudo monuser"
+        if [ "$PKG_MANAGER" = "apt" ]; then
+            echo "Créez un utilisateur avec : adduser monuser && usermod -aG sudo monuser"
+        else
+            echo "Créez un utilisateur avec : useradd monuser && passwd monuser && usermod -aG wheel monuser"
+        fi
         exit 0
     fi
     RUN_AS_ROOT=true
@@ -57,8 +119,8 @@ fi
 print_header "Installation VPS - Application Node.js"
 
 echo -e "${BLUE}Ce script va installer et configurer :${NC}"
-echo "  - Préparation système Debian/Ubuntu"
-echo "  - Firewall (UFW)"
+echo "  - Préparation système ($DISTRO_NAME)"
+echo "  - Firewall ($FIREWALL_PKG)"
 echo "  - Fail2ban (protection SSH)"
 echo "  - Node.js 20 LTS"
 echo "  - PostgreSQL"
@@ -67,7 +129,7 @@ echo "  - PM2 (gestionnaire de processus)"
 echo "  - Certificat SSL (Let's Encrypt)"
 echo ""
 
-# Fonction pour exécuter avec ou sans sudo (définie tôt pour préparation)
+# Fonction pour exécuter avec ou sans sudo
 run_cmd() {
     if [ "$RUN_AS_ROOT" = true ]; then
         "$@"
@@ -83,6 +145,17 @@ run_as_postgres() {
     else
         sudo -u postgres bash -c "$1"
     fi
+}
+
+# Fonction pour installer des paquets (multi-distro)
+pkg_install() {
+    run_cmd $PKG_INSTALL "$@"
+}
+
+# Fonction pour activer et démarrer un service
+enable_service() {
+    run_cmd $SERVICE_CMD enable "$1"
+    run_cmd $SERVICE_CMD start "$1"
 }
 
 # ==========================================
@@ -249,8 +322,9 @@ fi
 print_header "Récapitulatif de la configuration"
 
 echo -e "${BLUE}Système :${NC}"
+echo "  Distribution   : $DISTRO_NAME"
 if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
-    echo "  Préparation    : Oui (UFW, Fail2ban, Swap)"
+    echo "  Préparation    : Oui ($FIREWALL_PKG, Fail2ban, Swap)"
     echo "  Timezone       : $TIMEZONE"
     if [[ ! "$CREATE_SWAP" =~ ^[nN]$ ]]; then
         echo "  Swap           : ${SWAP_SIZE}GB"
@@ -307,12 +381,18 @@ print_header "Installation des dépendances système"
 
 # Mise à jour système
 echo ">>> Mise à jour du système..."
-run_cmd apt update && run_cmd apt upgrade -y
+run_cmd $PKG_UPDATE
+run_cmd $PKG_UPGRADE
 print_status "Système mis à jour"
 
 # Installation des outils de base
 echo ">>> Installation des outils de base..."
-run_cmd apt install -y curl wget git build-essential unzip htop
+if [ "$PKG_MANAGER" = "apt" ]; then
+    pkg_install curl wget git build-essential unzip htop
+else
+    pkg_install curl wget git gcc gcc-c++ make unzip htop
+    pkg_install epel-release || true
+fi
 print_status "Outils de base installés"
 
 # ==========================================
@@ -320,7 +400,7 @@ print_status "Outils de base installés"
 # ==========================================
 
 if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
-    print_header "Configuration système Debian"
+    print_header "Configuration système"
     
     # Timezone
     echo ">>> Configuration du fuseau horaire..."
@@ -331,7 +411,7 @@ if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
     if [[ ! "$CREATE_SWAP" =~ ^[nN]$ ]]; then
         if [ ! -f /swapfile ]; then
             echo ">>> Création du fichier swap (${SWAP_SIZE}GB)..."
-            run_cmd fallocate -l ${SWAP_SIZE}G /swapfile
+            run_cmd fallocate -l ${SWAP_SIZE}G /swapfile 2>/dev/null || run_cmd dd if=/dev/zero of=/swapfile bs=1G count=${SWAP_SIZE}
             run_cmd chmod 600 /swapfile
             run_cmd mkswap /swapfile
             run_cmd swapon /swapfile
@@ -342,22 +422,30 @@ if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
         fi
     fi
     
-    # Firewall UFW
-    echo ">>> Configuration du firewall (UFW)..."
-    run_cmd apt install -y ufw
-    run_cmd ufw default deny incoming
-    run_cmd ufw default allow outgoing
-    run_cmd ufw allow ssh
-    run_cmd ufw allow http
-    run_cmd ufw allow https
-    run_cmd ufw --force enable
+    # Firewall
+    echo ">>> Configuration du firewall ($FIREWALL_PKG)..."
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        pkg_install ufw
+        run_cmd ufw default deny incoming
+        run_cmd ufw default allow outgoing
+        run_cmd ufw allow ssh
+        run_cmd ufw allow http
+        run_cmd ufw allow https
+        run_cmd ufw --force enable
+    else
+        pkg_install firewalld
+        enable_service firewalld
+        run_cmd firewall-cmd --permanent --add-service=ssh
+        run_cmd firewall-cmd --permanent --add-service=http
+        run_cmd firewall-cmd --permanent --add-service=https
+        run_cmd firewall-cmd --reload
+    fi
     print_status "Firewall configuré (SSH, HTTP, HTTPS autorisés)"
     
     # Fail2ban
     echo ">>> Installation de Fail2ban..."
-    run_cmd apt install -y fail2ban
-    run_cmd systemctl enable fail2ban
-    run_cmd systemctl start fail2ban
+    pkg_install fail2ban
+    enable_service fail2ban
     print_status "Fail2ban installé (protection SSH)"
 fi
 
@@ -414,8 +502,13 @@ print_header "Installation de Node.js"
 
 if ! command -v node &> /dev/null; then
     echo ">>> Installation de Node.js 20..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    run_cmd apt install -y nodejs
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | run_cmd bash -
+        pkg_install nodejs
+    else
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | run_cmd bash -
+        pkg_install nodejs
+    fi
     print_status "Node.js $(node -v) installé"
 else
     NODE_VERSION=$(node -v)
@@ -430,9 +523,13 @@ print_header "Installation de PostgreSQL"
 
 if ! command -v psql &> /dev/null; then
     echo ">>> Installation de PostgreSQL..."
-    run_cmd apt install -y postgresql postgresql-contrib
-    run_cmd systemctl start postgresql
-    run_cmd systemctl enable postgresql
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        pkg_install postgresql postgresql-contrib
+    else
+        pkg_install postgresql-server postgresql-contrib
+        run_cmd postgresql-setup --initdb 2>/dev/null || run_cmd postgresql-setup initdb || true
+    fi
+    enable_service postgresql
     print_status "PostgreSQL installé"
 else
     print_status "PostgreSQL déjà installé"
@@ -462,9 +559,13 @@ print_header "Installation de Nginx"
 
 if ! command -v nginx &> /dev/null; then
     echo ">>> Installation de Nginx..."
-    run_cmd apt install -y nginx
-    run_cmd systemctl start nginx
-    run_cmd systemctl enable nginx
+    pkg_install nginx
+    enable_service nginx
+    
+    # SELinux configuration for RHEL-based systems
+    if [ "$PKG_MANAGER" != "apt" ] && command -v setsebool &> /dev/null; then
+        run_cmd setsebool -P httpd_can_network_connect 1 2>/dev/null || true
+    fi
     print_status "Nginx installé"
 else
     print_status "Nginx déjà installé"
@@ -665,8 +766,24 @@ else
     SERVER_NAMES="$DOMAIN"
 fi
 
+# Déterminer le chemin de configuration Nginx
+if [ "$PKG_MANAGER" = "apt" ]; then
+    NGINX_CONF_DIR="/etc/nginx/sites-available"
+    NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
+    run_cmd mkdir -p "$NGINX_CONF_DIR" "$NGINX_ENABLED_DIR"
+else
+    NGINX_CONF_DIR="/etc/nginx/conf.d"
+    NGINX_ENABLED_DIR=""
+fi
+
 # Créer la configuration Nginx
-run_cmd tee /etc/nginx/sites-available/$APP_NAME > /dev/null << EOF
+if [ "$PKG_MANAGER" = "apt" ]; then
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/$APP_NAME"
+else
+    NGINX_CONF_FILE="$NGINX_CONF_DIR/$APP_NAME.conf"
+fi
+
+run_cmd tee $NGINX_CONF_FILE > /dev/null << EOF
 server {
     listen 80;
     server_name $SERVER_NAMES;
@@ -693,9 +810,11 @@ server {
 }
 EOF
 
-# Activer le site
-run_cmd ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
-run_cmd rm -f /etc/nginx/sites-enabled/default
+# Activer le site (Debian/Ubuntu uniquement)
+if [ "$PKG_MANAGER" = "apt" ]; then
+    run_cmd ln -sf $NGINX_CONF_FILE $NGINX_ENABLED_DIR/$APP_NAME
+    run_cmd rm -f $NGINX_ENABLED_DIR/default
+fi
 
 # Tester et recharger Nginx
 run_cmd nginx -t && run_cmd systemctl reload nginx
@@ -729,7 +848,11 @@ read -p "Installer le certificat SSL Let's Encrypt ? (O/n): " INSTALL_SSL
 
 if [[ ! "$INSTALL_SSL" =~ ^[nN]$ ]]; then
     echo ">>> Installation de Certbot..."
-    run_cmd apt install -y certbot python3-certbot-nginx
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        pkg_install certbot python3-certbot-nginx
+    else
+        pkg_install certbot python3-certbot-nginx
+    fi
     
     echo ">>> Génération du certificat..."
     if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
@@ -746,7 +869,11 @@ if [[ ! "$INSTALL_SSL" =~ ^[nN]$ ]]; then
     print_status "SSL configuré"
 else
     print_info "SSL ignoré. Vous pouvez l'installer plus tard avec :"
-    echo "  sudo apt install certbot python3-certbot-nginx"
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        echo "  sudo apt install certbot python3-certbot-nginx"
+    else
+        echo "  sudo dnf install certbot python3-certbot-nginx"
+    fi
     if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
         echo "  sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
     else
@@ -762,6 +889,8 @@ print_header "INSTALLATION TERMINÉE !"
 
 echo -e "${GREEN}Votre application est maintenant en ligne !${NC}"
 echo ""
+echo "Système : $DISTRO_NAME"
+echo ""
 echo "Accès :"
 if [[ ! "$INSTALL_SSL" =~ ^[nN]$ ]]; then
     echo "  - https://$DOMAIN"
@@ -775,7 +904,7 @@ echo ""
 echo "Fichiers importants :"
 echo "  - Application : $APP_DIR"
 echo "  - Configuration : $APP_DIR/.env"
-echo "  - Nginx : /etc/nginx/sites-available/$APP_NAME"
+echo "  - Nginx : $NGINX_CONF_FILE"
 echo ""
 echo "Commandes utiles :"
 echo "  - Voir les logs     : pm2 logs $APP_NAME"
