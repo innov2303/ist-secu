@@ -76,6 +76,15 @@ run_cmd() {
     fi
 }
 
+# Fonction pour exécuter en tant qu'utilisateur postgres
+run_as_postgres() {
+    if [ "$RUN_AS_ROOT" = true ]; then
+        su - postgres -c "$1"
+    else
+        sudo -u postgres bash -c "$1"
+    fi
+}
+
 # ==========================================
 # PRÉPARATION SYSTÈME DEBIAN
 # ==========================================
@@ -433,15 +442,15 @@ fi
 echo ">>> Configuration de la base de données..."
 
 # Créer l'utilisateur si n'existe pas
-run_cmd -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1 || \
-    run_cmd -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
+run_as_postgres "psql -tc \"SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'\"" | grep -q 1 || \
+    run_as_postgres "psql -c \"CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';\""
 
 # Créer la base si n'existe pas
-run_cmd -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -q 1 || \
-    run_cmd -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
+run_as_postgres "psql -tc \"SELECT 1 FROM pg_database WHERE datname='$DB_NAME'\"" | grep -q 1 || \
+    run_as_postgres "psql -c \"CREATE DATABASE $DB_NAME OWNER $DB_USER;\""
 
 # Accorder les permissions
-run_cmd -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+run_as_postgres "psql -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;\""
 
 print_status "Base de données configurée"
 
