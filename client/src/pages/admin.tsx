@@ -190,9 +190,7 @@ export default function AdminPage() {
         {/* Logo Header */}
         <div className="p-4 border-b">
           <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg p-2 -m-2">
-            <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
-              <img src={logoImg} alt="IST Logo" className="w-9 h-9 mix-blend-screen" />
-            </div>
+            <img src={logoImg} alt="IST Logo" className="w-10 h-10 rounded-lg bg-white p-1" />
             <div>
               <h1 className="font-bold text-sm" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
               <p className="text-xs text-muted-foreground">Administration</p>
