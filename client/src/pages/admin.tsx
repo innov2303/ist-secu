@@ -525,7 +525,7 @@ export default function AdminPage() {
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <CardTitle>Scripts disponibles</CardTitle>
+                      <CardTitle>Toolkit disponibles</CardTitle>
                       <CardDescription>
                         {filteredScripts.length} toolkit(s) configuré(s)
                       </CardDescription>
