@@ -134,7 +134,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
         <p className="text-muted-foreground mb-6">Vous devez être connecté pour accéder à cette page.</p>
         <Button asChild>
-          <a href="/api/login">Se connecter</a>
+          <a href="/auth">Se connecter</a>
         </Button>
       </div>
     );

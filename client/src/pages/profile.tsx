@@ -208,14 +208,7 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {!isLocalUser ? (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Votre compte est lié à Replit. La modification de l'email et du mot de passe n'est pas disponible.
-            </AlertDescription>
-          </Alert>
-        ) : (
+        {isLocalUser && (
           <>
             <Card>
               <CardHeader>

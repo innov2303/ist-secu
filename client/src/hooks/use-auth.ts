@@ -3,50 +3,29 @@ import type { User } from "@shared/models/auth";
 import type { RegisterData, LoginData } from "@shared/schema";
 
 async function fetchUser(): Promise<User | null> {
-  // Try local auth first
-  const meResponse = await fetch("/api/auth/me", {
+  const response = await fetch("/api/auth/me", {
     credentials: "include",
   });
 
-  if (meResponse.ok) {
-    return meResponse.json();
+  if (response.ok) {
+    return response.json();
   }
-
-  // Fall back to Replit Auth
-  const response = await fetch("/api/auth/user", {
-    credentials: "include",
-  });
 
   if (response.status === 401) {
     return null;
   }
 
-  if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
-  }
-
-  return response.json();
+  throw new Error(`${response.status}: ${response.statusText}`);
 }
 
 async function logoutUser(): Promise<void> {
-  // Try local logout first
   const response = await fetch("/api/auth/logout", {
     method: "POST",
     credentials: "include",
   });
   
   if (response.ok) {
-    const data = await response.json();
-    // Only redirect to Replit logout if not a local auth user
-    if (!data.isLocalAuth) {
-      window.location.href = "/api/logout";
-    } else {
-      // Local user - just refresh the page
-      window.location.href = "/";
-    }
-  } else {
-    // Fallback to Replit logout
-    window.location.href = "/api/logout";
+    window.location.href = "/";
   }
 }
 
@@ -88,7 +67,7 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: fetchUser,
     retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   const logoutMutation = useMutation({

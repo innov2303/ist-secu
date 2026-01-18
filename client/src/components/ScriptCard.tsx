@@ -133,7 +133,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
         <div className="mt-auto space-y-2">
           {!user && (
             <Button asChild className="w-full" data-testid={`button-login-${script.id}`}>
-              <a href="/api/login">
+              <a href="/auth">
                 Connectez-vous pour acheter
               </a>
             </Button>
