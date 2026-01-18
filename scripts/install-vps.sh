@@ -40,11 +40,18 @@ print_header() {
     echo ""
 }
 
-# Vérification root
+# Détection root
 if [ "$EUID" -eq 0 ]; then
-    print_error "Ne pas exécuter ce script en tant que root !"
-    print_info "Utilisez un utilisateur avec sudo : ./install-vps.sh"
-    exit 1
+    print_warning "Exécution en tant que root détectée"
+    print_info "Il est recommandé d'utiliser un utilisateur non-root avec sudo"
+    read -p "Continuer en tant que root ? (o/N): " CONTINUE_AS_ROOT
+    if [[ ! "$CONTINUE_AS_ROOT" =~ ^[oOyY]$ ]]; then
+        echo "Créez un utilisateur avec : adduser monuser && usermod -aG sudo monuser"
+        exit 0
+    fi
+    RUN_AS_ROOT=true
+else
+    RUN_AS_ROOT=false
 fi
 
 print_header "Installation VPS - Application Node.js"
@@ -200,14 +207,23 @@ fi
 
 print_header "Installation des dépendances système"
 
+# Fonction pour exécuter avec ou sans sudo
+run_cmd() {
+    if [ "$RUN_AS_ROOT" = true ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
 # Mise à jour système
 echo ">>> Mise à jour du système..."
-sudo apt update && sudo apt upgrade -y
+run_cmd apt update && run_cmd apt upgrade -y
 print_status "Système mis à jour"
 
 # Installation des outils de base
 echo ">>> Installation des outils de base..."
-sudo apt install -y curl wget git build-essential
+run_cmd apt install -y curl wget git build-essential
 print_status "Outils de base installés"
 
 # ==========================================
@@ -219,7 +235,7 @@ print_header "Installation de Node.js"
 if ! command -v node &> /dev/null; then
     echo ">>> Installation de Node.js 20..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+    run_cmd apt install -y nodejs
     print_status "Node.js $(node -v) installé"
 else
     NODE_VERSION=$(node -v)
@@ -234,9 +250,9 @@ print_header "Installation de PostgreSQL"
 
 if ! command -v psql &> /dev/null; then
     echo ">>> Installation de PostgreSQL..."
-    sudo apt install -y postgresql postgresql-contrib
-    sudo systemctl start postgresql
-    sudo systemctl enable postgresql
+    run_cmd apt install -y postgresql postgresql-contrib
+    run_cmd systemctl start postgresql
+    run_cmd systemctl enable postgresql
     print_status "PostgreSQL installé"
 else
     print_status "PostgreSQL déjà installé"
@@ -246,15 +262,15 @@ fi
 echo ">>> Configuration de la base de données..."
 
 # Créer l'utilisateur si n'existe pas
-sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
+run_cmd -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1 || \
+    run_cmd -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
 
 # Créer la base si n'existe pas
-sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
+run_cmd -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -q 1 || \
+    run_cmd -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
 
 # Accorder les permissions
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+run_cmd -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 
 print_status "Base de données configurée"
 
@@ -266,9 +282,9 @@ print_header "Installation de Nginx"
 
 if ! command -v nginx &> /dev/null; then
     echo ">>> Installation de Nginx..."
-    sudo apt install -y nginx
-    sudo systemctl start nginx
-    sudo systemctl enable nginx
+    run_cmd apt install -y nginx
+    run_cmd systemctl start nginx
+    run_cmd systemctl enable nginx
     print_status "Nginx installé"
 else
     print_status "Nginx déjà installé"
@@ -282,7 +298,7 @@ print_header "Installation de PM2"
 
 if ! command -v pm2 &> /dev/null; then
     echo ">>> Installation de PM2..."
-    sudo npm install -g pm2
+    run_cmd npm install -g pm2
     print_status "PM2 installé"
 else
     print_status "PM2 déjà installé"
@@ -297,8 +313,8 @@ print_header "Configuration de l'application"
 # Créer le répertoire parent si nécessaire
 PARENT_DIR=$(dirname "$APP_DIR")
 if [ ! -d "$PARENT_DIR" ]; then
-    sudo mkdir -p "$PARENT_DIR"
-    sudo chown $USER:$USER "$PARENT_DIR"
+    run_cmd mkdir -p "$PARENT_DIR"
+    run_cmd chown $USER:$USER "$PARENT_DIR"
 fi
 
 # Cloner le dépôt si URL fournie
@@ -311,17 +327,17 @@ if [ -n "$GIT_URL" ]; then
         echo ">>> Clonage du dépôt..."
         git clone -b "$GIT_BRANCH" "$GIT_URL" "$APP_DIR"
     fi
-    sudo chown -R $USER:$USER "$APP_DIR"
+    run_cmd chown -R $USER:$USER "$APP_DIR"
     print_status "Dépôt cloné"
 else
     if [ ! -d "$APP_DIR" ]; then
         print_error "Le répertoire $APP_DIR n'existe pas !"
         echo ""
         echo "Clonez d'abord votre dépôt avec :"
-        echo "  sudo mkdir -p $PARENT_DIR"
+        echo "  run_cmd mkdir -p $PARENT_DIR"
         echo "  cd $PARENT_DIR"
         echo "  sudo git clone https://github.com/USERNAME/REPO.git $(basename $APP_DIR)"
-        echo "  sudo chown -R \$USER:\$USER $APP_DIR"
+        echo "  run_cmd chown -R \$USER:\$USER $APP_DIR"
         echo ""
         echo "Puis relancez ce script."
         exit 1
@@ -450,7 +466,7 @@ else
 fi
 
 # Créer la configuration Nginx
-sudo tee /etc/nginx/sites-available/$APP_NAME > /dev/null << EOF
+run_cmd tee /etc/nginx/sites-available/$APP_NAME > /dev/null << EOF
 server {
     listen 80;
     server_name $SERVER_NAMES;
@@ -478,11 +494,11 @@ server {
 EOF
 
 # Activer le site
-sudo ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+run_cmd ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
+run_cmd rm -f /etc/nginx/sites-enabled/default
 
 # Tester et recharger Nginx
-sudo nginx -t && sudo systemctl reload nginx
+run_cmd nginx -t && run_cmd systemctl reload nginx
 print_status "Nginx configuré"
 
 # ==========================================
@@ -491,10 +507,14 @@ print_status "Nginx configuré"
 
 print_header "Configuration du démarrage automatique"
 
-# Obtenir la commande startup
-PM2_STARTUP=$(pm2 startup systemd -u $USER --hp $HOME 2>&1 | grep "sudo env")
-if [ -n "$PM2_STARTUP" ]; then
-    eval $PM2_STARTUP
+# Configurer le démarrage automatique
+if [ "$RUN_AS_ROOT" = true ]; then
+    pm2 startup systemd
+else
+    PM2_STARTUP=$(pm2 startup systemd -u $USER --hp $HOME 2>&1 | grep "sudo env")
+    if [ -n "$PM2_STARTUP" ]; then
+        eval $PM2_STARTUP
+    fi
 fi
 pm2 save
 print_status "Démarrage automatique configuré"
@@ -509,16 +529,16 @@ read -p "Installer le certificat SSL Let's Encrypt ? (O/n): " INSTALL_SSL
 
 if [[ ! "$INSTALL_SSL" =~ ^[nN]$ ]]; then
     echo ">>> Installation de Certbot..."
-    sudo apt install -y certbot python3-certbot-nginx
+    run_cmd apt install -y certbot python3-certbot-nginx
     
     echo ">>> Génération du certificat..."
     if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
-        sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
+        run_cmd certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
             print_warning "Échec SSL automatique. Essayez manuellement :"
             echo "  sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
         }
     else
-        sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
+        run_cmd certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
             print_warning "Échec SSL automatique. Essayez manuellement :"
             echo "  sudo certbot --nginx -d $DOMAIN"
         }
