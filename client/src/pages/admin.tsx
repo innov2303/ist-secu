@@ -8,25 +8,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { 
+  Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
+  ChevronLeft, ChevronRight, Package, Shield, Home, Settings
+} from "lucide-react";
 import type { User } from "@shared/models/auth";
-import type { ContactRequest } from "@shared/schema";
+import type { ContactRequest, Script } from "@shared/schema";
 import { Link } from "wouter";
-import { Footer } from "@/components/Footer";
-import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
-const USERS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 10;
+
+type AdminSection = "users" | "tickets" | "toolkits";
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [activeSection, setActiveSection] = useState<AdminSection>("users");
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
   const [contactSearch, setContactSearch] = useState("");
   const [contactPage, setContactPage] = useState(1);
+  const [scriptSearch, setScriptSearch] = useState("");
+  const [scriptPage, setScriptPage] = useState(1);
 
-  const { data: users, isLoading } = useQuery<User[]>({
+  const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     enabled: !!user?.isAdmin,
   });
@@ -36,6 +42,12 @@ export default function AdminPage() {
     enabled: !!user?.isAdmin,
   });
 
+  const { data: scripts, isLoading: scriptsLoading } = useQuery<Script[]>({
+    queryKey: ["/api/scripts"],
+    enabled: !!user?.isAdmin,
+  });
+
+  // Users filtering and pagination
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     if (!userSearch.trim()) return users;
@@ -47,17 +59,13 @@ export default function AdminPage() {
     );
   }, [users, userSearch]);
 
-  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const totalUserPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
   const paginatedUsers = useMemo(() => {
-    const start = (userPage - 1) * USERS_PER_PAGE;
-    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+    const start = (userPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredUsers, userPage]);
 
-  const handleSearchChange = (value: string) => {
-    setUserSearch(value);
-    setUserPage(1);
-  };
-
+  // Contact requests filtering and pagination
   const filteredContacts = useMemo(() => {
     if (!contactRequests) return [];
     if (!contactSearch.trim()) return contactRequests;
@@ -70,17 +78,30 @@ export default function AdminPage() {
     );
   }, [contactRequests, contactSearch]);
 
-  const totalContactPages = Math.ceil(filteredContacts.length / USERS_PER_PAGE);
+  const totalContactPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
   const paginatedContacts = useMemo(() => {
-    const start = (contactPage - 1) * USERS_PER_PAGE;
-    return filteredContacts.slice(start, start + USERS_PER_PAGE);
+    const start = (contactPage - 1) * ITEMS_PER_PAGE;
+    return filteredContacts.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredContacts, contactPage]);
 
-  const handleContactSearchChange = (value: string) => {
-    setContactSearch(value);
-    setContactPage(1);
-  };
+  // Scripts filtering and pagination
+  const filteredScripts = useMemo(() => {
+    if (!scripts) return [];
+    if (!scriptSearch.trim()) return scripts;
+    const search = scriptSearch.toLowerCase();
+    return scripts.filter(s => 
+      s.name?.toLowerCase().includes(search) ||
+      s.os?.toLowerCase().includes(search)
+    );
+  }, [scripts, scriptSearch]);
 
+  const totalScriptPages = Math.ceil(filteredScripts.length / ITEMS_PER_PAGE);
+  const paginatedScripts = useMemo(() => {
+    const start = (scriptPage - 1) * ITEMS_PER_PAGE;
+    return filteredScripts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredScripts, scriptPage]);
+
+  // Mutations
   const updateContactStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       await apiRequest("PATCH", `/api/admin/contact-requests/${id}`, { status });
@@ -152,290 +173,456 @@ export default function AdminPage() {
     );
   }
 
+  const sidebarItems = [
+    { id: "users" as AdminSection, label: "Utilisateurs", icon: Users, count: users?.length },
+    { id: "tickets" as AdminSection, label: "Gestion des tickets", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
+    { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: scripts?.length },
+  ];
+
+  const formatPrice = (cents: number) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  };
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header with logo */}
-      <div className="relative h-32 md:h-40 w-full overflow-hidden">
-        <img 
-          src={bannerImg} 
-          alt="Security Infrastructure" 
-          className="w-full h-full object-cover brightness-[0.4]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        <div className="absolute inset-0 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <img src={logoImg} alt="IST Logo" className="w-24 h-24 md:w-32 md:h-32 drop-shadow-lg mix-blend-screen cursor-pointer" />
-            </Link>
-            <h1 className="text-xl md:text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
-          </div>
-          <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-8 flex-1">
-        <div className="flex items-center gap-3 mb-8">
-          <Users className="h-8 w-8 text-primary" />
-          <div>
-            <h2 className="text-2xl font-bold">Administration</h2>
-            <p className="text-muted-foreground">Gérer les utilisateurs et les demandes de contact</p>
-          </div>
-        </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-h-screen bg-background flex">
+      {/* Fixed Sidebar */}
+      <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
+        {/* Logo Header */}
+        <div className="p-4 border-b">
+          <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg p-2 -m-2">
+            <img src={logoImg} alt="IST Logo" className="w-10 h-10" />
             <div>
-              <CardTitle>Utilisateurs enregistrés</CardTitle>
-              <CardDescription>
-                {filteredUsers.length} sur {users?.length || 0} utilisateur(s)
-              </CardDescription>
+              <h1 className="font-bold text-sm" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
+              <p className="text-xs text-muted-foreground">Administration</p>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={userSearch}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9"
-                data-testid="input-user-search"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : paginatedUsers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {userSearch ? "Aucun utilisateur trouvé" : "Aucun utilisateur"}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {paginatedUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                  data-testid={`row-user-${u.id}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={u.profileImageUrl || undefined} />
-                      <AvatarFallback>
-                        {u.firstName?.[0] || u.email?.[0] || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium flex items-center gap-2">
-                        {u.firstName} {u.lastName}
-                        {u.isAdmin && (
-                          <Badge variant="default" className="text-xs">
-                            Admin
-                          </Badge>
-                        )}
-                        {u.id === user.id && (
-                          <Badge variant="secondary" className="text-xs">
-                            Vous
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{u.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => deleteUserMutation.mutate(u.id)}
-                      disabled={u.id === user.id || deleteUserMutation.isPending}
-                      data-testid={`button-delete-user-${u.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                Page {userPage} sur {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setUserPage(p => Math.max(1, p - 1))}
-                  disabled={userPage === 1}
-                  data-testid="button-prev-page"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
-                  disabled={userPage === totalPages}
-                  data-testid="button-next-page"
-                >
-                  Suivant
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {sidebarItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                activeSection === item.id 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover-elevate"
+              }`}
+              data-testid={`nav-${item.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              {item.count !== undefined && item.count > 0 && (
+                <Badge 
+                  variant={activeSection === item.id ? "secondary" : "outline"} 
+                  className="text-xs h-5 min-w-[20px] flex items-center justify-center"
+                >
+                  {item.count}
+                </Badge>
+              )}
+            </button>
+          ))}
+        </nav>
 
-      {/* Contact Requests Section */}
-      <Card className="mt-8">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Demandes de contact
-              </CardTitle>
-              <CardDescription>
-                {filteredContacts.filter(c => c.status === "pending").length} en attente sur {filteredContacts.length} demande(s)
-              </CardDescription>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={contactSearch}
-                onChange={(e) => handleContactSearchChange(e.target.value)}
-                className="pl-9"
-                data-testid="input-contact-search"
-              />
+        {/* Footer Links */}
+        <div className="p-4 border-t space-y-1">
+          <Link href="/">
+            <Button variant="ghost" className="w-full justify-start gap-3" data-testid="button-goto-home">
+              <Home className="h-4 w-4" />
+              Retour au site
+            </Button>
+          </Link>
+        </div>
+
+        {/* User Info */}
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user.profileImageUrl || undefined} />
+              <AvatarFallback className="text-xs">
+                {user.firstName?.[0] || user.email?.[0] || "A"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.firstName} {user.lastName}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {contactLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : paginatedContacts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {contactSearch ? "Aucune demande trouvée" : "Aucune demande de contact"}
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {paginatedContacts.map((request) => (
-                <div
-                  key={request.id}
-                  className="p-4 rounded-lg border bg-card"
-                  data-testid={`row-contact-${request.id}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
-                        <span className="font-medium">{request.name}</span>
-                        <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
-                          <Mail className="h-3 w-3" />
-                          {request.email}
-                        </a>
-                        <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
-                          {request.status === "pending" ? (
-                            <><Clock className="h-3 w-3 mr-1" /> En attente</>
-                          ) : (
-                            <><CheckCircle className="h-3 w-3 mr-1" /> Traité</>
-                          )}
-                        </Badge>
-                      </div>
-                      <div className="text-sm font-medium">{request.subject}</div>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(request.createdAt).toLocaleString('fr-FR')}
-                      </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 ml-64">
+        <div className="p-8">
+          {/* Users Section */}
+          {activeSection === "users" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Users className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Utilisateurs</h2>
+                  <p className="text-muted-foreground">Gérer les comptes utilisateurs</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <CardTitle>Utilisateurs enregistrés</CardTitle>
+                      <CardDescription>
+                        {filteredUsers.length} sur {users?.length || 0} utilisateur(s)
+                      </CardDescription>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      {request.status === "pending" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "resolved" })}
-                          disabled={updateContactStatusMutation.isPending}
-                          data-testid={`button-resolve-${request.id}`}
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Rechercher..."
+                        value={userSearch}
+                        onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
+                        className="pl-9"
+                        data-testid="input-user-search"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {usersLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : paginatedUsers.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      {userSearch ? "Aucun utilisateur trouvé" : "Aucun utilisateur"}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {paginatedUsers.map((u) => (
+                        <div
+                          key={u.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                          data-testid={`row-user-${u.id}`}
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Marquer traité
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
-                            disabled={updateContactStatusMutation.isPending}
-                            data-testid={`button-unresolve-${request.id}`}
-                          >
-                            <Clock className="h-4 w-4 mr-1" />
-                            Rouvrir
-                          </Button>
+                          <div className="flex items-center gap-4">
+                            <Avatar>
+                              <AvatarImage src={u.profileImageUrl || undefined} />
+                              <AvatarFallback>
+                                {u.firstName?.[0] || u.email?.[0] || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium flex items-center gap-2">
+                                {u.firstName} {u.lastName}
+                                {u.isAdmin && (
+                                  <Badge variant="default" className="text-xs">Admin</Badge>
+                                )}
+                                {u.id === user.id && (
+                                  <Badge variant="secondary" className="text-xs">Vous</Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">{u.email}</div>
+                            </div>
+                          </div>
                           <Button
                             variant="destructive"
-                            size="sm"
-                            onClick={() => deleteContactMutation.mutate(request.id)}
-                            disabled={deleteContactMutation.isPending}
-                            data-testid={`button-delete-contact-${request.id}`}
+                            size="icon"
+                            onClick={() => deleteUserMutation.mutate(u.id)}
+                            disabled={u.id === user.id || deleteUserMutation.isPending}
+                            data-testid={`button-delete-user-${u.id}`}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Supprimer
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </>
-                      )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {totalUserPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">Page {userPage} sur {totalUserPages}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                          disabled={userPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Précédent
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                          disabled={userPage === totalUserPages}
+                        >
+                          Suivant
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Tickets Section */}
+          {activeSection === "tickets" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Gestion des tickets</h2>
+                  <p className="text-muted-foreground">Demandes de contact et support</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <CardTitle>Demandes de contact</CardTitle>
+                      <CardDescription>
+                        {filteredContacts.filter(c => c.status === "pending").length} en attente sur {filteredContacts.length} demande(s)
+                      </CardDescription>
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Rechercher..."
+                        value={contactSearch}
+                        onChange={(e) => { setContactSearch(e.target.value); setContactPage(1); }}
+                        className="pl-9"
+                        data-testid="input-contact-search"
+                      />
                     </div>
                   </div>
-                </div>
-              ))}
+                </CardHeader>
+                <CardContent>
+                  {contactLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : paginatedContacts.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      {contactSearch ? "Aucune demande trouvée" : "Aucune demande de contact"}
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {paginatedContacts.map((request) => (
+                        <div
+                          key={request.id}
+                          className="p-4 rounded-lg border bg-card"
+                          data-testid={`row-contact-${request.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
+                                <span className="font-medium">{request.name}</span>
+                                <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
+                                  <Mail className="h-3 w-3" />
+                                  {request.email}
+                                </a>
+                                <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
+                                  {request.status === "pending" ? (
+                                    <><Clock className="h-3 w-3 mr-1" /> En attente</>
+                                  ) : (
+                                    <><CheckCircle className="h-3 w-3 mr-1" /> Traité</>
+                                  )}
+                                </Badge>
+                              </div>
+                              <div className="text-sm font-medium">{request.subject}</div>
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(request.createdAt).toLocaleString('fr-FR')}
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {request.status === "pending" ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "resolved" })}
+                                  disabled={updateContactStatusMutation.isPending}
+                                  data-testid={`button-resolve-${request.id}`}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Marquer traité
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
+                                    disabled={updateContactStatusMutation.isPending}
+                                    data-testid={`button-unresolve-${request.id}`}
+                                  >
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    Rouvrir
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => deleteContactMutation.mutate(request.id)}
+                                    disabled={deleteContactMutation.isPending}
+                                    data-testid={`button-delete-contact-${request.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Supprimer
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {totalContactPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">Page {contactPage} sur {totalContactPages}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setContactPage(p => Math.max(1, p - 1))}
+                          disabled={contactPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Précédent
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
+                          disabled={contactPage === totalContactPages}
+                        >
+                          Suivant
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
-          {totalContactPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                Page {contactPage} sur {totalContactPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setContactPage(p => Math.max(1, p - 1))}
-                  disabled={contactPage === 1}
-                  data-testid="button-contact-prev-page"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
-                  disabled={contactPage === totalContactPages}
-                  data-testid="button-contact-next-page"
-                >
-                  Suivant
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
 
-      <Footer />
+          {/* Toolkits Section */}
+          {activeSection === "toolkits" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Package className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Gestion des toolkit</h2>
+                  <p className="text-muted-foreground">Scripts de sécurité disponibles</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <CardTitle>Scripts disponibles</CardTitle>
+                      <CardDescription>
+                        {filteredScripts.length} toolkit(s) configuré(s)
+                      </CardDescription>
+                    </div>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Rechercher..."
+                        value={scriptSearch}
+                        onChange={(e) => { setScriptSearch(e.target.value); setScriptPage(1); }}
+                        className="pl-9"
+                        data-testid="input-script-search"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {scriptsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : paginatedScripts.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      {scriptSearch ? "Aucun toolkit trouvé" : "Aucun toolkit configuré"}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {paginatedScripts.map((script) => (
+                        <div
+                          key={script.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                          data-testid={`row-script-${script.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Shield className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium flex items-center gap-2">
+                                {script.name}
+                                <Badge variant="outline" className="text-xs">{script.os}</Badge>
+                                {script.isHidden === 1 && (
+                                  <Badge variant="secondary" className="text-xs">Masqué</Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground line-clamp-1">
+                                {script.description}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="font-medium text-primary">
+                                {formatPrice(script.monthlyPriceCents)}/mois
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                ID: {script.id}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {totalScriptPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">Page {scriptPage} sur {totalScriptPages}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setScriptPage(p => Math.max(1, p - 1))}
+                          disabled={scriptPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Précédent
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setScriptPage(p => Math.min(totalScriptPages, p + 1))}
+                          disabled={scriptPage === totalScriptPages}
+                        >
+                          Suivant
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
