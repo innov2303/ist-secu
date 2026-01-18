@@ -6,7 +6,7 @@
 
 set -e
 
-APP_DIR="/var/www/ist-security"
+APP_DIR="/var/www/Infra-Shield-Tools"
 
 GREEN='\033[0;32m'
 NC='\033[0m'

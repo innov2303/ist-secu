@@ -14,7 +14,7 @@ echo "=========================================="
 DB_USER="ist_user"
 DB_PASSWORD="ChangezCeMotDePasse123!"
 DB_NAME="ist_db"
-APP_DIR="/var/www/ist-security"
+APP_DIR="/var/www/Infra-Shield-Tools"
 DOMAIN="ist-security.fr"
 
 # Couleurs
@@ -106,8 +106,8 @@ if [ ! -d "$APP_DIR" ]; then
     echo "Clonez d'abord votre repo avec :"
     echo "  sudo mkdir -p /var/www"
     echo "  cd /var/www"
-    echo "  sudo git clone https://github.com/VOTRE-USERNAME/VOTRE-REPO.git ist-security"
-    echo "  sudo chown -R \$USER:\$USER /var/www/ist-security"
+    echo "  sudo git clone https://github.com/VOTRE-USERNAME/Infra-Shield-Tools.git"
+    echo "  sudo chown -R \$USER:\$USER /var/www/Infra-Shield-Tools"
     echo ""
     echo "Puis relancez ce script."
     exit 1
