@@ -57,12 +57,48 @@ fi
 print_header "Installation VPS - Application Node.js"
 
 echo -e "${BLUE}Ce script va installer et configurer :${NC}"
+echo "  - Préparation système Debian/Ubuntu"
+echo "  - Firewall (UFW)"
+echo "  - Fail2ban (protection SSH)"
 echo "  - Node.js 20 LTS"
 echo "  - PostgreSQL"
 echo "  - Nginx (reverse proxy)"
 echo "  - PM2 (gestionnaire de processus)"
 echo "  - Certificat SSL (Let's Encrypt)"
 echo ""
+
+# Fonction pour exécuter avec ou sans sudo (définie tôt pour préparation)
+run_cmd() {
+    if [ "$RUN_AS_ROOT" = true ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+# ==========================================
+# PRÉPARATION SYSTÈME DEBIAN
+# ==========================================
+
+print_header "Préparation du système"
+
+read -p "Configurer la préparation système (firewall, fail2ban, swap) ? (O/n): " DO_SYSTEM_PREP
+DO_SYSTEM_PREP=${DO_SYSTEM_PREP:-O}
+
+if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
+    # Timezone
+    echo ""
+    read -p "Timezone [Europe/Paris]: " TIMEZONE
+    TIMEZONE=${TIMEZONE:-Europe/Paris}
+    
+    # Swap
+    read -p "Créer un fichier swap ? (O/n): " CREATE_SWAP
+    CREATE_SWAP=${CREATE_SWAP:-O}
+    if [[ ! "$CREATE_SWAP" =~ ^[nN]$ ]]; then
+        read -p "Taille du swap en GB [2]: " SWAP_SIZE
+        SWAP_SIZE=${SWAP_SIZE:-2}
+    fi
+fi
 
 # ==========================================
 # CONFIGURATION INTERACTIVE
@@ -104,12 +140,40 @@ APP_PORT=${APP_PORT:-5000}
 
 print_header "Configuration Git"
 
-read -p "URL du dépôt Git (laisser vide si déjà cloné) : " GIT_URL
+# Type de connexion Git
+echo "Méthodes de connexion Git :"
+echo "  1) HTTPS (simple, avec token)"
+echo "  2) SSH (recommandé pour les déploiements)"
+echo "  3) Dépôt déjà cloné"
+read -p "Choix [1]: " GIT_METHOD
+GIT_METHOD=${GIT_METHOD:-1}
 
-if [ -n "$GIT_URL" ]; then
-    read -p "Branche à cloner [main]: " GIT_BRANCH
-    GIT_BRANCH=${GIT_BRANCH:-main}
-fi
+case $GIT_METHOD in
+    1)
+        read -p "URL HTTPS du dépôt (ex: https://github.com/user/repo.git) : " GIT_URL
+        if [ -n "$GIT_URL" ]; then
+            read -p "Token d'accès GitHub/GitLab (laisser vide si public) : " GIT_TOKEN
+            read -p "Branche [main]: " GIT_BRANCH
+            GIT_BRANCH=${GIT_BRANCH:-main}
+            GIT_TYPE="https"
+        fi
+        ;;
+    2)
+        read -p "URL SSH du dépôt (ex: git@github.com:user/repo.git) : " GIT_URL
+        read -p "Branche [main]: " GIT_BRANCH
+        GIT_BRANCH=${GIT_BRANCH:-main}
+        GIT_TYPE="ssh"
+        SETUP_SSH_KEY=true
+        ;;
+    3)
+        GIT_URL=""
+        print_info "Assurez-vous que le dépôt est déjà cloné dans le répertoire cible"
+        ;;
+esac
+
+# Configuration Git globale
+read -p "Nom Git (pour les commits) : " GIT_USER_NAME
+read -p "Email Git : " GIT_USER_EMAIL
 
 # ==========================================
 # CONFIGURATION BASE DE DONNÉES
@@ -175,7 +239,20 @@ fi
 
 print_header "Récapitulatif de la configuration"
 
-echo "  Application    : $APP_NAME"
+echo -e "${BLUE}Système :${NC}"
+if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
+    echo "  Préparation    : Oui (UFW, Fail2ban, Swap)"
+    echo "  Timezone       : $TIMEZONE"
+    if [[ ! "$CREATE_SWAP" =~ ^[nN]$ ]]; then
+        echo "  Swap           : ${SWAP_SIZE}GB"
+    fi
+else
+    echo "  Préparation    : Non"
+fi
+echo ""
+
+echo -e "${BLUE}Application :${NC}"
+echo "  Nom            : $APP_NAME"
 echo "  Répertoire     : $APP_DIR"
 echo "  Domaine        : $DOMAIN"
 if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
@@ -183,17 +260,29 @@ if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
 fi
 echo "  Port           : $APP_PORT"
 echo ""
-echo "  Utilisateur DB : $DB_USER"
-echo "  Base de données: $DB_NAME"
-echo ""
+
+echo -e "${BLUE}Git :${NC}"
 if [ -n "$GIT_URL" ]; then
-    echo "  Dépôt Git      : $GIT_URL"
+    echo "  Dépôt          : $GIT_URL"
     echo "  Branche        : $GIT_BRANCH"
+    echo "  Méthode        : $GIT_TYPE"
+else
+    echo "  Dépôt          : (déjà cloné)"
 fi
-if [[ "$CONFIGURE_STRIPE" =~ ^[oOyY]$ ]]; then
-    echo "  Stripe         : Configuré"
+if [ -n "$GIT_USER_NAME" ]; then
+    echo "  Utilisateur    : $GIT_USER_NAME <$GIT_USER_EMAIL>"
 fi
 echo ""
+
+echo -e "${BLUE}Base de données :${NC}"
+echo "  Utilisateur    : $DB_USER"
+echo "  Base           : $DB_NAME"
+echo ""
+
+if [[ "$CONFIGURE_STRIPE" =~ ^[oOyY]$ ]]; then
+    echo -e "${BLUE}Stripe :${NC} Configuré"
+    echo ""
+fi
 
 read -p "Continuer l'installation ? (O/n): " CONFIRM
 if [[ "$CONFIRM" =~ ^[nN]$ ]]; then
@@ -207,15 +296,6 @@ fi
 
 print_header "Installation des dépendances système"
 
-# Fonction pour exécuter avec ou sans sudo
-run_cmd() {
-    if [ "$RUN_AS_ROOT" = true ]; then
-        "$@"
-    else
-        sudo "$@"
-    fi
-}
-
 # Mise à jour système
 echo ">>> Mise à jour du système..."
 run_cmd apt update && run_cmd apt upgrade -y
@@ -223,8 +303,99 @@ print_status "Système mis à jour"
 
 # Installation des outils de base
 echo ">>> Installation des outils de base..."
-run_cmd apt install -y curl wget git build-essential
+run_cmd apt install -y curl wget git build-essential unzip htop
 print_status "Outils de base installés"
+
+# ==========================================
+# PRÉPARATION SYSTÈME (SI DEMANDÉE)
+# ==========================================
+
+if [[ ! "$DO_SYSTEM_PREP" =~ ^[nN]$ ]]; then
+    print_header "Configuration système Debian"
+    
+    # Timezone
+    echo ">>> Configuration du fuseau horaire..."
+    run_cmd timedatectl set-timezone "$TIMEZONE"
+    print_status "Timezone configuré : $TIMEZONE"
+    
+    # Swap
+    if [[ ! "$CREATE_SWAP" =~ ^[nN]$ ]]; then
+        if [ ! -f /swapfile ]; then
+            echo ">>> Création du fichier swap (${SWAP_SIZE}GB)..."
+            run_cmd fallocate -l ${SWAP_SIZE}G /swapfile
+            run_cmd chmod 600 /swapfile
+            run_cmd mkswap /swapfile
+            run_cmd swapon /swapfile
+            echo '/swapfile none swap sw 0 0' | run_cmd tee -a /etc/fstab
+            print_status "Swap créé : ${SWAP_SIZE}GB"
+        else
+            print_status "Swap déjà configuré"
+        fi
+    fi
+    
+    # Firewall UFW
+    echo ">>> Configuration du firewall (UFW)..."
+    run_cmd apt install -y ufw
+    run_cmd ufw default deny incoming
+    run_cmd ufw default allow outgoing
+    run_cmd ufw allow ssh
+    run_cmd ufw allow http
+    run_cmd ufw allow https
+    run_cmd ufw --force enable
+    print_status "Firewall configuré (SSH, HTTP, HTTPS autorisés)"
+    
+    # Fail2ban
+    echo ">>> Installation de Fail2ban..."
+    run_cmd apt install -y fail2ban
+    run_cmd systemctl enable fail2ban
+    run_cmd systemctl start fail2ban
+    print_status "Fail2ban installé (protection SSH)"
+fi
+
+# ==========================================
+# CONFIGURATION GIT
+# ==========================================
+
+print_header "Configuration Git"
+
+# Configuration globale Git
+if [ -n "$GIT_USER_NAME" ]; then
+    git config --global user.name "$GIT_USER_NAME"
+fi
+if [ -n "$GIT_USER_EMAIL" ]; then
+    git config --global user.email "$GIT_USER_EMAIL"
+fi
+
+# Génération clé SSH si nécessaire
+if [ "$SETUP_SSH_KEY" = true ]; then
+    SSH_KEY_PATH="$HOME/.ssh/id_ed25519"
+    if [ ! -f "$SSH_KEY_PATH" ]; then
+        echo ">>> Génération de la clé SSH..."
+        mkdir -p "$HOME/.ssh"
+        ssh-keygen -t ed25519 -C "$GIT_USER_EMAIL" -f "$SSH_KEY_PATH" -N ""
+        eval "$(ssh-agent -s)"
+        ssh-add "$SSH_KEY_PATH"
+        print_status "Clé SSH générée"
+        
+        echo ""
+        echo -e "${YELLOW}=========================================="
+        echo "  IMPORTANT : Ajoutez cette clé à GitHub/GitLab"
+        echo "==========================================${NC}"
+        echo ""
+        cat "${SSH_KEY_PATH}.pub"
+        echo ""
+        echo "Allez sur : https://github.com/settings/ssh/new"
+        echo "Ou : https://gitlab.com/-/profile/keys"
+        echo ""
+        read -p "Appuyez sur Entrée une fois la clé ajoutée..."
+        
+        # Test connexion
+        echo ">>> Test de connexion SSH..."
+        ssh -T git@github.com 2>&1 || true
+    else
+        print_status "Clé SSH existante trouvée"
+    fi
+fi
 
 # ==========================================
 # NODE.JS
@@ -319,13 +490,33 @@ fi
 
 # Cloner le dépôt si URL fournie
 if [ -n "$GIT_URL" ]; then
+    # Construire l'URL avec token si HTTPS
+    if [ "$GIT_TYPE" = "https" ] && [ -n "$GIT_TOKEN" ]; then
+        # Extraire le domaine et le chemin de l'URL
+        GIT_DOMAIN=$(echo "$GIT_URL" | sed -E 's|https://([^/]+)/.*|\1|')
+        GIT_PATH=$(echo "$GIT_URL" | sed -E 's|https://[^/]+/(.*)|\1|')
+        CLONE_URL="https://${GIT_TOKEN}@${GIT_DOMAIN}/${GIT_PATH}"
+    else
+        CLONE_URL="$GIT_URL"
+    fi
+    
     if [ -d "$APP_DIR" ]; then
         print_warning "Le répertoire existe déjà. Mise à jour..."
         cd "$APP_DIR"
         git pull origin "$GIT_BRANCH"
     else
         echo ">>> Clonage du dépôt..."
-        git clone -b "$GIT_BRANCH" "$GIT_URL" "$APP_DIR"
+        git clone -b "$GIT_BRANCH" "$CLONE_URL" "$APP_DIR"
+        
+        # Reconfigurer l'URL sans le token pour la sécurité
+        if [ "$GIT_TYPE" = "https" ] && [ -n "$GIT_TOKEN" ]; then
+            cd "$APP_DIR"
+            git remote set-url origin "$GIT_URL"
+            # Configurer le credential helper pour stocker le token
+            git config credential.helper store
+            echo "https://${GIT_TOKEN}@${GIT_DOMAIN}" > ~/.git-credentials
+            chmod 600 ~/.git-credentials
+        fi
     fi
     run_cmd chown -R $USER:$USER "$APP_DIR"
     print_status "Dépôt cloné"
@@ -334,10 +525,10 @@ else
         print_error "Le répertoire $APP_DIR n'existe pas !"
         echo ""
         echo "Clonez d'abord votre dépôt avec :"
-        echo "  run_cmd mkdir -p $PARENT_DIR"
+        echo "  sudo mkdir -p $PARENT_DIR"
         echo "  cd $PARENT_DIR"
         echo "  sudo git clone https://github.com/USERNAME/REPO.git $(basename $APP_DIR)"
-        echo "  run_cmd chown -R \$USER:\$USER $APP_DIR"
+        echo "  sudo chown -R \$USER:\$USER $APP_DIR"
         echo ""
         echo "Puis relancez ce script."
         exit 1
