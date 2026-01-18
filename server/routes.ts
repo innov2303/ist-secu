@@ -7,7 +7,7 @@ import { authStorage } from "./replit_integrations/auth/storage";
 import { users, purchases, registerSchema, loginSchema, contactRequests, insertContactRequestSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
@@ -670,14 +670,24 @@ export async function registerRoutes(
   // Stripe checkout routes
   app.get("/api/stripe/publishable-key", async (req, res) => {
     try {
+      const stripeReady = await isStripeAvailable();
+      if (!stripeReady) {
+        return res.json({ publishableKey: null, stripeConfigured: false });
+      }
       const key = await getStripePublishableKey();
-      res.json({ publishableKey: key });
+      res.json({ publishableKey: key, stripeConfigured: true });
     } catch (error) {
       res.status(500).json({ message: "Stripe not configured" });
     }
   });
 
   app.post("/api/checkout", isAuthenticated, async (req, res) => {
+    // Check if Stripe is available
+    const stripeReady = await isStripeAvailable();
+    if (!stripeReady) {
+      return res.status(503).json({ message: "Les paiements ne sont pas encore configurés. Veuillez réessayer plus tard." });
+    }
+
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const { scriptId, purchaseType } = req.body;
 
@@ -705,6 +715,9 @@ export async function registerRoutes(
 
     try {
       const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas encore configurés." });
+      }
       const user = await authStorage.getUser(userId);
 
       let customerId = user?.stripeCustomerId;
@@ -770,6 +783,9 @@ export async function registerRoutes(
 
     try {
       const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas configurés." });
+      }
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
       if (session.metadata?.userId !== userId) {
