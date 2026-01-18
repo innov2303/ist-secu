@@ -15,7 +15,6 @@ import {
 import type { User } from "@shared/models/auth";
 import type { ContactRequest, Script } from "@shared/schema";
 import { Link } from "wouter";
-import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -187,15 +186,14 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background flex">
       {/* Fixed Sidebar */}
       <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
-        {/* Logo Header */}
+        {/* Header */}
         <div className="p-4 border-b">
-          <Link href="/" className="flex items-center gap-3 hover-elevate rounded-lg p-2 -m-2">
-            <img src={logoImg} alt="IST Logo" className="w-10 h-10 rounded-lg bg-white p-1" />
-            <div>
-              <h1 className="font-bold text-sm" style={{ fontFamily: "'Oxanium', sans-serif" }}>Infra Shield Tools</h1>
-              <p className="text-xs text-muted-foreground">Administration</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Settings className="h-5 w-5 text-primary" />
             </div>
-          </Link>
+            <h1 className="font-bold text-lg">Administration</h1>
+          </div>
         </div>
 
         {/* Navigation */}
