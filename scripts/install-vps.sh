@@ -1,26 +1,16 @@
 #!/bin/bash
 
 # ==============================================
-# IST Security - Script d'installation VPS Debian
+# Infra Shield Tools - Script d'installation VPS Debian
 # ==============================================
 
 set -e
-
-echo "=========================================="
-echo "  IST Security - Installation VPS"
-echo "=========================================="
-
-# Variables à modifier
-DB_USER="ist_user"
-DB_PASSWORD="ChangezCeMotDePasse123!"
-DB_NAME="ist_db"
-APP_DIR="/var/www/Infra-Shield-Tools"
-DOMAIN="ist-security.fr"
 
 # Couleurs
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 print_status() {
@@ -35,8 +25,76 @@ print_error() {
     echo -e "${RED}[ERREUR]${NC} $1"
 }
 
-# 1. Mise à jour système
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+echo "=========================================="
+echo "  Infra Shield Tools - Installation VPS"
+echo "=========================================="
 echo ""
+
+# Questions interactives
+echo -e "${BLUE}Configuration de l'installation${NC}"
+echo ""
+
+# Répertoire de l'application
+read -p "Chemin du répertoire de l'application [/var/www/Infra-Shield-Tools]: " APP_DIR
+APP_DIR=${APP_DIR:-/var/www/Infra-Shield-Tools}
+
+# Nom de domaine
+read -p "Nom de domaine [ist-security.fr]: " DOMAIN
+DOMAIN=${DOMAIN:-ist-security.fr}
+
+# Nom de l'application pour PM2
+read -p "Nom de l'application (pour PM2) [infra-shield-tools]: " APP_NAME
+APP_NAME=${APP_NAME:-infra-shield-tools}
+
+# Configuration base de données
+echo ""
+echo -e "${BLUE}Configuration de la base de données${NC}"
+read -p "Utilisateur PostgreSQL [ist_user]: " DB_USER
+DB_USER=${DB_USER:-ist_user}
+
+read -p "Nom de la base de données [ist_db]: " DB_NAME
+DB_NAME=${DB_NAME:-ist_db}
+
+while true; do
+    read -s -p "Mot de passe PostgreSQL: " DB_PASSWORD
+    echo ""
+    if [ -z "$DB_PASSWORD" ]; then
+        print_error "Le mot de passe ne peut pas être vide."
+    else
+        read -s -p "Confirmez le mot de passe: " DB_PASSWORD_CONFIRM
+        echo ""
+        if [ "$DB_PASSWORD" = "$DB_PASSWORD_CONFIRM" ]; then
+            break
+        else
+            print_error "Les mots de passe ne correspondent pas."
+        fi
+    fi
+done
+
+echo ""
+echo "=========================================="
+echo "  Récapitulatif de la configuration"
+echo "=========================================="
+echo "  Répertoire    : $APP_DIR"
+echo "  Domaine       : $DOMAIN"
+echo "  Nom app PM2   : $APP_NAME"
+echo "  Utilisateur DB: $DB_USER"
+echo "  Base de données: $DB_NAME"
+echo "=========================================="
+echo ""
+read -p "Continuer l'installation ? (o/N): " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[oOyY]$ ]]; then
+    echo "Installation annulée."
+    exit 0
+fi
+
+echo ""
+
+# 1. Mise à jour système
 echo ">>> Mise à jour du système..."
 sudo apt update && sudo apt upgrade -y
 print_status "Système mis à jour"
@@ -106,8 +164,8 @@ if [ ! -d "$APP_DIR" ]; then
     echo "Clonez d'abord votre repo avec :"
     echo "  sudo mkdir -p /var/www"
     echo "  cd /var/www"
-    echo "  sudo git clone https://github.com/VOTRE-USERNAME/Infra-Shield-Tools.git"
-    echo "  sudo chown -R \$USER:\$USER /var/www/Infra-Shield-Tools"
+    echo "  sudo git clone https://github.com/VOTRE-USERNAME/VOTRE-REPO.git"
+    echo "  sudo chown -R \$USER:\$USER $APP_DIR"
     echo ""
     echo "Puis relancez ce script."
     exit 1
@@ -130,29 +188,29 @@ EOF
 
 print_status "Fichier .env créé"
 
-# 8. Installation des dépendances
+# 9. Installation des dépendances
 echo ""
 echo ">>> Installation des dépendances npm..."
 cd "$APP_DIR"
 npm install
 print_status "Dépendances installées"
 
-# 9. Build de l'application
+# 10. Build de l'application
 echo ""
 echo ">>> Build de l'application..."
 npm run build
 print_status "Application compilée"
 
-# 10. Migration base de données
+# 11. Migration base de données
 echo ""
 echo ">>> Migration de la base de données..."
 npm run db:push
 print_status "Base de données migrée"
 
-# 11. Configuration Nginx
+# 12. Configuration Nginx
 echo ""
 echo ">>> Configuration de Nginx..."
-sudo tee /etc/nginx/sites-available/ist-security > /dev/null << EOF
+sudo tee /etc/nginx/sites-available/$APP_NAME > /dev/null << EOF
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
@@ -171,21 +229,21 @@ server {
 }
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/ist-security /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 print_status "Nginx configuré"
 
-# 12. Démarrage avec PM2
+# 13. Démarrage avec PM2
 echo ""
 echo ">>> Démarrage de l'application avec PM2..."
 cd "$APP_DIR"
-pm2 delete ist-security 2>/dev/null || true
-pm2 start npm --name "ist-security" -- start
+pm2 delete $APP_NAME 2>/dev/null || true
+pm2 start npm --name "$APP_NAME" -- start
 pm2 save
 print_status "Application démarrée"
 
-# 13. Configuration démarrage automatique
+# 14. Configuration démarrage automatique
 echo ""
 echo ">>> Configuration du démarrage automatique..."
 pm2 startup systemd -u $USER --hp $HOME
@@ -202,8 +260,8 @@ echo "  - Base de données : $DB_NAME"
 echo "  - Utilisateur DB : $DB_USER"
 echo ""
 echo "Commandes utiles :"
-echo "  - Voir les logs : pm2 logs ist-security"
-echo "  - Redémarrer : pm2 restart ist-security"
+echo "  - Voir les logs : pm2 logs $APP_NAME"
+echo "  - Redémarrer : pm2 restart $APP_NAME"
 echo "  - Status : pm2 status"
 echo ""
 print_warning "N'oubliez pas d'installer SSL avec :"
