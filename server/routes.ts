@@ -12,6 +12,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
+import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
 
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -970,6 +971,110 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating script:", error);
       res.status(500).json({ message: "Error updating script" });
+    }
+  });
+
+  // Admin: Check toolkit updates - analyze controls and suggest additions
+  app.get("/api/admin/scripts/:id/check-updates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the script/toolkit
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, parseInt(id)));
+      if (!script) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      // Only analyze bundles (not individual scripts)
+      if (!script.bundledScriptIds || script.bundledScriptIds.length === 0) {
+        return res.status(400).json({ message: "Only bundles can be analyzed for updates" });
+      }
+      
+      // Determine the OS/platform for this toolkit
+      const os = script.os || "Linux";
+      
+      // Get reference controls for this platform
+      const standardsControls = getControlsForToolkitOS(os);
+      if (!standardsControls || standardsControls.length === 0) {
+        return res.status(400).json({ 
+          message: `No reference standards found for ${os}`,
+          suggestions: []
+        });
+      }
+      
+      // Parse current controls from script description (simple heuristic)
+      const currentDescription = script.description || "";
+      const currentControlCount = parseInt(currentDescription.match(/~?(\d+)\s*controls?/i)?.[1] || "0");
+      
+      // Build suggestions based on reference controls
+      const allControls: SecurityControl[] = [];
+      const standards: { id: string; name: string; version: string }[] = [];
+      
+      for (const standard of standardsControls) {
+        standards.push({
+          id: standard.standardId,
+          name: standard.standardName,
+          version: standard.version
+        });
+        allControls.push(...standard.controls);
+      }
+      
+      // Group controls by category
+      const controlsByCategory: Record<string, SecurityControl[]> = {};
+      for (const control of allControls) {
+        if (!controlsByCategory[control.category]) {
+          controlsByCategory[control.category] = [];
+        }
+        controlsByCategory[control.category].push(control);
+      }
+      
+      // Generate suggestions (simulate AI analysis)
+      const suggestions = [];
+      let suggestionCount = 0;
+      const maxSuggestions = 10;
+      
+      for (const [category, controls] of Object.entries(controlsByCategory)) {
+        if (suggestionCount >= maxSuggestions) break;
+        
+        // Pick controls that could be new additions
+        const criticalAndHigh = controls.filter(c => 
+          c.severity === "critical" || c.severity === "high"
+        );
+        
+        for (const control of criticalAndHigh.slice(0, 2)) {
+          if (suggestionCount >= maxSuggestions) break;
+          suggestions.push({
+            id: control.id,
+            name: control.name,
+            description: control.description,
+            category: control.category,
+            severity: control.severity,
+            reference: control.reference,
+            implementationHint: control.implementationHint,
+            recommended: control.severity === "critical"
+          });
+          suggestionCount++;
+        }
+      }
+      
+      res.json({
+        toolkit: {
+          id: script.id,
+          name: script.name,
+          os: os,
+          currentControlCount
+        },
+        standards,
+        totalReferenceControls: allControls.length,
+        suggestions,
+        analysisDate: new Date().toISOString(),
+        message: suggestions.length > 0 
+          ? `${suggestions.length} contrôles potentiels identifiés pour améliorer ce toolkit`
+          : "Aucune suggestion de mise à jour identifiée"
+      });
+    } catch (error) {
+      console.error("Error checking toolkit updates:", error);
+      res.status(500).json({ message: "Error checking toolkit updates" });
     }
   });
 
