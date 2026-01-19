@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, registerSchema, loginSchema, contactRequests, insertContactRequestSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -928,6 +928,38 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting contact request:", error);
       res.status(500).json({ message: "Error deleting contact request" });
+    }
+  });
+
+  // Admin: Update script/toolkit
+  app.patch("/api/admin/scripts/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, monthlyPriceCents, status } = req.body;
+      
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (monthlyPriceCents !== undefined) updateData.monthlyPriceCents = monthlyPriceCents;
+      if (status !== undefined) updateData.status = status;
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+      
+      const [updated] = await db
+        .update(scripts)
+        .set(updateData)
+        .where(eq(scripts.id, parseInt(id)))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating script:", error);
+      res.status(500).json({ message: "Error updating script" });
     }
   });
 

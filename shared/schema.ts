@@ -19,6 +19,13 @@ export const scripts = pgTable("scripts", {
   monthlyPriceCents: integer("monthly_price_cents").notNull().default(10000),
   bundledScriptIds: integer("bundled_script_ids").array(),
   isHidden: integer("is_hidden").default(0),
+  status: text("status").notNull().default("active"),
+});
+
+export const updateScriptSchema = z.object({
+  name: z.string().min(1).optional(),
+  monthlyPriceCents: z.number().int().min(0).optional(),
+  status: z.enum(["active", "offline", "maintenance"]).optional(),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });

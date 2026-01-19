@@ -7,10 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
-  ChevronLeft, ChevronRight, Package, Shield, Home, Settings
+  ChevronLeft, ChevronRight, Package, Shield, Home, Settings, Pencil, Loader2,
+  AlertTriangle, Power, Wrench
 } from "lucide-react";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest, Script } from "@shared/schema";
@@ -19,6 +23,13 @@ import { Link } from "wouter";
 const ITEMS_PER_PAGE = 10;
 
 type AdminSection = "users" | "tickets" | "toolkits";
+type ScriptStatus = "active" | "offline" | "maintenance";
+
+const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
+  active: { label: "Actif", variant: "default", icon: Power },
+  offline: { label: "Offline", variant: "destructive", icon: AlertTriangle },
+  maintenance: { label: "En maintenance", variant: "secondary", icon: Wrench },
+};
 
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -30,6 +41,12 @@ export default function AdminPage() {
   const [contactPage, setContactPage] = useState(1);
   const [scriptSearch, setScriptSearch] = useState("");
   const [scriptPage, setScriptPage] = useState(1);
+  
+  // Script editing state
+  const [editingScript, setEditingScript] = useState<Script | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -139,6 +156,44 @@ export default function AdminPage() {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
+
+  const updateScriptMutation = useMutation({
+    mutationFn: async ({ id, name, monthlyPriceCents, status }: { id: number; name?: string; monthlyPriceCents?: number; status?: string }) => {
+      await apiRequest("PATCH", `/api/admin/scripts/${id}`, { name, monthlyPriceCents, status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts"] });
+      toast({ title: "Toolkit mis à jour" });
+      setEditingScript(null);
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour le toolkit", variant: "destructive" });
+    },
+  });
+
+  const openEditDialog = (script: Script) => {
+    setEditingScript(script);
+    setEditName(script.name);
+    setEditPrice(String(script.monthlyPriceCents / 100));
+    setEditStatus((script.status as ScriptStatus) || "active");
+  };
+
+  const handleSaveScript = () => {
+    if (!editingScript) return;
+    
+    const priceInCents = Math.round(parseFloat(editPrice) * 100);
+    if (isNaN(priceInCents) || priceInCents < 0) {
+      toast({ title: "Erreur", description: "Prix invalide", variant: "destructive" });
+      return;
+    }
+    
+    updateScriptMutation.mutate({
+      id: editingScript.id,
+      name: editName,
+      monthlyPriceCents: priceInCents,
+      status: editStatus,
+    });
+  };
 
   if (authLoading) {
     return (
@@ -553,41 +608,56 @@ export default function AdminPage() {
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      {paginatedScripts.map((script) => (
-                        <div
-                          key={script.id}
-                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
-                          data-testid={`row-script-${script.id}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Shield className="h-5 w-5 text-primary" />
+                      {paginatedScripts.map((script) => {
+                        const status = (script.status as ScriptStatus) || "active";
+                        const statusInfo = statusLabels[status];
+                        const StatusIcon = statusInfo.icon;
+                        
+                        return (
+                          <div
+                            key={script.id}
+                            className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                            data-testid={`row-script-${script.id}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Shield className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium flex items-center gap-2 flex-wrap">
+                                  {script.name}
+                                  <Badge variant="outline" className="text-xs">{script.os}</Badge>
+                                  <Badge variant={statusInfo.variant} className="text-xs">
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {statusInfo.label}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground line-clamp-1">
+                                  {script.description}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <div className="font-medium flex items-center gap-2">
-                                {script.name}
-                                <Badge variant="outline" className="text-xs">{script.os}</Badge>
-                                {script.isHidden === 1 && (
-                                  <Badge variant="secondary" className="text-xs">Masqué</Badge>
-                                )}
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="font-medium text-primary">
+                                  {formatPrice(script.monthlyPriceCents)}/mois
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ID: {script.id}
+                                </div>
                               </div>
-                              <div className="text-sm text-muted-foreground line-clamp-1">
-                                {script.description}
-                              </div>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => openEditDialog(script)}
+                                data-testid={`button-edit-script-${script.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="font-medium text-primary">
-                                {formatPrice(script.monthlyPriceCents)}/mois
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                ID: {script.id}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   {totalScriptPages > 1 && (
@@ -621,6 +691,86 @@ export default function AdminPage() {
           )}
         </div>
       </main>
+
+      {/* Edit Script Dialog */}
+      <Dialog open={!!editingScript} onOpenChange={(open) => !open && setEditingScript(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier le toolkit</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations du toolkit ci-dessous.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nom du toolkit</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nom du toolkit"
+                data-testid="input-edit-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-price">Prix mensuel (EUR)</Label>
+              <Input
+                id="edit-price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                placeholder="300.00"
+                data-testid="input-edit-price"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Statut</Label>
+              <Select value={editStatus} onValueChange={(value) => setEditStatus(value as ScriptStatus)}>
+                <SelectTrigger data-testid="select-edit-status">
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">
+                    <div className="flex items-center gap-2">
+                      <Power className="h-4 w-4 text-green-500" />
+                      Actif
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="offline">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Offline
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="maintenance">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-orange-500" />
+                      En maintenance
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingScript(null)} data-testid="button-cancel-edit">
+              Annuler
+            </Button>
+            <Button onClick={handleSaveScript} disabled={updateScriptMutation.isPending} data-testid="button-save-script">
+              {updateScriptMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                "Enregistrer"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
