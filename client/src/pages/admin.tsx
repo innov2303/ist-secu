@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,8 @@ export default function AdminPage() {
   
   // Update checker state
   const [checkingUpdatesFor, setCheckingUpdatesFor] = useState<number | null>(null);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
+  const [applyingUpdates, setApplyingUpdates] = useState(false);
   const [updateSuggestions, setUpdateSuggestions] = useState<{
     toolkit: { id: number; name: string; os: string; currentControlCount: number };
     standards: { id: string; name: string; version: string }[];
@@ -206,6 +209,7 @@ export default function AdminPage() {
     onSuccess: (data) => {
       if (data && data.toolkit) {
         setUpdateSuggestions(data);
+        setSelectedSuggestions(new Set());
       } else {
         toast({ title: "Erreur", description: data?.message || "Données invalides reçues", variant: "destructive" });
       }
@@ -216,6 +220,64 @@ export default function AdminPage() {
       toast({ title: "Erreur", description: error.message || "Impossible de vérifier les mises à jour", variant: "destructive" });
     },
   });
+
+  const applyUpdatesMutation = useMutation({
+    mutationFn: async ({ scriptId, controls }: { scriptId: number; controls: { id: string; name: string; description: string; category: string; severity: string; reference: string; implementationHint?: string }[] }) => {
+      setApplyingUpdates(true);
+      const response = await apiRequest("POST", `/api/admin/scripts/${scriptId}/apply-updates`, { controls });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erreur inconnue" }));
+        throw new Error(errorData.message || "Erreur lors de la mise à jour");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setApplyingUpdates(false);
+      toast({ 
+        title: "Notes ajoutees", 
+        description: `${data.addedControls || 0} controle(s) ajoute(s) aux notes du toolkit` 
+      });
+      setUpdateSuggestions(null);
+      setSelectedSuggestions(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts/all"] });
+    },
+    onError: (error: Error) => {
+      setApplyingUpdates(false);
+      toast({ title: "Erreur", description: error.message || "Impossible d'appliquer les mises à jour", variant: "destructive" });
+    },
+  });
+
+  const toggleSuggestionSelection = (id: string) => {
+    setSelectedSuggestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllSuggestions = () => {
+    if (updateSuggestions) {
+      setSelectedSuggestions(new Set(updateSuggestions.suggestions.map(s => s.id)));
+    }
+  };
+
+  const deselectAllSuggestions = () => {
+    setSelectedSuggestions(new Set());
+  };
+
+  const handleApplyUpdates = () => {
+    if (!updateSuggestions || selectedSuggestions.size === 0) return;
+    
+    const selectedControls = updateSuggestions.suggestions.filter(s => selectedSuggestions.has(s.id));
+    applyUpdatesMutation.mutate({
+      scriptId: updateSuggestions.toolkit.id,
+      controls: selectedControls
+    });
+  };
 
   const openEditDialog = (script: Script) => {
     setEditingScript(script);
@@ -885,14 +947,27 @@ export default function AdminPage() {
               {/* Suggestions List */}
               {updateSuggestions.suggestions.length > 0 ? (
                 <div className="space-y-2" data-testid="section-suggestions-list">
-                  <div className="font-medium">Contrôles suggérés</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">Contrôles suggérés</div>
+                    <span className="text-sm text-muted-foreground" data-testid="text-selected-count">
+                      {selectedSuggestions.size} sélectionné(s)
+                    </span>
+                  </div>
                   {updateSuggestions.suggestions.map((suggestion) => (
                     <div
                       key={suggestion.id}
-                      className="p-3 rounded-lg border bg-card hover-elevate"
+                      className={`p-3 rounded-lg border bg-card hover-elevate cursor-pointer ${selectedSuggestions.has(suggestion.id) ? 'ring-2 ring-primary' : ''}`}
+                      onClick={() => toggleSuggestionSelection(suggestion.id)}
                       data-testid={`card-suggestion-${suggestion.id}`}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedSuggestions.has(suggestion.id)}
+                          onCheckedChange={() => toggleSuggestionSelection(suggestion.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1"
+                          data-testid={`checkbox-suggestion-${suggestion.id}`}
+                        />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium" data-testid={`text-suggestion-name-${suggestion.id}`}>{suggestion.name}</span>
@@ -950,21 +1025,48 @@ export default function AdminPage() {
             </div>
           )}
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUpdateSuggestions(null)} data-testid="button-close-suggestions">
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <div className="flex items-center gap-2 mr-auto">
+              {updateSuggestions && updateSuggestions.suggestions.length > 0 && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={selectAllSuggestions}
+                    data-testid="button-select-all"
+                  >
+                    Tout sélectionner
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={deselectAllSuggestions}
+                    data-testid="button-deselect-all"
+                  >
+                    Tout désélectionner
+                  </Button>
+                </>
+              )}
+            </div>
+            <Button variant="outline" onClick={() => { setUpdateSuggestions(null); setSelectedSuggestions(new Set()); }} data-testid="button-close-suggestions">
               Fermer
             </Button>
             {updateSuggestions && updateSuggestions.suggestions.length > 0 && (
               <Button 
-                onClick={() => {
-                  toast({ 
-                    title: "Export des suggestions", 
-                    description: "Les suggestions ont été copiées. Implémentez-les dans vos scripts." 
-                  });
-                }}
-                data-testid="button-export-suggestions"
+                onClick={handleApplyUpdates}
+                disabled={selectedSuggestions.size === 0 || applyingUpdates}
+                data-testid="button-apply-updates"
               >
-                Exporter les suggestions
+                {applyingUpdates ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Ajout en cours...
+                  </>
+                ) : (
+                  <>
+                    Ajouter aux notes ({selectedSuggestions.size})
+                  </>
+                )}
               </Button>
             )}
           </DialogFooter>

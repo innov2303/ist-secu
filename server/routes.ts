@@ -1105,5 +1105,74 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Apply selected controls to a toolkit
+  app.post("/api/admin/scripts/:id/apply-updates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      const { controls } = req.body;
+      
+      // Validate inputs
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+      
+      if (!controls || !Array.isArray(controls) || controls.length === 0) {
+        return res.status(400).json({ message: "No controls provided" });
+      }
+      
+      // Get the script/toolkit
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, scriptId));
+      if (!script) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      // Only update bundles (not individual scripts)
+      if (!script.bundledScriptIds || script.bundledScriptIds.length === 0) {
+        return res.status(400).json({ message: "Only bundles can be updated" });
+      }
+      
+      // Build the new controls list to append to description
+      const controlsList = controls.map((c: any) => 
+        `- [${c.id}] ${c.name}: ${c.description} (${c.severity})`
+      ).join('\n');
+      
+      // Update the script description with new controls info
+      const currentDescription = script.description || "";
+      const dateStr = new Date().toLocaleDateString('fr-FR');
+      const updateSection = `\n\n[Controles ajoutes ${dateStr}]\n${controlsList}`;
+      
+      // Check if we already have an update section and append or create
+      let newDescription: string;
+      if (currentDescription.includes('[Controles ajoutes')) {
+        // Append to existing section
+        newDescription = currentDescription + '\n' + controlsList;
+      } else {
+        newDescription = currentDescription + updateSection;
+      }
+      
+      // Update the script in database
+      const [updated] = await db
+        .update(scripts)
+        .set({ description: newDescription })
+        .where(eq(scripts.id, scriptId))
+        .returning();
+      
+      res.json({
+        success: true,
+        addedControls: controls.length,
+        toolkit: {
+          id: updated.id,
+          name: updated.name,
+          description: updated.description
+        },
+        message: `${controls.length} contrôle(s) ajouté(s) au toolkit ${updated.name}`
+      });
+    } catch (error) {
+      console.error("Error applying toolkit updates:", error);
+      res.status(500).json({ message: "Error applying toolkit updates" });
+    }
+  });
+
   return httpServer;
 }
