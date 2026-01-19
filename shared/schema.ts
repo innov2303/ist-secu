@@ -33,6 +33,33 @@ export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true })
 export type Script = typeof scripts.$inferSelect;
 export type InsertScript = z.infer<typeof insertScriptSchema>;
 
+// Script controls table - stores individual security controls that can be added to scripts
+export const scriptControls = pgTable("script_controls", {
+  id: serial("id").primaryKey(),
+  scriptId: integer("script_id").notNull(),
+  controlId: varchar("control_id", { length: 50 }).notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  severity: text("severity").notNull(),
+  reference: text("reference").notNull(),
+  code: text("code").notNull(),
+  enabled: integer("enabled").notNull().default(1),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
+export const scriptControlsRelations = relations(scriptControls, ({ one }) => ({
+  script: one(scripts, {
+    fields: [scriptControls.scriptId],
+    references: [scripts.id],
+  }),
+}));
+
+export const insertScriptControlSchema = createInsertSchema(scriptControls).omit({ id: true, addedAt: true });
+
+export type ScriptControl = typeof scriptControls.$inferSelect;
+export type InsertScriptControl = z.infer<typeof insertScriptControlSchema>;
+
 // Purchases table - tracks which users have bought which scripts
 export const purchases = pgTable("purchases", {
   id: serial("id").primaryKey(),
