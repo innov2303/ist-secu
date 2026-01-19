@@ -978,16 +978,43 @@ export async function registerRoutes(
   app.get("/api/admin/scripts/:id/check-updates", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      // Validate script ID
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ 
+          message: "Invalid script ID",
+          toolkit: null,
+          standards: [],
+          totalReferenceControls: 0,
+          suggestions: [],
+          analysisDate: new Date().toISOString()
+        });
+      }
       
       // Get the script/toolkit
-      const [script] = await db.select().from(scripts).where(eq(scripts.id, parseInt(id)));
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, scriptId));
       if (!script) {
-        return res.status(404).json({ message: "Script not found" });
+        return res.status(404).json({ 
+          message: "Script not found",
+          toolkit: null,
+          standards: [],
+          totalReferenceControls: 0,
+          suggestions: [],
+          analysisDate: new Date().toISOString()
+        });
       }
       
       // Only analyze bundles (not individual scripts)
       if (!script.bundledScriptIds || script.bundledScriptIds.length === 0) {
-        return res.status(400).json({ message: "Only bundles can be analyzed for updates" });
+        return res.status(400).json({ 
+          message: "Only bundles can be analyzed for updates",
+          toolkit: { id: script.id, name: script.name, os: script.os || "Unknown", currentControlCount: 0 },
+          standards: [],
+          totalReferenceControls: 0,
+          suggestions: [],
+          analysisDate: new Date().toISOString()
+        });
       }
       
       // Determine the OS/platform for this toolkit

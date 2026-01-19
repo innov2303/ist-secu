@@ -197,10 +197,18 @@ export default function AdminPage() {
     mutationFn: async (scriptId: number) => {
       setCheckingUpdatesFor(scriptId);
       const response = await apiRequest("GET", `/api/admin/scripts/${scriptId}/check-updates`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erreur inconnue" }));
+        throw new Error(errorData.message || "Erreur lors de la vérification");
+      }
       return response.json();
     },
     onSuccess: (data) => {
-      setUpdateSuggestions(data);
+      if (data && data.toolkit) {
+        setUpdateSuggestions(data);
+      } else {
+        toast({ title: "Erreur", description: data?.message || "Données invalides reçues", variant: "destructive" });
+      }
       setCheckingUpdatesFor(null);
     },
     onError: (error: Error) => {
@@ -823,6 +831,142 @@ export default function AdminPage() {
                 "Enregistrer"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Suggestions Dialog */}
+      <Dialog open={!!updateSuggestions} onOpenChange={(open) => !open && setUpdateSuggestions(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-update-suggestions">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Suggestions de mise à jour
+            </DialogTitle>
+            <DialogDescription>
+              {updateSuggestions && (
+                <span data-testid="text-toolkit-analysis">
+                  Analyse du toolkit <strong>{updateSuggestions.toolkit.name}</strong> ({updateSuggestions.toolkit.os})
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {updateSuggestions && (
+            <div className="space-y-4 py-2">
+              {/* Standards Reference */}
+              <div className="p-3 rounded-lg bg-muted/50" data-testid="section-standards-reference">
+                <div className="text-sm font-medium mb-2">Standards de référence</div>
+                <div className="flex flex-wrap gap-2">
+                  {updateSuggestions.standards.map((standard) => (
+                    <Badge key={standard.id} variant="outline" data-testid={`badge-standard-${standard.id}`}>
+                      {standard.name} v{standard.version}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2" data-testid="text-total-controls">
+                  {updateSuggestions.totalReferenceControls} contrôles dans la base de référence
+                </div>
+              </div>
+
+              {/* Current Status */}
+              <div className="flex items-center justify-between p-3 rounded-lg border" data-testid="section-current-status">
+                <div>
+                  <div className="font-medium">Contrôles actuels</div>
+                  <div className="text-sm text-muted-foreground" data-testid="text-current-controls">
+                    ~{updateSuggestions.toolkit.currentControlCount} contrôles implémentés
+                  </div>
+                </div>
+                <Badge variant="secondary" data-testid="badge-suggestions-count">
+                  {updateSuggestions.suggestions.length} suggestions
+                </Badge>
+              </div>
+
+              {/* Suggestions List */}
+              {updateSuggestions.suggestions.length > 0 ? (
+                <div className="space-y-2" data-testid="section-suggestions-list">
+                  <div className="font-medium">Contrôles suggérés</div>
+                  {updateSuggestions.suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="p-3 rounded-lg border bg-card hover-elevate"
+                      data-testid={`card-suggestion-${suggestion.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium" data-testid={`text-suggestion-name-${suggestion.id}`}>{suggestion.name}</span>
+                            <Badge 
+                              variant={
+                                suggestion.severity === "critical" ? "destructive" : 
+                                suggestion.severity === "high" ? "default" : 
+                                "secondary"
+                              }
+                              className="text-xs"
+                              data-testid={`badge-suggestion-severity-${suggestion.id}`}
+                            >
+                              {suggestion.severity}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs" data-testid={`badge-suggestion-category-${suggestion.id}`}>
+                              {suggestion.category}
+                            </Badge>
+                            {suggestion.recommended && (
+                              <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400 border-green-500/50" data-testid={`badge-suggestion-recommended-${suggestion.id}`}>
+                                Recommandé
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground mt-1" data-testid={`text-suggestion-description-${suggestion.id}`}>
+                            {suggestion.description}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1" data-testid={`text-suggestion-reference-${suggestion.id}`}>
+                            <span className="font-medium">Ref:</span> {suggestion.reference}
+                            {suggestion.implementationHint && (
+                              <span className="ml-2">• {suggestion.implementationHint}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs font-mono" data-testid={`badge-suggestion-id-${suggestion.id}`}>
+                            {suggestion.id}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground" data-testid="section-no-suggestions">
+                  <Check className="h-8 w-8 mx-auto mb-2 text-green-500" data-testid="icon-no-suggestions" />
+                  <p data-testid="text-no-suggestions-title">Aucune suggestion de mise à jour</p>
+                  <p className="text-sm" data-testid="text-no-suggestions-message">Le toolkit est à jour avec les standards de référence.</p>
+                </div>
+              )}
+
+              {/* Analysis Info */}
+              <div className="text-xs text-muted-foreground text-center pt-2 border-t" data-testid="text-analysis-date">
+                Analyse effectuée le {new Date(updateSuggestions.analysisDate).toLocaleString('fr-FR')}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUpdateSuggestions(null)} data-testid="button-close-suggestions">
+              Fermer
+            </Button>
+            {updateSuggestions && updateSuggestions.suggestions.length > 0 && (
+              <Button 
+                onClick={() => {
+                  toast({ 
+                    title: "Export des suggestions", 
+                    description: "Les suggestions ont été copiées. Implémentez-les dans vos scripts." 
+                  });
+                }}
+                data-testid="button-export-suggestions"
+              >
+                Exporter les suggestions
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
