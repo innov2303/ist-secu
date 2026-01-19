@@ -1,5 +1,5 @@
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -10,6 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+
+type ScriptStatus = "active" | "offline" | "maintenance";
 
 interface ScriptCardProps {
   script: Script;
@@ -76,6 +78,11 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const purchaseType = purchaseStatus?.purchaseType;
   const isAdmin = user?.isAdmin || false;
   const isInDevelopment = script.description.includes("En développement");
+  const status = (script.status as ScriptStatus) || "active";
+  const isOffline = status === "offline";
+  const isMaintenance = status === "maintenance";
+  const canPurchase = !isOffline && !isMaintenance;
+  const canDownload = !isMaintenance;
 
   return (
     <motion.div
@@ -111,7 +118,25 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
           </div>
         )}
 
-        {user && !isInDevelopment && !isAdmin && (
+        {isMaintenance && !isInDevelopment && (
+          <div className="text-xs text-muted-foreground mb-4">
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+              <Wrench className="w-3 h-3 mr-1" />
+              En maintenance
+            </Badge>
+          </div>
+        )}
+
+        {isOffline && !isInDevelopment && (
+          <div className="text-xs text-muted-foreground mb-4">
+            <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              Non disponible à l'achat
+            </Badge>
+          </div>
+        )}
+
+        {user && !isInDevelopment && !isAdmin && canPurchase && (
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -139,7 +164,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             </Button>
           )}
 
-          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && (
+          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && canPurchase && (
             <Button
               onClick={() => checkoutMutation.mutate("monthly")}
               disabled={checkoutMutation.isPending}
@@ -155,9 +180,23 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             </Button>
           )}
 
+          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && isOffline && (
+            <div className="text-center py-3 text-sm text-muted-foreground">
+              <AlertTriangle className="w-4 h-4 inline mr-2" />
+              Non disponible à l'achat
+            </div>
+          )}
+
           {isInDevelopment && (
             <div className="text-center py-3 text-sm text-muted-foreground">
               Disponible prochainement
+            </div>
+          )}
+
+          {isMaintenance && !isInDevelopment && hasPurchased && (
+            <div className="text-center py-3 text-sm text-orange-600 dark:text-orange-400">
+              <Wrench className="w-4 h-4 inline mr-2" />
+              Téléchargement temporairement indisponible
             </div>
           )}
 

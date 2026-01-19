@@ -456,6 +456,11 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Script non trouvé" });
     }
 
+    // Check if script is in maintenance - block downloads
+    if (script.status === "maintenance") {
+      return res.status(503).json({ message: "Ce toolkit est actuellement en maintenance. Le téléchargement sera disponible prochainement." });
+    }
+
     // Check if user is admin - admins have free access to all products
     const user = await authStorage.getUser(userId);
     if (!user?.isAdmin) {
@@ -698,6 +703,11 @@ export async function registerRoutes(
     const script = await storage.getScript(scriptId);
     if (!script) {
       return res.status(404).json({ message: "Script not found" });
+    }
+
+    // Check if script is offline - block purchases
+    if (script.status === "offline") {
+      return res.status(503).json({ message: "Ce toolkit n'est pas disponible à l'achat pour le moment." });
     }
 
     // Check if already purchased (including bundle check)
