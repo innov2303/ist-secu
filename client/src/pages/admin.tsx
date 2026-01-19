@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
   ChevronLeft, ChevronRight, Package, Shield, Home, Settings, Pencil, Loader2,
-  AlertTriangle, Power, Wrench, RefreshCw, Check, X
+  AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight
 } from "lucide-react";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest, Script } from "@shared/schema";
@@ -53,6 +53,20 @@ export default function AdminPage() {
   const [checkingUpdatesFor, setCheckingUpdatesFor] = useState<number | null>(null);
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
   const [applyingUpdates, setApplyingUpdates] = useState(false);
+  
+  // Controls viewer state
+  const [viewingControlsFor, setViewingControlsFor] = useState<{ id: number; name: string } | null>(null);
+  const [scriptControls, setScriptControls] = useState<{
+    id: number;
+    controlId: string;
+    name: string;
+    description: string;
+    category: string;
+    severity: string;
+    reference: string;
+    enabled: number;
+    addedAt: string;
+  }[]>([]);
   const [updateSuggestions, setUpdateSuggestions] = useState<{
     toolkit: { id: number; name: string; os: string; currentControlCount: number };
     standards: { id: string; name: string; version: string }[];
@@ -234,8 +248,8 @@ export default function AdminPage() {
     onSuccess: (data) => {
       setApplyingUpdates(false);
       toast({ 
-        title: "Notes ajoutees", 
-        description: `${data.addedControls || 0} controle(s) ajoute(s) aux notes du toolkit` 
+        title: "Controles ajoutes", 
+        description: `${data.addedControls || 0} controle(s) ajoute(s) au script` 
       });
       setUpdateSuggestions(null);
       setSelectedSuggestions(new Set());
@@ -277,6 +291,52 @@ export default function AdminPage() {
       scriptId: updateSuggestions.toolkit.id,
       controls: selectedControls
     });
+  };
+
+  const fetchScriptControls = async (scriptId: number) => {
+    try {
+      const response = await apiRequest("GET", `/api/admin/scripts/${scriptId}/controls`);
+      const data = await response.json();
+      setScriptControls(data.controls || []);
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de charger les controles", variant: "destructive" });
+    }
+  };
+
+  const toggleControlMutation = useMutation({
+    mutationFn: async (controlId: number) => {
+      const response = await apiRequest("PATCH", `/api/admin/controls/${controlId}/toggle`);
+      return response.json();
+    },
+    onSuccess: () => {
+      if (viewingControlsFor) {
+        fetchScriptControls(viewingControlsFor.id);
+      }
+      toast({ title: "Controle mis a jour" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de modifier le controle", variant: "destructive" });
+    },
+  });
+
+  const deleteControlMutation = useMutation({
+    mutationFn: async (controlId: number) => {
+      await apiRequest("DELETE", `/api/admin/controls/${controlId}`);
+    },
+    onSuccess: () => {
+      if (viewingControlsFor) {
+        fetchScriptControls(viewingControlsFor.id);
+      }
+      toast({ title: "Controle supprime" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de supprimer le controle", variant: "destructive" });
+    },
+  });
+
+  const openControlsViewer = async (script: Script) => {
+    setViewingControlsFor({ id: script.id, name: script.name });
+    await fetchScriptControls(script.id);
   };
 
   const openEditDialog = (script: Script) => {
@@ -760,9 +820,18 @@ export default function AdminPage() {
                               <Button
                                 variant="outline"
                                 size="icon"
+                                onClick={() => openControlsViewer(script)}
+                                title="Voir les controles ajoutes"
+                                data-testid={`button-view-controls-${script.id}`}
+                              >
+                                <List className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
                                 onClick={() => checkUpdatesMutation.mutate(script.id)}
                                 disabled={checkingUpdatesFor === script.id}
-                                title="Vérifier les mises à jour"
+                                title="Verifier les mises a jour"
                                 data-testid={`button-check-updates-${script.id}`}
                               >
                                 {checkingUpdatesFor === script.id ? (
@@ -1064,11 +1133,104 @@ export default function AdminPage() {
                   </>
                 ) : (
                   <>
-                    Ajouter aux notes ({selectedSuggestions.size})
+                    Ajouter au script ({selectedSuggestions.size})
                   </>
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Controls Viewer Dialog */}
+      <Dialog open={!!viewingControlsFor} onOpenChange={(open) => !open && setViewingControlsFor(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle data-testid="dialog-controls-title">Controles ajoutes - {viewingControlsFor?.name}</DialogTitle>
+            <DialogDescription data-testid="dialog-controls-description">
+              Liste des controles de securite ajoutes dynamiquement a ce toolkit
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto space-y-2 py-4" data-testid="section-controls-list">
+            {scriptControls.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground" data-testid="section-no-controls">
+                <List className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Aucun controle ajoute</p>
+                <p className="text-sm">Utilisez le verificateur de mises a jour pour ajouter des controles.</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-sm text-muted-foreground mb-4" data-testid="text-controls-count">
+                  {scriptControls.length} controle(s) ajoute(s)
+                </div>
+                {scriptControls.map((control) => (
+                  <div
+                    key={control.id}
+                    className={`p-3 rounded-lg border bg-card ${control.enabled ? '' : 'opacity-50'}`}
+                    data-testid={`card-control-${control.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium" data-testid={`text-control-name-${control.id}`}>{control.name}</span>
+                          <Badge variant="outline" className="text-xs font-mono">{control.controlId}</Badge>
+                          <Badge 
+                            variant={
+                              control.severity === "critical" ? "destructive" : 
+                              control.severity === "high" ? "default" : 
+                              "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {control.severity}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">{control.category}</Badge>
+                          {control.enabled === 0 && (
+                            <Badge variant="secondary" className="text-xs">Desactive</Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">{control.description}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          <span className="font-medium">Ref:</span> {control.reference}
+                          <span className="ml-2">Ajoute le {new Date(control.addedAt).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleControlMutation.mutate(control.id)}
+                          title={control.enabled ? "Desactiver" : "Activer"}
+                          data-testid={`button-toggle-control-${control.id}`}
+                        >
+                          {control.enabled ? (
+                            <ToggleRight className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteControlMutation.mutate(control.id)}
+                          title="Supprimer"
+                          data-testid={`button-delete-control-${control.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingControlsFor(null)} data-testid="button-close-controls">
+              Fermer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

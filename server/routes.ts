@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -519,10 +519,40 @@ export async function registerRoutes(
       // Pipe the archive to the response
       archive.pipe(res);
       
-      // Add all bundled scripts to the archive
+      // Fetch controls added to the toolkit bundle itself
+      const bundleControls = await db.select()
+        .from(scriptControls)
+        .where(and(
+          eq(scriptControls.scriptId, id),
+          eq(scriptControls.enabled, 1)
+        ));
+      
+      // Add all bundled scripts to the archive with dynamic controls
       for (const bundledScript of bundledScripts) {
         if (bundledScript) {
-          archive.append(bundledScript.content, { name: bundledScript.filename });
+          // Fetch controls for this specific script AND include bundle-level controls
+          const scriptSpecificControls = await db.select()
+            .from(scriptControls)
+            .where(and(
+              eq(scriptControls.scriptId, bundledScript.id),
+              eq(scriptControls.enabled, 1)
+            ));
+          
+          // Combine bundle-level and script-level controls
+          const allControls = [...bundleControls, ...scriptSpecificControls];
+          
+          let finalContent = bundledScript.content;
+          
+          // Append dynamic controls if any exist
+          if (allControls.length > 0) {
+            const controlsSection = allControls.map(c => c.code).join('\n\n');
+            const separator = bundledScript.filename.endsWith('.ps1') 
+              ? '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n'
+              : '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n';
+            finalContent = bundledScript.content + separator + controlsSection;
+          }
+          
+          archive.append(finalContent, { name: bundledScript.filename });
         }
       }
       
@@ -531,9 +561,28 @@ export async function registerRoutes(
       return;
     }
 
+    // Fetch added controls for individual script downloads
+    const addedControls = await db.select()
+      .from(scriptControls)
+      .where(and(
+        eq(scriptControls.scriptId, id),
+        eq(scriptControls.enabled, 1)
+      ));
+    
+    let finalContent = script.content;
+    
+    // Append dynamic controls if any exist
+    if (addedControls.length > 0) {
+      const controlsSection = addedControls.map(c => c.code).join('\n\n');
+      const separator = script.filename.endsWith('.ps1') 
+        ? '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n'
+        : '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n';
+      finalContent = script.content + separator + controlsSection;
+    }
+
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.send(script.content);
+    res.send(finalContent);
   });
 
   // Admin routes - return only necessary user fields
@@ -1127,50 +1176,132 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Script not found" });
       }
       
-      // Only update bundles (not individual scripts)
-      if (!script.bundledScriptIds || script.bundledScriptIds.length === 0) {
-        return res.status(400).json({ message: "Only bundles can be updated" });
+      // Import control template generator
+      const { generateControlCode } = await import("./control-templates");
+      
+      // Insert each control into the script_controls table
+      const insertedControls = [];
+      for (const control of controls) {
+        // Check if control already exists for this script
+        const [existing] = await db.select()
+          .from(scriptControls)
+          .where(and(
+            eq(scriptControls.scriptId, scriptId),
+            eq(scriptControls.controlId, control.id)
+          ));
+        
+        if (existing) {
+          continue; // Skip duplicates
+        }
+        
+        // Generate code for this control
+        const code = generateControlCode(
+          control.id,
+          control.name,
+          control.description,
+          control.category,
+          control.severity,
+          control.reference,
+          script.os
+        );
+        
+        // Insert the control
+        const [inserted] = await db.insert(scriptControls).values({
+          scriptId,
+          controlId: control.id,
+          name: control.name,
+          description: control.description,
+          category: control.category,
+          severity: control.severity,
+          reference: control.reference,
+          code,
+          enabled: 1,
+        }).returning();
+        
+        insertedControls.push(inserted);
       }
-      
-      // Build the new controls list to append to description
-      const controlsList = controls.map((c: any) => 
-        `- [${c.id}] ${c.name}: ${c.description} (${c.severity})`
-      ).join('\n');
-      
-      // Update the script description with new controls info
-      const currentDescription = script.description || "";
-      const dateStr = new Date().toLocaleDateString('fr-FR');
-      const updateSection = `\n\n[Controles ajoutes ${dateStr}]\n${controlsList}`;
-      
-      // Check if we already have an update section and append or create
-      let newDescription: string;
-      if (currentDescription.includes('[Controles ajoutes')) {
-        // Append to existing section
-        newDescription = currentDescription + '\n' + controlsList;
-      } else {
-        newDescription = currentDescription + updateSection;
-      }
-      
-      // Update the script in database
-      const [updated] = await db
-        .update(scripts)
-        .set({ description: newDescription })
-        .where(eq(scripts.id, scriptId))
-        .returning();
       
       res.json({
         success: true,
-        addedControls: controls.length,
+        addedControls: insertedControls.length,
+        skippedDuplicates: controls.length - insertedControls.length,
         toolkit: {
-          id: updated.id,
-          name: updated.name,
-          description: updated.description
+          id: script.id,
+          name: script.name,
         },
-        message: `${controls.length} contrôle(s) ajouté(s) au toolkit ${updated.name}`
+        message: `${insertedControls.length} controle(s) ajoute(s) au toolkit ${script.name}`
       });
     } catch (error) {
       console.error("Error applying toolkit updates:", error);
       res.status(500).json({ message: "Error applying toolkit updates" });
+    }
+  });
+  
+  // Admin: Get controls for a script
+  app.get("/api/admin/scripts/:id/controls", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+      
+      const controls = await db.select()
+        .from(scriptControls)
+        .where(eq(scriptControls.scriptId, scriptId))
+        .orderBy(scriptControls.addedAt);
+      
+      res.json({ controls });
+    } catch (error) {
+      console.error("Error fetching script controls:", error);
+      res.status(500).json({ message: "Error fetching script controls" });
+    }
+  });
+  
+  // Admin: Toggle control enabled/disabled
+  app.patch("/api/admin/controls/:id/toggle", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const controlId = parseInt(id);
+      
+      if (isNaN(controlId) || controlId <= 0) {
+        return res.status(400).json({ message: "Invalid control ID" });
+      }
+      
+      const [control] = await db.select().from(scriptControls).where(eq(scriptControls.id, controlId));
+      if (!control) {
+        return res.status(404).json({ message: "Control not found" });
+      }
+      
+      const [updated] = await db.update(scriptControls)
+        .set({ enabled: control.enabled === 1 ? 0 : 1 })
+        .where(eq(scriptControls.id, controlId))
+        .returning();
+      
+      res.json({ control: updated });
+    } catch (error) {
+      console.error("Error toggling control:", error);
+      res.status(500).json({ message: "Error toggling control" });
+    }
+  });
+  
+  // Admin: Delete a control
+  app.delete("/api/admin/controls/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const controlId = parseInt(id);
+      
+      if (isNaN(controlId) || controlId <= 0) {
+        return res.status(400).json({ message: "Invalid control ID" });
+      }
+      
+      await db.delete(scriptControls).where(eq(scriptControls.id, controlId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting control:", error);
+      res.status(500).json({ message: "Error deleting control" });
     }
   });
 
