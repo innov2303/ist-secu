@@ -29,7 +29,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVisibleScripts(): Promise<Script[]> {
-    return await db.select().from(scripts).where(eq(scripts.isHidden, 0));
+    return await db.select().from(scripts).where(
+      and(
+        eq(scripts.isHidden, 0),
+        ne(scripts.status, "offline")
+      )
+    );
   }
 
   async getBundledScripts(bundleId: number): Promise<Script[]> {
