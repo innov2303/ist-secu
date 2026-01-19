@@ -229,10 +229,13 @@ export default function AdminPage() {
     );
   }
 
+  // Count only toolkits (bundles with bundledScriptIds)
+  const toolkitCount = scripts?.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0).length || 0;
+  
   const sidebarItems = [
     { id: "users" as AdminSection, label: "Utilisateurs", icon: Users, count: users?.length },
     { id: "tickets" as AdminSection, label: "Gestion des tickets", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
-    { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: scripts?.length },
+    { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: toolkitCount },
   ];
 
   const formatPrice = (cents: number) => {
