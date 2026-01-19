@@ -1,5 +1,5 @@
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -35,6 +35,8 @@ const IconMap: Record<string, any> = {
   container: Container,
   sinetapp: SiNetapp,
   netapp: SiNetapp,
+  globe: Globe,
+  web: Globe,
 };
 
 function formatPrice(cents: number) {
