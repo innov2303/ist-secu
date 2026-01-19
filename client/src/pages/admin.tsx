@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
   ChevronLeft, ChevronRight, Package, Shield, Home, Settings, Pencil, Loader2,
-  AlertTriangle, Power, Wrench
+  AlertTriangle, Power, Wrench, RefreshCw, Check, X
 } from "lucide-react";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest, Script } from "@shared/schema";
@@ -47,6 +47,26 @@ export default function AdminPage() {
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
+  
+  // Update checker state
+  const [checkingUpdatesFor, setCheckingUpdatesFor] = useState<number | null>(null);
+  const [updateSuggestions, setUpdateSuggestions] = useState<{
+    toolkit: { id: number; name: string; os: string; currentControlCount: number };
+    standards: { id: string; name: string; version: string }[];
+    totalReferenceControls: number;
+    suggestions: {
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+      severity: string;
+      reference: string;
+      implementationHint?: string;
+      recommended: boolean;
+    }[];
+    analysisDate: string;
+    message: string;
+  } | null>(null);
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -170,6 +190,22 @@ export default function AdminPage() {
     },
     onError: () => {
       toast({ title: "Erreur", description: "Impossible de mettre à jour le toolkit", variant: "destructive" });
+    },
+  });
+
+  const checkUpdatesMutation = useMutation({
+    mutationFn: async (scriptId: number) => {
+      setCheckingUpdatesFor(scriptId);
+      const response = await apiRequest("GET", `/api/admin/scripts/${scriptId}/check-updates`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setUpdateSuggestions(data);
+      setCheckingUpdatesFor(null);
+    },
+    onError: (error: Error) => {
+      setCheckingUpdatesFor(null);
+      toast({ title: "Erreur", description: error.message || "Impossible de vérifier les mises à jour", variant: "destructive" });
     },
   });
 
@@ -651,6 +687,20 @@ export default function AdminPage() {
                                   ID: {script.id}
                                 </div>
                               </div>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => checkUpdatesMutation.mutate(script.id)}
+                                disabled={checkingUpdatesFor === script.id}
+                                title="Vérifier les mises à jour"
+                                data-testid={`button-check-updates-${script.id}`}
+                              >
+                                {checkingUpdatesFor === script.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="icon"
