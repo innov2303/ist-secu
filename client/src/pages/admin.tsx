@@ -59,7 +59,7 @@ export default function AdminPage() {
   });
 
   const { data: scripts, isLoading: scriptsLoading } = useQuery<Script[]>({
-    queryKey: ["/api/scripts"],
+    queryKey: ["/api/scripts/all"],
     enabled: !!user?.isAdmin,
   });
 
@@ -162,7 +162,7 @@ export default function AdminPage() {
       await apiRequest("PATCH", `/api/admin/scripts/${id}`, { name, monthlyPriceCents, status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/scripts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts/all"] });
       toast({ title: "Toolkit mis à jour" });
       setEditingScript(null);
     },
