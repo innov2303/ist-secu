@@ -26,9 +26,9 @@ type AdminSection = "users" | "tickets" | "toolkits";
 type ScriptStatus = "active" | "offline" | "maintenance";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
-  active: { label: "Actif", variant: "default", icon: Power },
+  active: { label: "Online", variant: "default", icon: Power },
   offline: { label: "Offline", variant: "destructive", icon: AlertTriangle },
-  maintenance: { label: "En maintenance", variant: "secondary", icon: Wrench },
+  maintenance: { label: "Maintenance", variant: "secondary", icon: Wrench },
 };
 
 export default function AdminPage() {
@@ -735,7 +735,7 @@ export default function AdminPage() {
                   <SelectItem value="active">
                     <div className="flex items-center gap-2">
                       <Power className="h-4 w-4 text-green-500" />
-                      Actif
+                      Online
                     </div>
                   </SelectItem>
                   <SelectItem value="offline">
@@ -747,7 +747,7 @@ export default function AdminPage() {
                   <SelectItem value="maintenance">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-orange-500" />
-                      En maintenance
+                      Maintenance
                     </div>
                   </SelectItem>
                 </SelectContent>
