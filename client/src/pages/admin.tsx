@@ -100,12 +100,14 @@ export default function AdminPage() {
     return filteredContacts.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredContacts, contactPage]);
 
-  // Scripts filtering and pagination
+  // Scripts filtering and pagination - only show toolkits (bundles with bundledScriptIds)
   const filteredScripts = useMemo(() => {
     if (!scripts) return [];
-    if (!scriptSearch.trim()) return scripts;
+    // Filter to only show toolkits (scripts that have bundledScriptIds)
+    const toolkits = scripts.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0);
+    if (!scriptSearch.trim()) return toolkits;
     const search = scriptSearch.toLowerCase();
-    return scripts.filter(s => 
+    return toolkits.filter(s => 
       s.name?.toLowerCase().includes(search) ||
       s.os?.toLowerCase().includes(search)
     );
