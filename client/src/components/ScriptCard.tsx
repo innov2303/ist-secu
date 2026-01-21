@@ -1,5 +1,5 @@
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Shield } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -24,6 +24,11 @@ function extractBaseControlCount(description: string): number {
   // Extract base control count from description like "~125 contrôles" or "~215 contrôles total"
   const match = description.match(/~(\d+)\s*contr[oô]les/i);
   return match ? parseInt(match[1]) : 0;
+}
+
+function updateControlCountInDescription(description: string, totalCount: number): string {
+  // Replace the control count in the description with the updated total
+  return description.replace(/~\d+\s*(contr[oô]les)/gi, `~${totalCount} $1`);
 }
 
 type ScriptStatus = "active" | "offline" | "maintenance";
@@ -112,7 +117,12 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const baseControlCount = extractBaseControlCount(script.description);
   const dynamicControlCount = controlsCounts?.[script.id] || 0;
   const totalControlCount = baseControlCount + dynamicControlCount;
-  const displayDescription = cleanDescription(script.description);
+  
+  // Clean description and update control count
+  let displayDescription = cleanDescription(script.description);
+  if (totalControlCount > 0) {
+    displayDescription = updateControlCountInDescription(displayDescription, totalControlCount);
+  }
 
   return (
     <motion.div
@@ -141,15 +151,6 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
         <p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow whitespace-pre-line">
           {displayDescription}
         </p>
-
-        {totalControlCount > 0 && (
-          <div className="flex items-center gap-2 mb-4">
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-              <Shield className="w-3 h-3 mr-1" />
-              {totalControlCount} tests de securite
-            </Badge>
-          </div>
-        )}
 
         {isInDevelopment && (
           <div className="text-xs text-muted-foreground mb-4">
