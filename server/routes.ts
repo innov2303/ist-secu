@@ -442,6 +442,29 @@ export async function registerRoutes(
     res.json(scripts);
   });
 
+  // Get dynamic controls count for all scripts
+  app.get("/api/scripts/controls-count", async (req, res) => {
+    try {
+      const counts = await db
+        .select({
+          scriptId: scriptControls.scriptId,
+          count: sql<number>`count(*)::int`
+        })
+        .from(scriptControls)
+        .where(eq(scriptControls.enabled, 1))
+        .groupBy(scriptControls.scriptId);
+      
+      const countMap: Record<number, number> = {};
+      for (const row of counts) {
+        countMap[row.scriptId] = row.count;
+      }
+      res.json(countMap);
+    } catch (error) {
+      console.error("Error fetching controls count:", error);
+      res.json({});
+    }
+  });
+
   app.get(api.scripts.download.path, isAuthenticated, async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     if (!userId) {

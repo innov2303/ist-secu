@@ -1,5 +1,5 @@
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Shield } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -10,6 +10,21 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+
+function cleanDescription(description: string): string {
+  // Remove "[Controles ajoutes...]" section from the description
+  const controlsIndex = description.indexOf("[Controles ajoutes");
+  if (controlsIndex !== -1) {
+    return description.substring(0, controlsIndex).trim();
+  }
+  return description;
+}
+
+function extractBaseControlCount(description: string): number {
+  // Extract base control count from description like "~125 contrôles" or "~215 contrôles total"
+  const match = description.match(/~(\d+)\s*contr[oô]les/i);
+  return match ? parseInt(match[1]) : 0;
+}
 
 type ScriptStatus = "active" | "offline" | "maintenance";
 
@@ -76,6 +91,13 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
     },
   });
 
+  // Fetch dynamic controls count for all scripts
+  const { data: controlsCounts } = useQuery<Record<number, number>>({
+    queryKey: ["/api/scripts/controls-count"],
+    queryFn: () => apiRequest("GET", "/api/scripts/controls-count").then(r => r.json()),
+    staleTime: 60000, // Cache for 1 minute
+  });
+
   const hasPurchased = purchaseStatus?.hasPurchased || false;
   const purchaseType = purchaseStatus?.purchaseType;
   const isAdmin = user?.isAdmin || false;
@@ -85,6 +107,12 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const isMaintenance = status === "maintenance";
   const canPurchase = !isOffline; // Allow subscriptions during maintenance, only block when offline
   const canDownload = !isMaintenance && !isOffline;
+
+  // Calculate total controls: base count + dynamic controls
+  const baseControlCount = extractBaseControlCount(script.description);
+  const dynamicControlCount = controlsCounts?.[script.id] || 0;
+  const totalControlCount = baseControlCount + dynamicControlCount;
+  const displayDescription = cleanDescription(script.description);
 
   return (
     <motion.div
@@ -111,8 +139,17 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
         </h3>
         
         <p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow whitespace-pre-line">
-          {script.description}
+          {displayDescription}
         </p>
+
+        {totalControlCount > 0 && (
+          <div className="flex items-center gap-2 mb-4">
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              <Shield className="w-3 h-3 mr-1" />
+              {totalControlCount} tests de securite
+            </Badge>
+          </div>
+        )}
 
         {isInDevelopment && (
           <div className="text-xs text-muted-foreground mb-4">
