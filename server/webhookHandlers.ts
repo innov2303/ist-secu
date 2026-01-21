@@ -1,5 +1,6 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { storage } from './storage';
+import { sendSubscriptionInvoiceEmail } from './email';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -34,11 +35,42 @@ export class WebhookHandlers {
         if (invoice.subscription) {
           try {
             const stripe = await getUncachableStripeClient();
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-            const expiresAt = new Date(subscription.current_period_end * 1000);
+            if (!stripe) {
+              console.error('Stripe client is null');
+              break;
+            }
+            const subscriptionData = await stripe.subscriptions.retrieve(invoice.subscription as string) as any;
+            const expiresAt = new Date(subscriptionData.current_period_end * 1000);
             
-            await storage.updatePurchaseSubscription(invoice.subscription, expiresAt);
+            await storage.updatePurchaseSubscription(invoice.subscription as string, expiresAt);
             console.log(`Updated subscription ${invoice.subscription} expires at ${expiresAt}`);
+            
+            // Send invoice email to customer
+            const customerEmail = invoice.customer_email || invoice.customer_details?.email;
+            const customerName = invoice.customer_name || invoice.customer_details?.name || 'Client';
+            
+            if (customerEmail) {
+              // Get product name from line items
+              let productName = 'Abonnement Infra Shield Tools';
+              if (invoice.lines?.data?.length > 0) {
+                const lineItem = invoice.lines.data[0];
+                productName = lineItem.description || lineItem.price?.product?.name || productName;
+              }
+              
+              const periodStart = new Date(subscriptionData.current_period_start * 1000);
+              const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+              
+              await sendSubscriptionInvoiceEmail({
+                customerEmail,
+                customerName,
+                productName,
+                amountCents: invoice.amount_paid,
+                periodStart,
+                periodEnd,
+                stripeInvoiceId: invoice.id
+              });
+              console.log(`Invoice email sent to ${customerEmail} for invoice ${invoice.id}`);
+            }
           } catch (err: any) {
             console.error('Error updating subscription from invoice.paid:', err.message);
           }

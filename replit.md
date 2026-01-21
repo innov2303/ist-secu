@@ -57,6 +57,14 @@ Preferred communication style: Simple, everyday language.
 - Server-side calculation of subtotals, tax (TVA), and totals
 - Support for custom tax rates per invoice
 - Associated with scripts/toolkits for tracking purchases
+- **Automatic email sending**: Invoices are sent via email when status changes to "sent"
+
+### Email Integration (Resend)
+- **Provider**: Resend (via Replit Connector)
+- **Automatic Subscription Invoices**: Email sent automatically on Stripe subscription renewal (invoice.paid webhook)
+- **Manual Invoice Emails**: Sent when admin changes invoice status to "sent"
+- **Email Templates**: Professional HTML templates with IST branding
+- **Email Service File**: server/email.ts
 
 ### Authentication Flow
 - Dual authentication: Replit Auth via OIDC and local email/password

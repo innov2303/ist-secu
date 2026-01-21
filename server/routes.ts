@@ -13,6 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
+import { sendInvoiceEmail } from "./email";
 
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -1467,6 +1468,35 @@ export async function registerRoutes(
       
       if (!updated) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Send email when status changes to 'sent'
+      if (updateData.status === 'sent') {
+        try {
+          const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+          
+          await sendInvoiceEmail({
+            invoiceNumber: updated.invoiceNumber,
+            customerName: updated.customerName,
+            customerEmail: updated.customerEmail,
+            items: items.map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              unitPriceCents: item.unitPriceCents,
+              totalCents: item.totalCents
+            })),
+            subtotalCents: updated.subtotalCents,
+            taxRate: updated.taxRate,
+            taxCents: updated.taxCents,
+            totalCents: updated.totalCents,
+            dueDate: updated.dueDate,
+            notes: updated.notes
+          });
+          console.log(`Invoice ${updated.invoiceNumber} sent to ${updated.customerEmail}`);
+        } catch (emailError) {
+          console.error('Error sending invoice email:', emailError);
+          // Don't fail the request, just log the error
+        }
       }
       
       res.json({ invoice: updated });
