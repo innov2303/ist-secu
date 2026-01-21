@@ -21,14 +21,48 @@ function cleanDescription(description: string): string {
 }
 
 function extractBaseControlCount(description: string): number {
-  // Extract base control count from description like "~125 contrôles" or "~215 contrôles total"
-  const match = description.match(/~(\d+)\s*contr[oô]les/i);
-  return match ? parseInt(match[1]) : 0;
+  // Extract the highest control count from description (this is the total for the bundle)
+  // Look for patterns like "~215 contrôles total" or the largest "~XXX contrôles" number
+  const regex = /~(\d+)\s*contr[oô]les/gi;
+  let maxCount = 0;
+  let match;
+  while ((match = regex.exec(description)) !== null) {
+    const count = parseInt(match[1]);
+    if (count > maxCount) {
+      maxCount = count;
+    }
+  }
+  return maxCount;
 }
 
-function updateControlCountInDescription(description: string, totalCount: number): string {
-  // Replace the control count in the description with the updated total
-  return description.replace(/~\d+\s*(contr[oô]les)/gi, `~${totalCount} $1`);
+function updateControlCountInDescription(description: string, totalCount: number, _dynamicCount: number): string {
+  // Only update the largest control count (the bundle total), not the individual script counts
+  // Find all control count patterns and only update the largest one
+  const regex = /~(\d+)(\s*contr[oô]les)/gi;
+  const matches: Array<{ full: string; count: number; suffix: string; index: number }> = [];
+  let match;
+  while ((match = regex.exec(description)) !== null) {
+    matches.push({
+      full: match[0],
+      count: parseInt(match[1]),
+      suffix: match[2],
+      index: match.index
+    });
+  }
+  
+  if (matches.length === 0) return description;
+  
+  // Find the match with the highest count
+  let maxMatch = matches[0];
+  for (const m of matches) {
+    if (m.count > maxMatch.count) {
+      maxMatch = m;
+    }
+  }
+  
+  // Replace only the largest count with the updated total
+  const updatedPattern = `~${totalCount}${maxMatch.suffix}`;
+  return description.replace(maxMatch.full, updatedPattern);
 }
 
 type ScriptStatus = "active" | "offline" | "maintenance";
@@ -120,8 +154,8 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   
   // Clean description and update control count
   let displayDescription = cleanDescription(script.description);
-  if (totalControlCount > 0) {
-    displayDescription = updateControlCountInDescription(displayDescription, totalControlCount);
+  if (dynamicControlCount > 0) {
+    displayDescription = updateControlCountInDescription(displayDescription, totalControlCount, dynamicControlCount);
   }
 
   return (
