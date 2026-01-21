@@ -936,6 +936,33 @@ export async function registerRoutes(
           }
         }
 
+        // Send purchase confirmation email
+        try {
+          const [user] = await db.select().from(users).where(eq(users.id, userId));
+          if (user && user.email) {
+            const { sendSubscriptionInvoiceEmail } = await import('./email');
+            const customerName = user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user.firstName || user.email.split('@')[0];
+            
+            const periodStart = new Date();
+            const periodEnd = expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            
+            await sendSubscriptionInvoiceEmail({
+              customerEmail: user.email,
+              customerName,
+              productName: script.name,
+              amountCents: parseInt(priceCents || "0"),
+              periodStart,
+              periodEnd
+            });
+            console.log(`Purchase confirmation email sent to ${user.email} for ${script.name}`);
+          }
+        } catch (emailError) {
+          console.error('Error sending purchase confirmation email:', emailError);
+          // Don't fail the request, just log the error
+        }
+
         res.json({ success: true, scriptId: parseInt(scriptId) });
       } else {
         res.status(400).json({ message: "Payment not completed" });
