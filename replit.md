@@ -46,6 +46,17 @@ Preferred communication style: Simple, everyday language.
   - `sessions` - Session storage for authentication
   - `scripts` - Security scripts catalog with pricing
   - `purchases` - User purchase records with subscription tracking
+  - `invoices` - Admin-generated invoices for customers
+  - `invoice_items` - Line items for each invoice
+  - `script_controls` - Dynamic security controls for scripts
+
+### Invoice Management
+- Admin-only feature for creating and managing invoices
+- Invoice workflow: draft -> sent -> paid (with cancelled/overdue states)
+- Invoice number format: IST-YYYYMM-XXXX (auto-generated)
+- Server-side calculation of subtotals, tax (TVA), and totals
+- Support for custom tax rates per invoice
+- Associated with scripts/toolkits for tracking purchases
 
 ### Authentication Flow
 - Dual authentication: Replit Auth via OIDC and local email/password
