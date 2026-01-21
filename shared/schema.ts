@@ -102,3 +102,68 @@ export const insertContactRequestSchema = createInsertSchema(contactRequests).om
 
 export type ContactRequest = typeof contactRequests.$inferSelect;
 export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;
+
+// Invoices table - tracks customer invoices
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  invoiceNumber: varchar("invoice_number", { length: 50 }).notNull(),
+  userId: varchar("user_id").notNull(),
+  customerName: text("customer_name").notNull(),
+  customerEmail: text("customer_email").notNull(),
+  customerAddress: text("customer_address"),
+  subtotalCents: integer("subtotal_cents").notNull().default(0),
+  taxRate: integer("tax_rate").notNull().default(20),
+  taxCents: integer("tax_cents").notNull().default(0),
+  totalCents: integer("total_cents").notNull().default(0),
+  status: text("status").notNull().default("draft"),
+  notes: text("notes"),
+  dueDate: timestamp("due_date"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const invoicesRelations = relations(invoices, ({ many }) => ({
+  items: many(invoiceItems),
+}));
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true });
+export const updateInvoiceSchema = z.object({
+  customerName: z.string().min(1).optional(),
+  customerEmail: z.string().email().optional(),
+  customerAddress: z.string().optional(),
+  taxRate: z.number().int().min(0).max(100).optional(),
+  status: z.enum(["draft", "sent", "paid", "cancelled", "overdue"]).optional(),
+  notes: z.string().optional(),
+  dueDate: z.string().optional(),
+});
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+
+// Invoice items table - line items for each invoice
+export const invoiceItems = pgTable("invoice_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull(),
+  scriptId: integer("script_id"),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPriceCents: integer("unit_price_cents").notNull(),
+  totalCents: integer("total_cents").notNull(),
+});
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceItems.invoiceId],
+    references: [invoices.id],
+  }),
+  script: one(scripts, {
+    fields: [invoiceItems.scriptId],
+    references: [scripts.id],
+  }),
+}));
+
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
+
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;

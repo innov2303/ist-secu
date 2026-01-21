@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -1302,6 +1302,314 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting control:", error);
       res.status(500).json({ message: "Error deleting control" });
+    }
+  });
+
+  // ==========================================
+  // INVOICE MANAGEMENT ROUTES
+  // ==========================================
+  
+  // Helper function to generate invoice number
+  function generateInvoiceNumber(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `IST-${year}${month}-${random}`;
+  }
+  
+  // Get all invoices (admin only)
+  app.get("/api/admin/invoices", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allInvoices = await db.select().from(invoices).orderBy(sql`${invoices.createdAt} DESC`);
+      res.json({ invoices: allInvoices });
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Error fetching invoices" });
+    }
+  });
+  
+  // Get single invoice with items
+  app.get("/api/admin/invoices/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const invoiceId = parseInt(id);
+      
+      if (isNaN(invoiceId) || invoiceId <= 0) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+      
+      res.json({ invoice, items });
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Error fetching invoice" });
+    }
+  });
+  
+  // Create new invoice
+  app.post("/api/admin/invoices", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { customerName, customerEmail, customerAddress, userId, items, taxRate = 20, notes, dueDate } = req.body;
+      
+      if (!customerName || !customerEmail || !userId) {
+        return res.status(400).json({ message: "Customer name, email and user ID are required" });
+      }
+      
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "At least one item is required" });
+      }
+      
+      // Calculate totals
+      let subtotalCents = 0;
+      const processedItems: Array<{ description: string; scriptId?: number; quantity: number; unitPriceCents: number; totalCents: number }> = [];
+      
+      for (const item of items) {
+        const quantity = item.quantity || 1;
+        const unitPriceCents = item.unitPriceCents;
+        const totalCents = quantity * unitPriceCents;
+        subtotalCents += totalCents;
+        
+        processedItems.push({
+          description: item.description,
+          scriptId: item.scriptId || null,
+          quantity,
+          unitPriceCents,
+          totalCents
+        });
+      }
+      
+      const taxCents = Math.round(subtotalCents * taxRate / 100);
+      const totalCents = subtotalCents + taxCents;
+      
+      // Create invoice
+      const [newInvoice] = await db.insert(invoices).values({
+        invoiceNumber: generateInvoiceNumber(),
+        userId,
+        customerName,
+        customerEmail,
+        customerAddress: customerAddress || null,
+        subtotalCents,
+        taxRate,
+        taxCents,
+        totalCents,
+        status: "draft",
+        notes: notes || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+      }).returning();
+      
+      // Create invoice items
+      for (const item of processedItems) {
+        await db.insert(invoiceItems).values({
+          invoiceId: newInvoice.id,
+          scriptId: item.scriptId,
+          description: item.description,
+          quantity: item.quantity,
+          unitPriceCents: item.unitPriceCents,
+          totalCents: item.totalCents
+        });
+      }
+      
+      res.json({ invoice: newInvoice });
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Error creating invoice" });
+    }
+  });
+  
+  // Update invoice
+  app.patch("/api/admin/invoices/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const invoiceId = parseInt(id);
+      
+      if (isNaN(invoiceId) || invoiceId <= 0) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      
+      const validated = updateInvoiceSchema.safeParse(req.body);
+      if (!validated.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validated.error.flatten() });
+      }
+      
+      const updateData: Record<string, unknown> = { ...validated.data, updatedAt: new Date() };
+      
+      // Handle date conversion
+      if (updateData.dueDate && typeof updateData.dueDate === 'string') {
+        updateData.dueDate = new Date(updateData.dueDate as string);
+      }
+      
+      // Recalculate tax if taxRate changed
+      if (updateData.taxRate !== undefined) {
+        const [existingInvoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+        if (existingInvoice) {
+          const taxCents = Math.round(existingInvoice.subtotalCents * (updateData.taxRate as number) / 100);
+          updateData.taxCents = taxCents;
+          updateData.totalCents = existingInvoice.subtotalCents + taxCents;
+        }
+      }
+      
+      // Handle status change to paid
+      if (updateData.status === 'paid') {
+        updateData.paidAt = new Date();
+      }
+      
+      const [updated] = await db.update(invoices)
+        .set(updateData)
+        .where(eq(invoices.id, invoiceId))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      res.json({ invoice: updated });
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Error updating invoice" });
+    }
+  });
+  
+  // Delete invoice
+  app.delete("/api/admin/invoices/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const invoiceId = parseInt(id);
+      
+      if (isNaN(invoiceId) || invoiceId <= 0) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      
+      // Delete items first
+      await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+      
+      // Delete invoice
+      await db.delete(invoices).where(eq(invoices.id, invoiceId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Error deleting invoice" });
+    }
+  });
+  
+  // Add item to invoice
+  app.post("/api/admin/invoices/:id/items", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const invoiceId = parseInt(id);
+      const { description, scriptId, quantity = 1, unitPriceCents } = req.body;
+      
+      if (isNaN(invoiceId) || invoiceId <= 0) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      
+      if (!description || unitPriceCents === undefined) {
+        return res.status(400).json({ message: "Description and unit price are required" });
+      }
+      
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      const totalCents = quantity * unitPriceCents;
+      
+      // Create item
+      const [newItem] = await db.insert(invoiceItems).values({
+        invoiceId,
+        scriptId: scriptId || null,
+        description,
+        quantity,
+        unitPriceCents,
+        totalCents
+      }).returning();
+      
+      // Update invoice totals
+      const newSubtotal = invoice.subtotalCents + totalCents;
+      const newTaxCents = Math.round(newSubtotal * invoice.taxRate / 100);
+      const newTotal = newSubtotal + newTaxCents;
+      
+      await db.update(invoices)
+        .set({
+          subtotalCents: newSubtotal,
+          taxCents: newTaxCents,
+          totalCents: newTotal,
+          updatedAt: new Date()
+        })
+        .where(eq(invoices.id, invoiceId));
+      
+      res.json({ item: newItem });
+    } catch (error) {
+      console.error("Error adding invoice item:", error);
+      res.status(500).json({ message: "Error adding invoice item" });
+    }
+  });
+  
+  // Delete item from invoice
+  app.delete("/api/admin/invoices/:invoiceId/items/:itemId", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { invoiceId, itemId } = req.params;
+      const invId = parseInt(invoiceId);
+      const itmId = parseInt(itemId);
+      
+      if (isNaN(invId) || invId <= 0 || isNaN(itmId) || itmId <= 0) {
+        return res.status(400).json({ message: "Invalid IDs" });
+      }
+      
+      const [item] = await db.select().from(invoiceItems).where(eq(invoiceItems.id, itmId));
+      if (!item || item.invoiceId !== invId) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invId));
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      // Delete item
+      await db.delete(invoiceItems).where(eq(invoiceItems.id, itmId));
+      
+      // Update invoice totals
+      const newSubtotal = invoice.subtotalCents - item.totalCents;
+      const newTaxCents = Math.round(newSubtotal * invoice.taxRate / 100);
+      const newTotal = newSubtotal + newTaxCents;
+      
+      await db.update(invoices)
+        .set({
+          subtotalCents: newSubtotal,
+          taxCents: newTaxCents,
+          totalCents: newTotal,
+          updatedAt: new Date()
+        })
+        .where(eq(invoices.id, invId));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting invoice item:", error);
+      res.status(500).json({ message: "Error deleting invoice item" });
+    }
+  });
+  
+  // Get users list for invoice creation
+  app.get("/api/admin/users-list", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allUsers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email
+      }).from(users);
+      res.json({ users: allUsers });
+    } catch (error) {
+      console.error("Error fetching users list:", error);
+      res.status(500).json({ message: "Error fetching users" });
     }
   });
 
