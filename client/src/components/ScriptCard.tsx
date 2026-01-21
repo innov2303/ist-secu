@@ -83,8 +83,8 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const status = (script.status as ScriptStatus) || "active";
   const isOffline = status === "offline";
   const isMaintenance = status === "maintenance";
-  const canPurchase = !isOffline && !isMaintenance;
-  const canDownload = !isMaintenance;
+  const canPurchase = !isOffline; // Allow subscriptions during maintenance, only block when offline
+  const canDownload = !isMaintenance && !isOffline;
 
   return (
     <motion.div
