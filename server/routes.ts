@@ -858,8 +858,10 @@ export async function registerRoutes(
   });
 
   app.get("/api/checkout/success", isAuthenticated, async (req, res) => {
+    console.log('Checkout success endpoint called');
     const sessionId = req.query.session_id as string;
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    console.log('Session ID:', sessionId, 'User ID:', userId);
 
     if (!sessionId) {
       return res.status(400).json({ message: "Session ID required" });
