@@ -305,7 +305,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
             </div>
           )}
 
-          {isMaintenance && !isInDevelopment && hasPurchased && (
+          {isMaintenance && !isInDevelopment && hasPurchased && !hideMaintenanceBadge && (
             <div className="text-center py-3 text-sm text-orange-600 dark:text-orange-400">
               <Wrench className="w-4 h-4 inline mr-2" />
               Téléchargement temporairement indisponible
