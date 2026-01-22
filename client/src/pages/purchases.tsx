@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2 } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiLinux, SiNetapp } from "react-icons/si";
@@ -111,9 +112,25 @@ function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Scrip
   return { bundles, standalone };
 }
 
+interface SubscriptionStatus {
+  isSubscription: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+  status?: string;
+}
+
 function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
   const Icon = iconMap[bundle.icon] || Monitor;
   const { toast } = useToast();
+
+  const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
+    queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"],
+    queryFn: async () => {
+      const res = await fetch(`/api/purchases/${bundle.firstPurchaseId}/subscription-status`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !bundle.expired && (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly") && !!bundle.stripeSubscriptionId,
+  });
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -126,6 +143,7 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
         description: "Votre abonnement ne sera pas renouvele automatiquement.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
     },
     onError: (error: any) => {
       toast({
@@ -136,9 +154,31 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
     },
   });
 
-  const canCancel = !bundle.expired && 
-    (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly") && 
-    bundle.stripeSubscriptionId;
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/reactivate`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Renouvellement reactive",
+        description: "Votre abonnement sera renouvele automatiquement.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de reactiver l'abonnement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isSubscription = bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly";
+  const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
+  const expirationDate = subscriptionStatus?.currentPeriodEnd || bundle.expiresAt;
 
   return (
     <Card data-testid={`card-toolkit-${bundle.id}`}>
@@ -184,38 +224,107 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t gap-4">
+            <div className="flex flex-col gap-3 pt-2 border-t">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>{formatDate(bundle.purchasedAt)}</span>
+                  <span>Achat: {formatDate(bundle.purchasedAt)}</span>
                 </div>
                 <span className="hidden sm:inline mx-1">-</span>
-                <span className="font-medium">{formatPrice(bundle.priceCents)}/mois</span>
-                {bundle.purchaseType === "monthly" && bundle.expiresAt && (
-                  <span className="text-xs text-orange-600 dark:text-orange-400">
-                    Expire le {formatDate(bundle.expiresAt)}
-                  </span>
-                )}
+                <span className="font-medium">
+                  {bundle.purchaseType === "yearly" ? formatPrice(bundle.priceCents * 12 * 0.85) + "/an" : formatPrice(bundle.priceCents) + "/mois"}
+                </span>
               </div>
-              {canCancel && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => cancelMutation.mutate()}
-                  disabled={cancelMutation.isPending}
-                  className="text-destructive hover:text-destructive"
-                  data-testid={`button-cancel-subscription-${bundle.id}`}
-                >
-                  {cancelMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Arreter le renouvellement
-                    </>
-                  )}
-                </Button>
+              
+              {isSubscription && expirationDate && !bundle.expired && (
+                <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">
+                      {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                    </span>
+                    <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                    {cancelAtPeriodEnd && (
+                      <span className="text-xs text-orange-600 dark:text-orange-400">
+                        Le renouvellement automatique est desactive
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {cancelAtPeriodEnd ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={reactivateMutation.isPending}
+                            data-testid={`button-reactivate-subscription-${bundle.id}`}
+                          >
+                            {reactivateMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Reactiver
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Voulez-vous reactiver le renouvellement automatique de votre abonnement ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
+                              Reactiver
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : bundle.stripeSubscriptionId && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={cancelMutation.isPending}
+                            className="text-destructive hover:text-destructive"
+                            data-testid={`button-cancel-subscription-${bundle.id}`}
+                          >
+                            {cancelMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Arreter
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Voulez-vous arreter le renouvellement automatique ? Votre abonnement restera actif jusqu'au {expirationDate ? formatDate(expirationDate) : ""}, puis expirera.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => cancelMutation.mutate()}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Arreter le renouvellement
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -274,6 +383,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   const expired = isExpired(purchase);
   const { toast } = useToast();
 
+  const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
+    queryKey: ["/api/purchases", purchase.id, "subscription-status"],
+    queryFn: async () => {
+      const res = await fetch(`/api/purchases/${purchase.id}/subscription-status`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !expired && (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly") && !!purchase.stripeSubscriptionId,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/purchases/${purchase.id}/cancel`);
@@ -285,6 +403,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
         description: "Votre abonnement ne sera pas renouvele automatiquement.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
     },
     onError: (error: any) => {
       toast({
@@ -295,9 +414,31 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
     },
   });
 
-  const canCancel = !expired && 
-    (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly") && 
-    purchase.stripeSubscriptionId;
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/reactivate`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Renouvellement reactive",
+        description: "Votre abonnement sera renouvele automatiquement.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de reactiver l'abonnement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isSubscription = purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly";
+  const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
+  const expirationDate = subscriptionStatus?.currentPeriodEnd || purchase.expiresAt;
 
   return (
     <Card data-testid={`card-purchase-${purchase.id}`}>
@@ -342,37 +483,22 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span>{formatDate(purchase.purchasedAt)}</span>
-            </div>
-            <span className="hidden sm:inline mx-1">-</span>
-            <span className="font-medium">{formatPrice(purchase.priceCents)}</span>
-            {purchase.purchaseType === "monthly" && purchase.expiresAt && (
-              <span className="text-xs text-orange-600 dark:text-orange-400">
-                Expire le {formatDate(purchase.expiresAt)}
+        <div className="flex flex-col gap-3 pt-2 border-t">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span>Achat: {formatDate(purchase.purchasedAt)}</span>
+              </div>
+              <span className="hidden sm:inline mx-1">-</span>
+              <span className="font-medium">
+                {purchase.purchaseType === "yearly" 
+                  ? formatPrice(purchase.priceCents) + "/an" 
+                  : purchase.purchaseType === "monthly"
+                    ? formatPrice(purchase.priceCents) + "/mois"
+                    : formatPrice(purchase.priceCents)}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {canCancel && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => cancelMutation.mutate()}
-                disabled={cancelMutation.isPending}
-                className="text-destructive hover:text-destructive"
-                data-testid={`button-cancel-subscription-${purchase.id}`}
-              >
-                {cancelMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-              </Button>
-            )}
+            </div>
             <Button 
               size="sm" 
               asChild={!expired}
@@ -388,11 +514,102 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
               ) : (
                 <a href={`/api/scripts/${purchase.script.id}/download`} download>
                   <Download className="h-4 w-4 mr-2" />
-                  Télécharger
+                  Telecharger
                 </a>
               )}
             </Button>
           </div>
+          
+          {isSubscription && expirationDate && !expired && (
+            <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">
+                  {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                </span>
+                <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                {cancelAtPeriodEnd && (
+                  <span className="text-xs text-orange-600 dark:text-orange-400">
+                    Le renouvellement automatique est desactive
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {cancelAtPeriodEnd ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reactivateMutation.isPending}
+                        data-testid={`button-reactivate-subscription-${purchase.id}`}
+                      >
+                        {reactivateMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            Reactiver
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Voulez-vous reactiver le renouvellement automatique de votre abonnement ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
+                          Reactiver
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : purchase.stripeSubscriptionId && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={cancelMutation.isPending}
+                        className="text-destructive hover:text-destructive"
+                        data-testid={`button-cancel-subscription-${purchase.id}`}
+                      >
+                        {cancelMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Arreter
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Voulez-vous arreter le renouvellement automatique ? Votre abonnement restera actif jusqu'au {expirationDate ? formatDate(expirationDate) : ""}, puis expirera.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => cancelMutation.mutate()}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Arreter le renouvellement
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
