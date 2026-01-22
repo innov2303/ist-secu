@@ -14,6 +14,8 @@ interface BundleCardProps {
   bundle: AnnualBundle;
   scripts: Script[];
   index: number;
+  lockedByCompletePack?: boolean;
+  isCompletePack?: boolean;
 }
 
 const IconMap: Record<string, any> = {
@@ -29,7 +31,7 @@ function formatPrice(cents: number) {
   }).format(cents / 100);
 }
 
-export function BundleCard({ bundle, scripts, index }: BundleCardProps) {
+export function BundleCard({ bundle, scripts, index, lockedByCompletePack = false, isCompletePack = false }: BundleCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const Icon = IconMap[bundle.icon.toLowerCase()] || Shield;
@@ -160,7 +162,12 @@ export function BundleCard({ bundle, scripts, index }: BundleCardProps) {
           {hasAllScripts ? (
             <div className="w-full flex items-center justify-center gap-2 py-2 text-green-600">
               <Check className="w-5 h-5" />
-              <span className="font-medium">Deja achete</span>
+              <span className="font-medium">{isCompletePack ? "Pack Complet actif" : "Deja achete"}</span>
+            </div>
+          ) : lockedByCompletePack ? (
+            <div className="w-full flex items-center justify-center gap-2 py-2 text-green-600">
+              <Check className="w-5 h-5" />
+              <span className="font-medium">Inclus dans votre Pack Complet</span>
             </div>
           ) : user ? (
             <Button

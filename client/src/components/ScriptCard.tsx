@@ -71,6 +71,7 @@ type ScriptStatus = "active" | "offline" | "maintenance";
 interface ScriptCardProps {
   script: Script;
   index: number;
+  lockedByCompletePack?: boolean;
 }
 
 interface PurchaseStatus {
@@ -101,7 +102,7 @@ function formatPrice(cents: number) {
   }).format(cents / 100);
 }
 
-export function ScriptCard({ script, index }: ScriptCardProps) {
+export function ScriptCard({ script, index, lockedByCompletePack = false }: ScriptCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -271,7 +272,7 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
             </Button>
           )}
 
-          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && canPurchase && (
+          {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && canPurchase && !lockedByCompletePack && (
             <Button
               onClick={() => checkoutMutation.mutate(billingCycle)}
               disabled={checkoutMutation.isPending}
@@ -287,6 +288,13 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
               )}
               {billingCycle === "yearly" ? "S'abonner pour 1 an" : "S'abonner"}
             </Button>
+          )}
+
+          {user && lockedByCompletePack && !hasPurchased && (
+            <div className="text-center py-3 text-sm text-green-600 dark:text-green-400">
+              <Check className="w-4 h-4 inline mr-2" />
+              Inclus dans votre Pack Complet
+            </div>
           )}
 
 

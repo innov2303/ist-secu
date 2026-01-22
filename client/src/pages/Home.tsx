@@ -40,6 +40,31 @@ export default function Home() {
     queryKey: ["/api/annual-bundles"],
   });
 
+  // Check if user has the Complete Security Pack (bundle with most scripts)
+  const completeBundle = bundles?.reduce((max, b) => 
+    (b.includedScriptIds.length > (max?.includedScriptIds.length || 0)) ? b : max
+  , bundles[0]);
+  
+  const { data: hasCompletePackData } = useQuery<{ hasCompletePack: boolean }>({
+    queryKey: ["/api/purchases/check-complete-pack", completeBundle?.id],
+    queryFn: async () => {
+      if (!completeBundle) return { hasCompletePack: false };
+      let allPurchased = true;
+      for (const scriptId of completeBundle.includedScriptIds) {
+        const res = await apiRequest("GET", `/api/purchases/check/${scriptId}`);
+        const data = await res.json();
+        if (!data.hasPurchased) {
+          allPurchased = false;
+          break;
+        }
+      }
+      return { hasCompletePack: allPurchased };
+    },
+    enabled: !!user && !!completeBundle,
+  });
+  
+  const hasCompletePack = hasCompletePackData?.hasCompletePack || false;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Auth Header */}
@@ -129,7 +154,7 @@ export default function Home() {
         {!isLoading && !error && scripts && scripts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {scripts.map((script, index) => (
-              <ScriptCard key={script.id} script={script} index={index} />
+              <ScriptCard key={script.id} script={script} index={index} lockedByCompletePack={hasCompletePack} />
             ))}
           </div>
         )}
@@ -142,11 +167,10 @@ export default function Home() {
               <p className="text-muted-foreground mb-6">
                 Connectez-vous pour decouvrir nos offres groupees et economiser jusqu'a 20% sur vos abonnements.
               </p>
-              <Button 
-                onClick={() => setShowLoginDialog(true)}
-                data-testid="button-discover-packs"
-              >
-                Decouvrez nos packs
+              <Button asChild data-testid="button-discover-packs">
+                <Link href="/auth">
+                  Decouvrez nos packs
+                </Link>
               </Button>
             </div>
           </div>
@@ -171,7 +195,14 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {bundles.map((bundle, index) => (
-                <BundleCard key={bundle.id} bundle={bundle} scripts={scripts} index={index} />
+                <BundleCard 
+                  key={bundle.id} 
+                  bundle={bundle} 
+                  scripts={scripts} 
+                  index={index} 
+                  lockedByCompletePack={hasCompletePack && bundle.id !== completeBundle?.id}
+                  isCompletePack={bundle.id === completeBundle?.id}
+                />
               ))}
             </div>
           </div>
