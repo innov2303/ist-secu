@@ -109,20 +109,18 @@ function generateInvoiceEmailHTML(data: InvoiceEmailData): string {
     </div>
     
     <div style="background: white; border-radius: 8px; padding: 20px; border: 1px solid #e5e7eb;">
-      <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid #e5e7eb; margin-top: 12px;">
-        <span style="font-weight: 700; font-size: 18px; color: #1f2937;">Total HT:</span>
-        <span style="font-weight: 700; font-size: 18px; color: #3b82f6;">${formatPrice(data.subtotalCents)}</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: #6b7280;">Sous-total HT:</span>
+        <span style="font-weight: 500;">${formatPrice(data.subtotalCents)}</span>
       </div>
-      ${data.taxRate > 0 ? `
-      <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: #6b7280;">TVA (${data.taxRate}%):</span>
         <span style="font-weight: 500;">${formatPrice(data.taxCents)}</span>
       </div>
-      <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-        <span style="font-weight: 700; font-size: 18px; color: #1f2937;">Total TTC:</span>
+      <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid #e5e7eb; margin-top: 12px;">
+        <span style="font-weight: 700; font-size: 18px; color: #1f2937;">Total:</span>
         <span style="font-weight: 700; font-size: 18px; color: #3b82f6;">${formatPrice(data.totalCents)}</span>
       </div>
-      ` : ''}
     </div>
     
     ${data.dueDate ? `
