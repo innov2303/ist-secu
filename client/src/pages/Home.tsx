@@ -134,8 +134,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Annual Bundles Section */}
-        {bundles && bundles.length > 0 && scripts && (
+        {/* Annual Bundles Section - Only visible when logged in */}
+        {user && bundles && bundles.length > 0 && scripts && (
           <div className="mt-16">
             <div className="mb-12 text-center md:text-left border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
