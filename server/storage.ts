@@ -154,6 +154,65 @@ export class DatabaseStorage implements IStorage {
   private stripePricesCache: Map<string, {oneTimePrice: string | null, recurringPrice: string | null, timestamp: number}> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+  async ensureStripeProductExists(script: { name: string; description: string; os: string; compliance: string; monthlyPriceCents: number }): Promise<boolean> {
+    try {
+      const stripe = await getUncachableStripeClient();
+      
+      // Check if product already exists
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      const existingProduct = products.data.find(p => p.name === script.name);
+      
+      if (existingProduct) {
+        // Check if price exists
+        const prices = await stripe.prices.list({ product: existingProduct.id, active: true });
+        const hasRecurringPrice = prices.data.some(p => p.recurring?.interval === 'month');
+        
+        if (!hasRecurringPrice && script.monthlyPriceCents > 0) {
+          // Create missing recurring price
+          await stripe.prices.create({
+            product: existingProduct.id,
+            unit_amount: script.monthlyPriceCents,
+            currency: 'eur',
+            recurring: { interval: 'month' },
+            metadata: { type: 'monthly' },
+          });
+          console.log(`Created missing monthly price for: ${script.name}`);
+        }
+        
+        console.log(`Stripe product already exists: ${script.name}`);
+        return true;
+      }
+      
+      // Create new product
+      const product = await stripe.products.create({
+        name: script.name,
+        description: script.description,
+        metadata: { os: script.os, compliance: script.compliance },
+      });
+      console.log(`Created Stripe product: ${product.name} (${product.id})`);
+      
+      // Create recurring price (subscription)
+      if (script.monthlyPriceCents > 0) {
+        const price = await stripe.prices.create({
+          product: product.id,
+          unit_amount: script.monthlyPriceCents,
+          currency: 'eur',
+          recurring: { interval: 'month' },
+          metadata: { type: 'monthly' },
+        });
+        console.log(`Created monthly price: ${price.id} (${script.monthlyPriceCents / 100} EUR/month)`);
+      }
+      
+      // Clear cache for this product
+      this.stripePricesCache.delete(script.name);
+      
+      return true;
+    } catch (error) {
+      console.error(`Error creating Stripe product for ${script.name}:`, error);
+      return false;
+    }
+  }
+
   async getStripePricesForProduct(productName: string): Promise<{oneTimePrice: string | null, recurringPrice: string | null}> {
     // Check cache first
     const cached = this.stripePricesCache.get(productName);

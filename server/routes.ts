@@ -1248,10 +1248,47 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Script not found" });
       }
       
+      // Ensure Stripe product exists for visible toolkits
+      if (updated.isHidden === 0 && updated.monthlyPriceCents > 0) {
+        await storage.ensureStripeProductExists({
+          name: updated.name,
+          description: updated.description,
+          os: updated.os,
+          compliance: updated.compliance,
+          monthlyPriceCents: updated.monthlyPriceCents,
+        });
+      }
+      
       res.json(updated);
     } catch (error) {
       console.error("Error updating script:", error);
       res.status(500).json({ message: "Error updating script" });
+    }
+  });
+
+  // Admin: Sync all visible toolkits with Stripe (create missing products)
+  app.post("/api/admin/scripts/sync-stripe", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const allScripts = await db.select().from(scripts).where(eq(scripts.isHidden, 0));
+      
+      const results = [];
+      for (const script of allScripts) {
+        if (script.monthlyPriceCents > 0) {
+          const success = await storage.ensureStripeProductExists({
+            name: script.name,
+            description: script.description,
+            os: script.os,
+            compliance: script.compliance,
+            monthlyPriceCents: script.monthlyPriceCents,
+          });
+          results.push({ name: script.name, success });
+        }
+      }
+      
+      res.json({ message: "Sync completed", results });
+    } catch (error) {
+      console.error("Error syncing Stripe products:", error);
+      res.status(500).json({ message: "Error syncing Stripe products" });
     }
   });
 

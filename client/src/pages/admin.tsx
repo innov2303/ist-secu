@@ -338,6 +338,20 @@ export default function AdminPage() {
     },
   });
 
+  const syncStripeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/scripts/sync-stripe");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const successCount = data.results?.filter((r: any) => r.success).length || 0;
+      toast({ title: "Synchronisation terminee", description: `${successCount} produit(s) synchronise(s) avec Stripe` });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de synchroniser avec Stripe", variant: "destructive" });
+    },
+  });
+
   const checkUpdatesMutation = useMutation({
     mutationFn: async (scriptId: number) => {
       setCheckingUpdatesFor(scriptId);
@@ -1013,18 +1027,34 @@ export default function AdminPage() {
                     <div>
                       <CardTitle>Toolkit disponibles</CardTitle>
                       <CardDescription>
-                        {filteredScripts.length} toolkit(s) configuré(s)
+                        {filteredScripts.length} toolkit(s) configure(s)
                       </CardDescription>
                     </div>
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Rechercher..."
-                        value={scriptSearch}
-                        onChange={(e) => { setScriptSearch(e.target.value); setScriptPage(1); }}
-                        className="pl-9"
-                        data-testid="input-script-search"
-                      />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => syncStripeMutation.mutate()}
+                        disabled={syncStripeMutation.isPending}
+                        data-testid="button-sync-stripe"
+                      >
+                        {syncStripeMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Sync Stripe
+                      </Button>
+                      <div className="relative w-full sm:w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Rechercher..."
+                          value={scriptSearch}
+                          onChange={(e) => { setScriptSearch(e.target.value); setScriptPage(1); }}
+                          className="pl-9"
+                          data-testid="input-script-search"
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
