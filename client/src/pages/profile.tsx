@@ -260,10 +260,11 @@ export default function Profile() {
         </table>
         
         <div class="totals">
-          <div class="total-row">
-            <span>Sous-total HT</span>
+          <div class="total-row final">
+            <span>Total HT</span>
             <span>${(invoice.subtotalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
           </div>
+          ${invoice.taxRate > 0 ? `
           <div class="total-row">
             <span>TVA (${invoice.taxRate}%)</span>
             <span>${(invoice.taxCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
@@ -272,6 +273,7 @@ export default function Profile() {
             <span>Total TTC</span>
             <span>${(invoice.totalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
           </div>
+          ` : ''}
         </div>
         
         ${invoice.notes ? `
@@ -805,18 +807,22 @@ export default function Profile() {
               </div>
 
               <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Sous-total HT</span>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total HT</span>
                   <span>{formatCurrency(viewingInvoice.invoice.subtotalCents)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">TVA ({viewingInvoice.invoice.taxRate}%)</span>
-                  <span>{formatCurrency(viewingInvoice.invoice.taxCents)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                  <span>Total TTC</span>
-                  <span>{formatCurrency(viewingInvoice.invoice.totalCents)}</span>
-                </div>
+                {viewingInvoice.invoice.taxRate > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">TVA ({viewingInvoice.invoice.taxRate}%)</span>
+                      <span>{formatCurrency(viewingInvoice.invoice.taxCents)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                      <span>Total TTC</span>
+                      <span>{formatCurrency(viewingInvoice.invoice.totalCents)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {viewingInvoice.invoice.notes && (

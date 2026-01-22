@@ -1248,9 +1248,9 @@ export async function registerRoutes(
               const customerAddress = addressParts.join(', ');
               
               const amountCents = parseInt(priceCents || "0");
-              const taxRate = 20;
-              const subtotalCents = Math.round(amountCents / (1 + taxRate / 100));
-              const taxCents = amountCents - subtotalCents;
+              const taxRate = 0;
+              const subtotalCents = amountCents;
+              const taxCents = 0;
               
               const date = new Date();
               const year = date.getFullYear();
@@ -1404,9 +1404,9 @@ export async function registerRoutes(
             const customerAddress = addressParts.join(', ');
             
             const amountCents = parseInt(priceCents || "0");
-            const taxRate = 20; // TVA 20%
-            const subtotalCents = Math.round(amountCents / (1 + taxRate / 100));
-            const taxCents = amountCents - subtotalCents;
+            const taxRate = 0; // Sans TVA
+            const subtotalCents = amountCents;
+            const taxCents = 0;
             
             // Generate invoice number
             const date = new Date();
@@ -1957,7 +1957,7 @@ export async function registerRoutes(
   // Create new invoice
   app.post("/api/admin/invoices", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { customerName, customerEmail, customerAddress, userId, items, taxRate = 20, notes, dueDate } = req.body;
+      const { customerName, customerEmail, customerAddress, userId, items, taxRate = 0, notes, dueDate } = req.body;
       
       if (!customerName || !customerEmail || !userId) {
         return res.status(400).json({ message: "Customer name, email and user ID are required" });

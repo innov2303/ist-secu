@@ -112,7 +112,7 @@ export const invoices = pgTable("invoices", {
   customerEmail: text("customer_email").notNull(),
   customerAddress: text("customer_address"),
   subtotalCents: integer("subtotal_cents").notNull().default(0),
-  taxRate: integer("tax_rate").notNull().default(20),
+  taxRate: integer("tax_rate").notNull().default(0),
   taxCents: integer("tax_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull().default(0),
   status: text("status").notNull().default("draft"),

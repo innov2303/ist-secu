@@ -125,7 +125,7 @@ export default function AdminPage() {
     customerName: "",
     customerEmail: "",
     customerAddress: "",
-    taxRate: 20,
+    taxRate: 0,
     notes: "",
     dueDate: "",
     items: [] as Array<{ scriptId?: number; description: string; quantity: number; unitPriceCents: number }>
@@ -422,7 +422,7 @@ export default function AdminPage() {
         customerName: "",
         customerEmail: "",
         customerAddress: "",
-        taxRate: 20,
+        taxRate: 0,
         notes: "",
         dueDate: "",
         items: []
@@ -1305,7 +1305,7 @@ export default function AdminPage() {
                                             {formatPrice(invoice.totalCents)}
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            HT: {formatPrice(invoice.subtotalCents)} + TVA {invoice.taxRate}%
+                                            {invoice.taxRate > 0 ? `HT: ${formatPrice(invoice.subtotalCents)} + TVA ${invoice.taxRate}%` : 'HT'}
                                           </div>
                                         </div>
                                       </div>
@@ -1888,18 +1888,22 @@ export default function AdminPage() {
                   const total = subtotal + tax;
                   return (
                     <>
-                      <div className="flex justify-between text-sm">
-                        <span>Sous-total HT:</span>
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total HT:</span>
                         <span>{formatPrice(subtotal)}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span>TVA ({newInvoice.taxRate}%):</span>
-                        <span>{formatPrice(tax)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-lg">
-                        <span>Total TTC:</span>
-                        <span>{formatPrice(total)}</span>
-                      </div>
+                      {newInvoice.taxRate > 0 && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>TVA ({newInvoice.taxRate}%):</span>
+                            <span>{formatPrice(tax)}</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-lg">
+                            <span>Total TTC:</span>
+                            <span>{formatPrice(total)}</span>
+                          </div>
+                        </>
+                      )}
                     </>
                   );
                 })()}
@@ -2003,18 +2007,22 @@ export default function AdminPage() {
 
               {/* Totals */}
               <div className="border-t pt-4 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>Sous-total HT:</span>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total HT:</span>
                   <span>{formatPrice(viewingInvoice.invoice.subtotalCents)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>TVA ({viewingInvoice.invoice.taxRate}%):</span>
-                  <span>{formatPrice(viewingInvoice.invoice.taxCents)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total TTC:</span>
-                  <span>{formatPrice(viewingInvoice.invoice.totalCents)}</span>
-                </div>
+                {viewingInvoice.invoice.taxRate > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>TVA ({viewingInvoice.invoice.taxRate}%):</span>
+                      <span>{formatPrice(viewingInvoice.invoice.taxCents)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total TTC:</span>
+                      <span>{formatPrice(viewingInvoice.invoice.totalCents)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {viewingInvoice.invoice.notes && (
