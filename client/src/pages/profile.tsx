@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin, Printer } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -170,6 +170,129 @@ export default function Profile() {
 
   const formatCurrency = (cents: number) => {
     return (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+  };
+
+  const handlePrintInvoice = () => {
+    if (!viewingInvoice) return;
+    
+    const { invoice, items } = viewingInvoice;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Facture ${invoice.invoiceNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1f2937; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 40px; }
+          .logo { font-size: 24px; font-weight: bold; color: #3b82f6; }
+          .logo span { color: #1f2937; }
+          .invoice-info { text-align: right; }
+          .invoice-number { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+          .invoice-date { color: #6b7280; }
+          .parties { display: flex; justify-content: space-between; margin-bottom: 40px; }
+          .party { width: 45%; }
+          .party-title { font-weight: bold; color: #6b7280; margin-bottom: 10px; font-size: 12px; text-transform: uppercase; }
+          .party-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+          .party-detail { color: #6b7280; font-size: 14px; line-height: 1.5; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          th { background: #f3f4f6; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280; }
+          td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+          .amount { text-align: right; }
+          .totals { margin-left: auto; width: 300px; }
+          .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
+          .total-row.final { border-top: 2px solid #1f2937; font-weight: bold; font-size: 18px; padding-top: 15px; }
+          .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; }
+          .notes-title { font-weight: bold; margin-bottom: 5px; }
+          .notes-text { color: #6b7280; font-size: 14px; }
+          .footer { margin-top: 50px; text-align: center; color: #9ca3af; font-size: 12px; }
+          .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+          .status.paid { background: #dcfce7; color: #166534; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">Infra <span>Shield Tools</span></div>
+          <div class="invoice-info">
+            <div class="invoice-number">${invoice.invoiceNumber}</div>
+            <div class="invoice-date">Date: ${new Date(invoice.createdAt).toLocaleDateString('fr-FR')}</div>
+            ${invoice.paidAt ? `<div class="status paid">Payee le ${new Date(invoice.paidAt).toLocaleDateString('fr-FR')}</div>` : ''}
+          </div>
+        </div>
+        
+        <div class="parties">
+          <div class="party">
+            <div class="party-title">Emetteur</div>
+            <div class="party-name">Infra Shield Tools</div>
+            <div class="party-detail">ist-security.fr</div>
+          </div>
+          <div class="party">
+            <div class="party-title">Client</div>
+            <div class="party-name">${invoice.customerName}</div>
+            <div class="party-detail">${invoice.customerEmail}</div>
+            ${invoice.customerAddress ? `<div class="party-detail">${invoice.customerAddress}</div>` : ''}
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th class="amount">Quantite</th>
+              <th class="amount">Prix unitaire HT</th>
+              <th class="amount">Total HT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td>${item.description}</td>
+                <td class="amount">${item.quantity}</td>
+                <td class="amount">${(item.unitPriceCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
+                <td class="amount">${(item.totalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        
+        <div class="totals">
+          <div class="total-row">
+            <span>Sous-total HT</span>
+            <span>${(invoice.subtotalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+          </div>
+          <div class="total-row">
+            <span>TVA (${invoice.taxRate}%)</span>
+            <span>${(invoice.taxCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+          </div>
+          <div class="total-row final">
+            <span>Total TTC</span>
+            <span>${(invoice.totalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+          </div>
+        </div>
+        
+        ${invoice.notes ? `
+          <div class="notes">
+            <div class="notes-title">Notes</div>
+            <div class="notes-text">${invoice.notes}</div>
+          </div>
+        ` : ''}
+        
+        <div class="footer">
+          <p>Infra Shield Tools - ist-security.fr</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   if (isLoading) {
@@ -705,9 +828,13 @@ export default function Profile() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setViewingInvoice(null)}>
               Fermer
+            </Button>
+            <Button onClick={handlePrintInvoice} data-testid="button-print-invoice">
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimer
             </Button>
           </DialogFooter>
         </DialogContent>
