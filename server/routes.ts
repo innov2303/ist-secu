@@ -933,12 +933,28 @@ export async function registerRoutes(
           .where(eq(users.id, userId));
       }
 
-      const stripePrices = await storage.getStripePricesForProduct(script.name);
-      const priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
+      let stripePrices = await storage.getStripePricesForProduct(script.name);
+      let priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
       
+      // Auto-create Stripe product if not found
       if (!priceId) {
-        console.error(`No Stripe price found for ${script.name} (${purchaseType})`);
-        return res.status(500).json({ message: "Prix Stripe non configuré" });
+        console.log(`Auto-creating Stripe product for: ${script.name}`);
+        await storage.ensureStripeProductExists({
+          name: script.name,
+          description: script.description,
+          os: script.os,
+          compliance: script.compliance,
+          monthlyPriceCents: script.monthlyPriceCents,
+        });
+        
+        // Retry getting prices after creation
+        stripePrices = await storage.getStripePricesForProduct(script.name);
+        priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
+        
+        if (!priceId) {
+          console.error(`Still no Stripe price found for ${script.name} after auto-creation`);
+          return res.status(500).json({ message: "Prix Stripe non configuré" });
+        }
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
