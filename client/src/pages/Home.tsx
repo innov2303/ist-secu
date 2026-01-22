@@ -134,6 +134,24 @@ export default function Home() {
           </div>
         )}
 
+        {/* Discover Packs CTA - Only visible when NOT logged in */}
+        {!user && bundles && bundles.length > 0 && (
+          <div className="mt-16 text-center">
+            <div className="bg-card border border-border/40 rounded-md p-8 max-w-2xl mx-auto">
+              <h3 className="text-xl font-bold font-mono mb-3">Packs Annuels Disponibles</h3>
+              <p className="text-muted-foreground mb-6">
+                Connectez-vous pour decouvrir nos offres groupees et economiser jusqu'a 20% sur vos abonnements.
+              </p>
+              <Button 
+                onClick={() => setShowLoginDialog(true)}
+                data-testid="button-discover-packs"
+              >
+                Decouvrez nos packs
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Annual Bundles Section - Only visible when logged in */}
         {user && bundles && bundles.length > 0 && scripts && (
           <div className="mt-16">
