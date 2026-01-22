@@ -977,6 +977,48 @@ export async function registerRoutes(
     }
   });
 
+  // Cancel renewal alias (same as cancel, for frontend compatibility)
+  app.post("/api/purchases/:purchaseId/cancel-renewal", isAuthenticated, async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const purchaseId = parseInt(req.params.purchaseId);
+
+    if (isNaN(purchaseId)) {
+      return res.status(400).json({ message: "Invalid purchase ID" });
+    }
+
+    try {
+      const userPurchases = await storage.getPurchasesByUser(userId);
+      const purchase = userPurchases.find(p => p.id === purchaseId);
+
+      if (!purchase) {
+        return res.status(404).json({ message: "Achat non trouve" });
+      }
+
+      // Support annual_bundle, monthly, and yearly subscriptions
+      if (purchase.purchaseType !== "monthly" && purchase.purchaseType !== "yearly" && purchase.purchaseType !== "annual_bundle") {
+        return res.status(400).json({ message: "Cet achat n'est pas un abonnement" });
+      }
+
+      if (!purchase.stripeSubscriptionId) {
+        return res.status(400).json({ message: "Aucun abonnement Stripe associe" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas encore configures." });
+      }
+
+      await stripe.subscriptions.update(purchase.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      res.json({ success: true, message: "L'abonnement ne sera pas renouvele automatiquement" });
+    } catch (error: any) {
+      console.error("Error cancelling subscription renewal:", error);
+      res.status(500).json({ message: "Erreur lors de l'annulation du renouvellement" });
+    }
+  });
+
   // Reactivate subscription (undo cancel at period end)
   app.post("/api/purchases/:purchaseId/reactivate", isAuthenticated, async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
