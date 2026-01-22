@@ -22,9 +22,13 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   companyName: varchar("company_name"),
+  street: varchar("street"),
+  postalCode: varchar("postal_code"),
+  city: varchar("city"),
   billingStreet: varchar("billing_street"),
   billingPostalCode: varchar("billing_postal_code"),
   billingCity: varchar("billing_city"),
+  billingAddressSameAsAddress: boolean("billing_address_same_as_address").default(true),
   profileImageUrl: varchar("profile_image_url"),
   isAdmin: boolean("is_admin").default(false),
   stripeCustomerId: varchar("stripe_customer_id"),
@@ -47,13 +51,20 @@ import { z } from "zod";
 export const registerSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string()
-    .min(8, "Le mot de passe doit contenir au moins 8 caractères")
+    .min(8, "Le mot de passe doit contenir au moins 8 caracteres")
     .regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule")
     .regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule")
     .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
-    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"),
-  firstName: z.string().min(1, "Prénom requis"),
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Le mot de passe doit contenir au moins un caractere special (!@#$%^&*...)"),
+  firstName: z.string().min(1, "Prenom requis"),
   lastName: z.string().optional(),
+  street: z.string().min(1, "Adresse requise"),
+  postalCode: z.string().min(1, "Code postal requis"),
+  city: z.string().min(1, "Ville requise"),
+  billingAddressSameAsAddress: z.boolean().default(true),
+  billingStreet: z.string().optional(),
+  billingPostalCode: z.string().optional(),
+  billingCity: z.string().optional(),
 });
 
 export const loginSchema = z.object({

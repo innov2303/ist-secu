@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, Mail, Lock, User } from "lucide-react";
+import { Loader2, ArrowLeft, Mail, Lock, User, MapPin } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
@@ -22,7 +23,14 @@ export default function AuthPage() {
     password: "", 
     confirmPassword: "",
     firstName: "", 
-    lastName: "" 
+    lastName: "",
+    street: "",
+    postalCode: "",
+    city: "",
+    billingAddressSameAsAddress: true,
+    billingStreet: "",
+    billingPostalCode: "",
+    billingCity: ""
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -234,6 +242,123 @@ export default function AuthPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-medium mb-3">Adresse</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="register-street">Rue</Label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="register-street"
+                            type="text"
+                            placeholder="123 rue de la Paix"
+                            className="pl-10"
+                            value={registerData.street}
+                            onChange={(e) => setRegisterData({ ...registerData, street: e.target.value })}
+                            required
+                            data-testid="input-register-street"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="register-postal-code">Code postal</Label>
+                          <Input
+                            id="register-postal-code"
+                            type="text"
+                            placeholder="75001"
+                            value={registerData.postalCode}
+                            onChange={(e) => setRegisterData({ ...registerData, postalCode: e.target.value })}
+                            required
+                            data-testid="input-register-postal-code"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="register-city">Ville</Label>
+                          <Input
+                            id="register-city"
+                            type="text"
+                            placeholder="Paris"
+                            value={registerData.city}
+                            onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
+                            required
+                            data-testid="input-register-city"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Checkbox 
+                        id="billing-same"
+                        checked={registerData.billingAddressSameAsAddress}
+                        onCheckedChange={(checked) => setRegisterData({ 
+                          ...registerData, 
+                          billingAddressSameAsAddress: checked === true,
+                          billingStreet: checked ? "" : registerData.billingStreet,
+                          billingPostalCode: checked ? "" : registerData.billingPostalCode,
+                          billingCity: checked ? "" : registerData.billingCity
+                        })}
+                        data-testid="checkbox-billing-same"
+                      />
+                      <Label htmlFor="billing-same" className="text-sm font-normal cursor-pointer">
+                        Adresse de facturation identique a l'adresse actuelle
+                      </Label>
+                    </div>
+
+                    {!registerData.billingAddressSameAsAddress && (
+                      <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
+                        <h3 className="text-sm font-medium">Adresse de facturation</h3>
+                        <div className="space-y-2">
+                          <Label htmlFor="register-billing-street">Rue</Label>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="register-billing-street"
+                              type="text"
+                              placeholder="456 avenue des Champs"
+                              className="pl-10"
+                              value={registerData.billingStreet}
+                              onChange={(e) => setRegisterData({ ...registerData, billingStreet: e.target.value })}
+                              required
+                              data-testid="input-register-billing-street"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="register-billing-postal-code">Code postal</Label>
+                            <Input
+                              id="register-billing-postal-code"
+                              type="text"
+                              placeholder="75008"
+                              value={registerData.billingPostalCode}
+                              onChange={(e) => setRegisterData({ ...registerData, billingPostalCode: e.target.value })}
+                              required
+                              data-testid="input-register-billing-postal-code"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="register-billing-city">Ville</Label>
+                            <Input
+                              id="register-billing-city"
+                              type="text"
+                              placeholder="Paris"
+                              value={registerData.billingCity}
+                              onChange={(e) => setRegisterData({ ...registerData, billingCity: e.target.value })}
+                              required
+                              data-testid="input-register-billing-city"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}

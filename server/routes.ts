@@ -88,12 +88,16 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { email, password, firstName, lastName } = result.data;
+      const { 
+        email, password, firstName, lastName, 
+        street, postalCode, city, 
+        billingAddressSameAsAddress, billingStreet, billingPostalCode, billingCity 
+      } = result.data;
 
       // Check if user already exists
       const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (existingUser.length > 0) {
-        return res.status(400).json({ message: "Un compte avec cet email existe déjà" });
+        return res.status(400).json({ message: "Un compte avec cet email existe deja" });
       }
 
       // Hash password
@@ -109,6 +113,13 @@ export async function registerRoutes(
         password: hashedPassword,
         firstName,
         lastName,
+        street,
+        postalCode,
+        city,
+        billingAddressSameAsAddress,
+        billingStreet: billingAddressSameAsAddress ? street : billingStreet,
+        billingPostalCode: billingAddressSameAsAddress ? postalCode : billingPostalCode,
+        billingCity: billingAddressSameAsAddress ? city : billingCity,
         isAdmin: isFirstUser,
       }).returning();
 
