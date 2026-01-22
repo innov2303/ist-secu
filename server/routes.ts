@@ -1399,21 +1399,15 @@ export async function registerRoutes(
                 paidAt: new Date(),
               }).returning();
               
-              // Create invoice items for each script in the bundle
-              const allScripts = await storage.getScripts();
-              const includedScriptsData = allScripts.filter(s => scriptIds.includes(s.id));
-              const pricePerScript = Math.round(subtotalCents / scriptIds.length);
-              
-              for (const script of includedScriptsData) {
-                await db.insert(invoiceItems).values({
-                  invoiceId: newInvoice.id,
-                  scriptId: script.id,
-                  description: script.name,
-                  quantity: 1,
-                  unitPriceCents: pricePerScript,
-                  totalCents: pricePerScript,
-                });
-              }
+              // Create single invoice item for the bundle (not individual scripts)
+              await db.insert(invoiceItems).values({
+                invoiceId: newInvoice.id,
+                scriptId: null,
+                description: bundle.name,
+                quantity: 1,
+                unitPriceCents: subtotalCents,
+                totalCents: subtotalCents,
+              });
               
               console.log(`Invoice ${autoInvoiceNumber} created for bundle ${bundle.name} - user ${userId}`);
             }
