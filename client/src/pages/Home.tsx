@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Hero } from "@/components/Hero";
 import { ScriptCard } from "@/components/ScriptCard";
 import { BundleCard } from "@/components/BundleCard";
@@ -35,12 +35,6 @@ export default function Home() {
   const [ticketNumber, setTicketNumber] = useState("");
   const { toast } = useToast();
 
-  // Filter out scripts with maintenance status for display on home page
-  const displayScripts = useMemo(() => {
-    if (!scripts) return [];
-    return scripts.filter(s => s.status !== "maintenance");
-  }, [scripts]);
-  
   // Fetch annual bundles
   const { data: bundles } = useQuery<AnnualBundle[]>({
     queryKey: ["/api/annual-bundles"],
@@ -150,17 +144,17 @@ export default function Home() {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && displayScripts.length === 0 && (
+        {!isLoading && !error && scripts?.length === 0 && (
           <div className="text-center py-24 border border-dashed border-border rounded-xl bg-card/50">
             <p className="text-muted-foreground font-mono">No verification scripts currently available.</p>
           </div>
         )}
 
         {/* Scripts Grid */}
-        {!isLoading && !error && displayScripts.length > 0 && (
+        {!isLoading && !error && scripts && scripts.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayScripts.map((script, index) => (
-              <ScriptCard key={script.id} script={script} index={index} lockedByCompletePack={hasCompletePack} />
+            {scripts.map((script, index) => (
+              <ScriptCard key={script.id} script={script} index={index} lockedByCompletePack={hasCompletePack} hideMaintenanceBadge />
             ))}
           </div>
         )}

@@ -72,6 +72,7 @@ interface ScriptCardProps {
   script: Script;
   index: number;
   lockedByCompletePack?: boolean;
+  hideMaintenanceBadge?: boolean;
 }
 
 interface PurchaseStatus {
@@ -102,7 +103,7 @@ function formatPrice(cents: number) {
   }).format(cents / 100);
 }
 
-export function ScriptCard({ script, index, lockedByCompletePack = false }: ScriptCardProps) {
+export function ScriptCard({ script, index, lockedByCompletePack = false, hideMaintenanceBadge = false }: ScriptCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -199,7 +200,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false }: Scri
           </div>
         )}
 
-        {isMaintenance && !isInDevelopment && (
+        {isMaintenance && !isInDevelopment && !hideMaintenanceBadge && (
           <div className="text-xs text-muted-foreground mb-4">
             <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
               <Wrench className="w-3 h-3 mr-1" />
