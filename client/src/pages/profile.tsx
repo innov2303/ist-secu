@@ -18,6 +18,7 @@ export default function Profile() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -27,7 +28,7 @@ export default function Profile() {
   const isLocalUser = (user as any)?.isLocalAuth === true;
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName?: string; lastName?: string }) => {
+    mutationFn: async (data: { firstName?: string; lastName?: string; companyName?: string }) => {
       const res = await apiRequest("PATCH", "/api/profile", data);
       return res.json();
     },
@@ -36,6 +37,7 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setFirstName("");
       setLastName("");
+      setCompanyName("");
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -78,13 +80,14 @@ export default function Profile() {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() && !lastName.trim()) {
+    if (!firstName.trim() && !lastName.trim() && !companyName.trim()) {
       toast({ title: "Erreur", description: "Veuillez remplir au moins un champ", variant: "destructive" });
       return;
     }
     updateProfileMutation.mutate({
       ...(firstName.trim() && { firstName: firstName.trim() }),
       ...(lastName.trim() && { lastName: lastName.trim() }),
+      ...(companyName.trim() && { companyName: companyName.trim() }),
     });
   };
 
@@ -169,6 +172,11 @@ export default function Profile() {
               <p className="font-medium" data-testid="text-current-name">
                 {user.firstName || "Non renseigné"} {user.lastName || ""}
               </p>
+              {(user as any).companyName && (
+                <p className="text-sm font-medium" data-testid="text-current-company">
+                  {(user as any).companyName}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground" data-testid="text-current-email">
                 {user.email || "Email non disponible"}
               </p>
@@ -196,6 +204,19 @@ export default function Profile() {
                     data-testid="input-lastname"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Nom de la société (optionnel)</Label>
+                <Input
+                  id="companyName"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder={(user as any).companyName || "Nom de votre entreprise"}
+                  data-testid="input-company-name"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ce nom apparaîtra sur vos factures.
+                </p>
               </div>
               <Button 
                 type="submit" 
