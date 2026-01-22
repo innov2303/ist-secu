@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
-import type { Purchase, Script } from "@shared/schema";
+import type { Purchase, Script, AnnualBundle } from "@shared/schema";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -29,6 +29,10 @@ const iconMap: Record<string, any> = {
   SiNetapp,
   sinetapp: SiNetapp,
   netapp: SiNetapp,
+  Shield,
+  ShieldCheck,
+  Globe,
+  Package,
 };
 
 function formatDate(date: Date | string) {
@@ -68,24 +72,113 @@ interface ToolkitBundle {
   firstPurchaseId: number;
 }
 
-function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Script[]): { bundles: ToolkitBundle[], standalone: PurchaseWithScript[] } {
-  const bundles: ToolkitBundle[] = [];
+interface AnnualBundlePurchase {
+  bundle: AnnualBundle;
+  toolkits: ToolkitBundle[];
+  purchasedAt: Date | string;
+  expiresAt: Date | string | null;
+  expired: boolean;
+  stripeSubscriptionId: string | null;
+  firstPurchaseId: number;
+  priceCents: number;
+}
+
+interface SubscriptionStatus {
+  isSubscription: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+  status?: string;
+}
+
+function groupPurchases(
+  purchases: PurchaseWithScript[], 
+  scripts: Script[],
+  annualBundles: AnnualBundle[]
+): { 
+  annualBundlePurchases: AnnualBundlePurchase[], 
+  toolkitBundles: ToolkitBundle[], 
+  standalone: PurchaseWithScript[] 
+} {
+  const annualBundlePurchases: AnnualBundlePurchase[] = [];
+  const toolkitBundles: ToolkitBundle[] = [];
   const standalone: PurchaseWithScript[] = [];
   const usedPurchaseIds = new Set<number>();
 
+  const annualBundlePurchasesList = purchases.filter(p => p.purchaseType === "annual_bundle");
+  const subscriptionGroups = new Map<string, PurchaseWithScript[]>();
+  
+  for (const purchase of annualBundlePurchasesList) {
+    if (purchase.stripeSubscriptionId) {
+      if (!subscriptionGroups.has(purchase.stripeSubscriptionId)) {
+        subscriptionGroups.set(purchase.stripeSubscriptionId, []);
+      }
+      subscriptionGroups.get(purchase.stripeSubscriptionId)!.push(purchase);
+    }
+  }
+
+  Array.from(subscriptionGroups.entries()).forEach(([subscriptionId, bundlePurchases]) => {
+    bundlePurchases.forEach((p: PurchaseWithScript) => usedPurchaseIds.add(p.id));
+    
+    const purchasedScriptIds = bundlePurchases.map((p: PurchaseWithScript) => p.scriptId);
+    const matchingBundle = annualBundles.find(ab => {
+      const bundleScriptIds = ab.includedScriptIds || [];
+      return bundleScriptIds.every((id: number) => purchasedScriptIds.includes(id)) &&
+             purchasedScriptIds.every((id: number) => bundleScriptIds.includes(id));
+    });
+
+    if (matchingBundle) {
+      const toolkitsInBundle: ToolkitBundle[] = [];
+      
+      for (const purchase of bundlePurchases) {
+        const toolkit = scripts.find(s => s.id === purchase.scriptId);
+        if (toolkit) {
+          const bundledScripts = scripts.filter(s => (toolkit.bundledScriptIds || []).includes(s.id));
+          
+          toolkitsInBundle.push({
+            id: toolkit.id,
+            name: toolkit.name,
+            os: toolkit.os,
+            icon: toolkit.icon,
+            compliance: toolkit.compliance,
+            purchaseType: purchase.purchaseType,
+            purchasedAt: purchase.purchasedAt,
+            expiresAt: purchase.expiresAt,
+            priceCents: toolkit.monthlyPriceCents || 0,
+            expired: isExpired(purchase),
+            scripts: bundledScripts.map(s => ({ ...purchase, script: s, scriptId: s.id })),
+            stripeSubscriptionId: purchase.stripeSubscriptionId || null,
+            firstPurchaseId: purchase.id,
+          });
+        }
+      }
+
+      const firstPurchase = bundlePurchases[0];
+      annualBundlePurchases.push({
+        bundle: matchingBundle,
+        toolkits: toolkitsInBundle,
+        purchasedAt: firstPurchase.purchasedAt,
+        expiresAt: firstPurchase.expiresAt,
+        expired: bundlePurchases.some(p => isExpired(p)),
+        stripeSubscriptionId: subscriptionId,
+        firstPurchaseId: firstPurchase.id,
+        priceCents: firstPurchase.priceCents,
+      });
+    }
+  });
+
+  const nonAnnualBundlePurchases = purchases.filter(p => p.purchaseType !== "annual_bundle" && !usedPurchaseIds.has(p.id));
   const toolkitScripts = scripts.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0);
 
   for (const toolkit of toolkitScripts) {
     const bundledIds = toolkit.bundledScriptIds || [];
-    const matchingPurchases = purchases.filter(p => bundledIds.includes(p.scriptId));
+    const matchingPurchases = nonAnnualBundlePurchases.filter(p => bundledIds.includes(p.scriptId));
     
     if (matchingPurchases.length > 0) {
       matchingPurchases.forEach(p => usedPurchaseIds.add(p.id));
       
       const firstPurchase = matchingPurchases[0];
-      const anyExpired = matchingPurchases.some(p => isExpired(p));
       
-      bundles.push({
+      toolkitBundles.push({
         id: toolkit.id,
         name: toolkit.name,
         os: toolkit.os,
@@ -95,7 +188,7 @@ function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Scrip
         purchasedAt: firstPurchase.purchasedAt,
         expiresAt: firstPurchase.expiresAt,
         priceCents: toolkit.monthlyPriceCents || 0,
-        expired: anyExpired,
+        expired: matchingPurchases.some(p => isExpired(p)),
         scripts: matchingPurchases,
         stripeSubscriptionId: firstPurchase.stripeSubscriptionId || null,
         firstPurchaseId: firstPurchase.id,
@@ -109,19 +202,313 @@ function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Scrip
     }
   }
 
-  return { bundles, standalone };
+  return { annualBundlePurchases, toolkitBundles: toolkitBundles, standalone };
 }
 
-interface SubscriptionStatus {
-  isSubscription: boolean;
-  cancelAtPeriodEnd: boolean;
-  currentPeriodEnd: string | null;
-  status?: string;
+function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: AnnualBundlePurchase, allScripts: Script[] }) {
+  const Icon = iconMap[bundlePurchase.bundle.icon] || Package;
+  const { toast } = useToast();
+
+  const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
+    queryKey: ["/api/purchases", bundlePurchase.firstPurchaseId, "subscription-status"],
+    queryFn: async () => {
+      const res = await fetch(`/api/purchases/${bundlePurchase.firstPurchaseId}/subscription-status`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !bundlePurchase.expired && !!bundlePurchase.stripeSubscriptionId,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${bundlePurchase.firstPurchaseId}/cancel-renewal`);
+      if (!res.ok) throw new Error("Failed to cancel");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundlePurchase.firstPurchaseId, "subscription-status"] });
+      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${bundlePurchase.firstPurchaseId}/reactivate-renewal`);
+      if (!res.ok) throw new Error("Failed to reactivate");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundlePurchase.firstPurchaseId, "subscription-status"] });
+      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
+    },
+  });
+
+  const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
+  const expirationDate = subscriptionStatus?.currentPeriodEnd || bundlePurchase.expiresAt;
+
+  return (
+    <Card data-testid={`card-annual-bundle-${bundlePurchase.bundle.id}`} className={bundlePurchase.expired ? "opacity-60" : ""}>
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="toolkits" className="border-0">
+          <CardHeader className="pb-0">
+            <div className="flex flex-row items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-md bg-gradient-to-br from-primary/20 to-primary/5">
+                  <Icon className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {bundlePurchase.bundle.name}
+                    {bundlePurchase.expired ? (
+                      <Badge variant="destructive" className="text-xs">Expire</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                        Actif
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {bundlePurchase.bundle.description}
+                  </CardDescription>
+                </div>
+              </div>
+              <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-bundle-${bundlePurchase.bundle.id}`}>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  {bundlePurchase.toolkits.length} toolkits
+                </Badge>
+              </AccordionTrigger>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>Achat: {formatDate(bundlePurchase.purchasedAt)}</span>
+              </div>
+              <span className="hidden sm:inline mx-1">-</span>
+              <span className="font-medium">
+                {formatPrice(bundlePurchase.priceCents)} HT/an
+              </span>
+              <Badge variant="outline" className="ml-2">
+                -{bundlePurchase.bundle.discountPercent}%
+              </Badge>
+            </div>
+            
+            {!bundlePurchase.expired && (
+              <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 mb-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">
+                    {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                  </span>
+                  {expirationDate ? (
+                    <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                  )}
+                  {cancelAtPeriodEnd && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                      Le renouvellement automatique est desactive
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {cancelAtPeriodEnd ? (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reactivateMutation.isPending}
+                          data-testid={`button-reactivate-bundle-${bundlePurchase.bundle.id}`}
+                        >
+                          {reactivateMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Reactiver
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Voulez-vous reactiver le renouvellement automatique de votre pack annuel ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
+                            Confirmer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={cancelMutation.isPending}
+                          data-testid={`button-cancel-bundle-${bundlePurchase.bundle.id}`}
+                        >
+                          {cancelMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Arreter le renouvellement
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Etes-vous sur de vouloir arreter le renouvellement automatique ? Vous conserverez l'acces jusqu'a la fin de la periode en cours.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => cancelMutation.mutate()}>
+                            Confirmer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <AccordionContent className="pt-0 pb-0">
+              <div className="space-y-3 mt-2">
+                {bundlePurchase.toolkits.map((toolkit) => (
+                  <NestedToolkitCard key={toolkit.id} toolkit={toolkit} allScripts={allScripts} parentExpired={bundlePurchase.expired} />
+                ))}
+              </div>
+            </AccordionContent>
+          </CardContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
+  );
 }
 
-function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
+function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: ToolkitBundle, allScripts: Script[], parentExpired: boolean }) {
+  const Icon = iconMap[toolkit.icon] || Monitor;
+  const toolkitScript = allScripts.find(s => s.id === toolkit.id);
+  const bundledScripts = toolkitScript?.bundledScriptIds 
+    ? allScripts.filter(s => toolkitScript.bundledScriptIds!.includes(s.id))
+    : [];
+  
+  const isMaintenanceOrOffline = toolkitScript?.status === "maintenance" || toolkitScript?.status === "offline";
+  const canDownload = !parentExpired && !toolkit.expired && toolkitScript?.status === "active";
+
+  return (
+    <Card className="border-l-4 border-l-primary/30">
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="scripts" className="border-0">
+          <CardHeader className="py-3 px-4">
+            <div className="flex flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-primary/10">
+                  <Icon className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {toolkit.name}
+                    {isMaintenanceOrOffline && (
+                      <Badge variant="secondary" className="text-xs">
+                        {toolkitScript?.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="text-xs">{toolkit.compliance}</CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={canDownload ? "default" : "secondary"}
+                  disabled={!canDownload}
+                  data-testid={`button-download-toolkit-${toolkit.id}`}
+                  asChild={canDownload}
+                >
+                  {canDownload ? (
+                    <a href={`/api/scripts/${toolkit.id}/download`} download>
+                      <Download className="h-4 w-4 mr-1" />
+                      Telecharger
+                    </a>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-1" />
+                      {isMaintenanceOrOffline ? "Indisponible" : "Telecharger"}
+                    </>
+                  )}
+                </Button>
+                <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-toolkit-${toolkit.id}`}>
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <FileCode className="h-3 w-3" />
+                    {bundledScripts.length} scripts
+                  </Badge>
+                </AccordionTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <AccordionContent className="px-4 pb-3">
+            <div className="space-y-2 pl-4 border-l-2 border-muted">
+              {bundledScripts.map((script) => (
+                <div key={script.id} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <FileCode className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{script.name}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={!canDownload}
+                    data-testid={`button-download-script-${script.id}`}
+                    asChild={canDownload}
+                  >
+                    {canDownload ? (
+                      <a href={`/api/scripts/${script.id}/download`} download>
+                        <Download className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
+  );
+}
+
+function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts: Script[] }) {
   const Icon = iconMap[bundle.icon] || Monitor;
   const { toast } = useToast();
+  
+  const toolkitScript = allScripts.find(s => s.id === bundle.id);
+  const bundledScripts = toolkitScript?.bundledScriptIds 
+    ? allScripts.filter(s => toolkitScript.bundledScriptIds!.includes(s.id))
+    : [];
 
   const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"],
@@ -129,59 +516,48 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
       const res = await fetch(`/api/purchases/${bundle.firstPurchaseId}/subscription-status`, { credentials: "include" });
       return res.json();
     },
-    enabled: !bundle.expired && (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly" || bundle.purchaseType === "annual_bundle") && !!bundle.stripeSubscriptionId,
+    enabled: !bundle.expired && (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly") && !!bundle.stripeSubscriptionId,
   });
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/cancel`);
+      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/cancel-renewal`);
+      if (!res.ok) throw new Error("Failed to cancel");
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Abonnement annule",
-        description: "Votre abonnement ne sera pas renouvele automatiquement.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
+      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'annuler l'abonnement",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
     },
   });
 
   const reactivateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/reactivate`);
+      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/reactivate-renewal`);
+      if (!res.ok) throw new Error("Failed to reactivate");
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Renouvellement reactive",
-        description: "Votre abonnement sera renouvele automatiquement.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
+      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de reactiver l'abonnement",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
     },
   });
 
-  const isSubscription = bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly" || bundle.purchaseType === "annual_bundle";
+  const isSubscription = bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly";
   const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
   const expirationDate = subscriptionStatus?.currentPeriodEnd || bundle.expiresAt;
+  
+  const isMaintenanceOrOffline = toolkitScript?.status === "maintenance" || toolkitScript?.status === "offline";
+  const canDownload = !bundle.expired && toolkitScript?.status === "active";
 
   return (
-    <Card data-testid={`card-toolkit-${bundle.id}`}>
+    <Card data-testid={`card-toolkit-${bundle.id}`} className={bundle.expired ? "opacity-60" : ""}>
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="scripts" className="border-0">
           <CardHeader className="pb-0">
@@ -191,184 +567,179 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{bundle.name}</CardTitle>
-                  <CardDescription className="mt-1">{bundle.os}</CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {bundle.name}
+                    {bundle.expired ? (
+                      <Badge variant="destructive" className="text-xs">Expire</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                        Actif
+                      </Badge>
+                    )}
+                    {isMaintenanceOrOffline && (
+                      <Badge variant="secondary" className="text-xs">
+                        {toolkitScript?.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>{bundle.compliance}</CardDescription>
                 </div>
               </div>
-              <Badge variant={bundle.expired ? "destructive" : "secondary"} className="shrink-0">
-                {bundle.purchaseType === "direct" ? (
-                  <>
-                    <Infinity className="h-3 w-3 mr-1" />
-                    Permanent
-                  </>
-                ) : bundle.expired ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Expiré
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Abonnement
-                  </>
-                )}
-              </Badge>
+              <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-toolkit-${bundle.id}`}>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <FileCode className="h-3 w-3" />
+                  {bundledScripts.length} scripts
+                </Badge>
+              </AccordionTrigger>
             </div>
           </CardHeader>
           
-          <CardContent className="space-y-4 pt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{bundle.compliance}</Badge>
-              <Badge variant="outline" className="text-xs">
-                {bundle.scripts.length} scripts inclus
-              </Badge>
-            </div>
-
-            <div className="flex flex-col gap-3 pt-2 border-t">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>Achat: {formatDate(bundle.purchasedAt)}</span>
-                </div>
-                <span className="hidden sm:inline mx-1">-</span>
-                <span className="font-medium">
-                  {bundle.purchaseType === "yearly" ? formatPrice(bundle.priceCents * 12 * 0.85) + "/an" : formatPrice(bundle.priceCents) + "/mois"}
-                </span>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>Achat: {formatDate(bundle.purchasedAt)}</span>
               </div>
-              
-              {isSubscription && !bundle.expired && (
-                <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">
-                      {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
-                    </span>
-                    {expirationDate ? (
-                      <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Abonnement actif</span>
-                    )}
-                    {cancelAtPeriodEnd && (
-                      <span className="text-xs text-orange-600 dark:text-orange-400">
-                        Le renouvellement automatique est desactive
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {cancelAtPeriodEnd ? (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={reactivateMutation.isPending}
-                            data-testid={`button-reactivate-subscription-${bundle.id}`}
-                          >
-                            {reactivateMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <RotateCcw className="h-4 w-4 mr-1" />
-                                Reactiver
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Voulez-vous reactiver le renouvellement automatique de votre abonnement ? Votre carte sera debitee automatiquement a la date de renouvellement.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
-                              Reactiver
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    ) : bundle.stripeSubscriptionId && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={cancelMutation.isPending}
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-cancel-subscription-${bundle.id}`}
-                          >
-                            {cancelMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Arreter
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Voulez-vous arreter le renouvellement automatique ? Votre abonnement restera actif jusqu'au {expirationDate ? formatDate(expirationDate) : ""}, puis expirera.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => cancelMutation.mutate()}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Arreter le renouvellement
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
-              )}
+              <span className="hidden sm:inline mx-1">-</span>
+              <span className="font-medium">
+                {bundle.purchaseType === "yearly" ? formatPrice(bundle.priceCents * 12 * 0.85) + " HT/an" : formatPrice(bundle.priceCents) + " HT/mois"}
+              </span>
             </div>
-
-            <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline" data-testid={`button-expand-toolkit-${bundle.id}`}>
-              <div className="flex items-center gap-2">
-                <FileCode className="h-4 w-4" />
-                Voir les scripts à télécharger
-              </div>
-            </AccordionTrigger>
             
-            <AccordionContent>
-              <div className="space-y-3 pt-2">
-                {bundle.scripts.map((purchase) => (
-                  <div 
-                    key={purchase.id} 
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 gap-4"
-                    data-testid={`script-item-${purchase.script.id}`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{purchase.script.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{purchase.script.filename}</p>
-                      </div>
+            <div className="flex items-center gap-2 mt-4">
+              <Button
+                size="sm"
+                variant={canDownload ? "default" : "secondary"}
+                disabled={!canDownload}
+                data-testid={`button-download-toolkit-${bundle.id}`}
+                asChild={canDownload}
+              >
+                {canDownload ? (
+                  <a href={`/api/scripts/${bundle.id}/download`} download>
+                    <Download className="h-4 w-4 mr-2" />
+                    Telecharger le toolkit
+                  </a>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {isSubscription && !bundle.expired && (
+              <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 mt-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">
+                    {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                  </span>
+                  {expirationDate ? (
+                    <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                  )}
+                  {cancelAtPeriodEnd && (
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                      Le renouvellement automatique est desactive
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {cancelAtPeriodEnd ? (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reactivateMutation.isPending}
+                          data-testid={`button-reactivate-subscription-${bundle.id}`}
+                        >
+                          {reactivateMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Reactiver
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Voulez-vous reactiver le renouvellement automatique de votre abonnement ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
+                            Confirmer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={cancelMutation.isPending}
+                          data-testid={`button-cancel-subscription-${bundle.id}`}
+                        >
+                          {cancelMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Arreter le renouvellement
+                            </>
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Etes-vous sur de vouloir arreter le renouvellement automatique ? Vous conserverez l'acces jusqu'a la fin de la periode en cours.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => cancelMutation.mutate()}>
+                            Confirmer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <AccordionContent className="pt-4 pb-0">
+              <div className="space-y-2 pl-4 border-l-2 border-muted">
+                {bundledScripts.map((script) => (
+                  <div key={script.id} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <FileCode className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{script.name}</span>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant={bundle.expired ? "secondary" : "outline"}
-                      asChild={!bundle.expired}
-                      disabled={bundle.expired}
-                      data-testid={`button-download-script-${purchase.script.id}`}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={!canDownload}
+                      data-testid={`button-download-script-${script.id}`}
+                      asChild={canDownload}
                     >
-                      {bundle.expired ? (
-                        <span>
-                          <Download className="h-4 w-4" />
-                        </span>
-                      ) : (
-                        <a href={`/api/scripts/${purchase.script.id}/download`} download>
-                          <Download className="h-4 w-4" />
+                      {canDownload ? (
+                        <a href={`/api/scripts/${script.id}/download`} download>
+                          <Download className="h-3 w-3" />
                         </a>
+                      ) : (
+                        <Download className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
@@ -386,6 +757,9 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   const Icon = iconMap[purchase.script.icon] || Monitor;
   const expired = isExpired(purchase);
   const { toast } = useToast();
+  
+  const isMaintenanceOrOffline = purchase.script.status === "maintenance" || purchase.script.status === "offline";
+  const canDownload = !expired && purchase.script.status === "active";
 
   const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/purchases", purchase.id, "subscription-status"],
@@ -393,133 +767,106 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
       const res = await fetch(`/api/purchases/${purchase.id}/subscription-status`, { credentials: "include" });
       return res.json();
     },
-    enabled: !expired && (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly" || purchase.purchaseType === "annual_bundle") && !!purchase.stripeSubscriptionId,
+    enabled: !expired && (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly") && !!purchase.stripeSubscriptionId,
   });
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/cancel`);
+      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/cancel-renewal`);
+      if (!res.ok) throw new Error("Failed to cancel");
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Abonnement annule",
-        description: "Votre abonnement ne sera pas renouvele automatiquement.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
+      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'annuler l'abonnement",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
     },
   });
 
   const reactivateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/reactivate`);
+      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/reactivate-renewal`);
+      if (!res.ok) throw new Error("Failed to reactivate");
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Renouvellement reactive",
-        description: "Votre abonnement sera renouvele automatiquement.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
+      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de reactiver l'abonnement",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
     },
   });
 
-  const isSubscription = purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly" || purchase.purchaseType === "annual_bundle";
+  const isSubscription = purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly";
   const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
   const expirationDate = subscriptionStatus?.currentPeriodEnd || purchase.expiresAt;
 
   return (
-    <Card data-testid={`card-purchase-${purchase.id}`}>
+    <Card data-testid={`card-purchase-${purchase.id}`} className={expired ? "opacity-60" : ""}>
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-md bg-primary/10">
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-lg">{purchase.script.name}</CardTitle>
-            <CardDescription className="mt-1">{purchase.script.os}</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {purchase.script.name}
+              {expired ? (
+                <Badge variant="destructive" className="text-xs">Expire</Badge>
+              ) : (
+                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                  Actif
+                </Badge>
+              )}
+              {isMaintenanceOrOffline && (
+                <Badge variant="secondary" className="text-xs">
+                  {purchase.script.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>{purchase.script.compliance}</CardDescription>
           </div>
         </div>
-        <Badge variant={expired ? "destructive" : "secondary"} className="shrink-0">
-          {purchase.purchaseType === "direct" ? (
-            <>
-              <Infinity className="h-3 w-3 mr-1" />
-              Permanent
-            </>
-          ) : expired ? (
-            <>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Expiré
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Abonnement
-            </>
-          )}
-        </Badge>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground whitespace-pre-line">{purchase.script.description}</p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{purchase.script.compliance}</Badge>
-          {purchase.script.features.map((feature, index) => (
-            <Badge key={index} variant="outline" className="text-xs">
-              {feature}
-            </Badge>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-3 pt-2 border-t">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span>Achat: {formatDate(purchase.purchasedAt)}</span>
-              </div>
-              <span className="hidden sm:inline mx-1">-</span>
-              <span className="font-medium">
-                {purchase.purchaseType === "yearly" 
-                  ? formatPrice(purchase.priceCents) + "/an" 
-                  : purchase.purchaseType === "monthly"
-                    ? formatPrice(purchase.priceCents) + "/mois"
-                    : formatPrice(purchase.priceCents)}
-              </span>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>Achat: {formatDate(purchase.purchasedAt)}</span>
             </div>
-            <Button 
-              size="sm" 
-              asChild={!expired}
-              disabled={expired}
-              variant={expired ? "secondary" : "default"}
+            <span className="hidden sm:inline mx-1">-</span>
+            <span className="font-medium">
+              {purchase.purchaseType === "direct" 
+                ? formatPrice(purchase.priceCents) + " HT" 
+                : purchase.purchaseType === "yearly"
+                  ? formatPrice(purchase.priceCents) + " HT/an"
+                  : formatPrice(purchase.priceCents) + " HT/mois"
+              }
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={canDownload ? "default" : "secondary"}
+              disabled={!canDownload}
               data-testid={`button-download-${purchase.id}`}
+              asChild={canDownload}
             >
-              {expired ? (
-                <span>
-                  <Download className="h-4 w-4 mr-2" />
-                  Renouveler
-                </span>
-              ) : (
-                <a href={`/api/scripts/${purchase.script.id}/download`} download>
+              {canDownload ? (
+                <a href={`/api/scripts/${purchase.scriptId}/download`} download>
                   <Download className="h-4 w-4 mr-2" />
                   Telecharger
                 </a>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
+                </>
               )}
             </Button>
           </div>
@@ -571,19 +918,18 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
-                          Reactiver
+                          Confirmer
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                ) : purchase.stripeSubscriptionId && (
+                ) : (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={cancelMutation.isPending}
-                        className="text-destructive hover:text-destructive"
                         data-testid={`button-cancel-subscription-${purchase.id}`}
                       >
                         {cancelMutation.isPending ? (
@@ -591,7 +937,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
                         ) : (
                           <>
                             <XCircle className="h-4 w-4 mr-1" />
-                            Arreter
+                            Arreter le renouvellement
                           </>
                         )}
                       </Button>
@@ -600,16 +946,13 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Voulez-vous arreter le renouvellement automatique ? Votre abonnement restera actif jusqu'au {expirationDate ? formatDate(expirationDate) : ""}, puis expirera.
+                          Etes-vous sur de vouloir arreter le renouvellement automatique ? Vous conserverez l'acces jusqu'a la fin de la periode en cours.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => cancelMutation.mutate()}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Arreter le renouvellement
+                        <AlertDialogAction onClick={() => cancelMutation.mutate()}>
+                          Confirmer
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -624,35 +967,9 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   );
 }
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <Card key={i}>
-          <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-2">
-            <Skeleton className="h-10 w-10 rounded-md" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <div className="flex gap-2">
-              <Skeleton className="h-6 w-20" />
-              <Skeleton className="h-6 w-24" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 function AdminScriptCard({ script }: { script: Script }) {
-  const Icon = iconMap[script.icon] || iconMap[script.icon.toLowerCase()] || Monitor;
-
+  const Icon = iconMap[script.icon] || Monitor;
+  
   return (
     <Card data-testid={`card-admin-script-${script.id}`}>
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
@@ -661,39 +978,53 @@ function AdminScriptCard({ script }: { script: Script }) {
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-lg">{script.name}</CardTitle>
-            <CardDescription className="mt-1">{script.os}</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {script.name}
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                Admin
+              </Badge>
+            </CardTitle>
+            <CardDescription>{script.compliance}</CardDescription>
           </div>
         </div>
-        <Badge variant="default" className="shrink-0 bg-green-600">
-          <Shield className="h-3 w-3 mr-1" />
-          Accès Admin
-        </Badge>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-3">{script.description}</p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{script.compliance}</Badge>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t gap-4">
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">{formatPrice(script.monthlyPriceCents)}/mois</span>
-          </div>
-          <Button 
-            size="sm" 
-            asChild
+      <CardContent>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="default"
             data-testid={`button-admin-download-${script.id}`}
+            asChild
           >
             <a href={`/api/scripts/${script.id}/download`} download>
               <Download className="h-4 w-4 mr-2" />
-              Télécharger
+              Telecharger
             </a>
           </Button>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardHeader className="flex flex-row items-start gap-4 space-y-0">
+            <Skeleton className="h-12 w-12 rounded-md" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-32" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
@@ -710,9 +1041,14 @@ export default function Purchases() {
     enabled: !!user,
   });
 
-  const { bundles, standalone } = purchases && scripts 
-    ? groupPurchasesByToolkit(purchases, scripts) 
-    : { bundles: [], standalone: [] };
+  const { data: annualBundles } = useQuery<AnnualBundle[]>({
+    queryKey: ["/api/annual-bundles"],
+    enabled: !!user,
+  });
+
+  const { annualBundlePurchases, toolkitBundles, standalone } = purchases && scripts && annualBundles
+    ? groupPurchases(purchases, scripts, annualBundles) 
+    : { annualBundlePurchases: [], toolkitBundles: [], standalone: [] };
 
   if (authLoading) {
     return (
@@ -731,19 +1067,20 @@ export default function Purchases() {
           <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Connexion requise</h1>
           <p className="text-muted-foreground mb-6">
-            Connectez-vous pour accéder à vos achats
+            Connectez-vous pour acceder a vos achats
           </p>
           <Button asChild data-testid="button-login-redirect">
-            <Link href="/">Retour à l'accueil</Link>
+            <Link href="/">Retour a l'accueil</Link>
           </Button>
         </div>
       </div>
     );
   }
 
+  const hasAnyPurchases = annualBundlePurchases.length > 0 || toolkitBundles.length > 0 || standalone.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Auth Header - Same as Home page */}
       <div className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
         <Button variant="default" size="sm" asChild data-testid="link-home">
           <Link href="/">
@@ -771,7 +1108,6 @@ export default function Purchases() {
         </Button>
       </div>
 
-      {/* Hero Banner - Same style as Home page */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <img 
           src={bannerImg} 
@@ -797,17 +1133,15 @@ export default function Purchases() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="container mx-auto py-8 px-4">
 
         {isLoading ? (
           <LoadingSkeleton />
         ) : user?.isAdmin ? (
-          // Admin view - show all available toolkits
           <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-5 w-5 text-green-600" />
-              <h2 className="text-xl font-semibold">Accès Administrateur - Tous les Toolkits</h2>
+              <h2 className="text-xl font-semibold">Acces Administrateur - Tous les Toolkits</h2>
             </div>
             <div className="space-y-4">
               {scripts?.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0).map((script) => (
@@ -815,14 +1149,43 @@ export default function Purchases() {
               ))}
             </div>
           </div>
-        ) : (bundles.length > 0 || standalone.length > 0) ? (
-          <div className="space-y-4">
-            {bundles.map((bundle) => (
-              <ToolkitCard key={bundle.id} bundle={bundle} />
-            ))}
-            {standalone.map((purchase) => (
-              <PurchaseCard key={purchase.id} purchase={purchase} />
-            ))}
+        ) : hasAnyPurchases ? (
+          <div className="space-y-6">
+            {annualBundlePurchases.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Packs Annuels
+                </h2>
+                {annualBundlePurchases.map((bundlePurchase) => (
+                  <AnnualBundleCard key={bundlePurchase.bundle.id} bundlePurchase={bundlePurchase} allScripts={scripts || []} />
+                ))}
+              </div>
+            )}
+            
+            {toolkitBundles.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Toolkits
+                </h2>
+                {toolkitBundles.map((bundle) => (
+                  <ToolkitCard key={bundle.id} bundle={bundle} allScripts={scripts || []} />
+                ))}
+              </div>
+            )}
+            
+            {standalone.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <FileCode className="h-5 w-5 text-primary" />
+                  Scripts individuels
+                </h2>
+                {standalone.map((purchase) => (
+                  <PurchaseCard key={purchase.id} purchase={purchase} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <Card className="text-center py-12">
@@ -830,7 +1193,7 @@ export default function Purchases() {
               <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h2 className="text-lg font-semibold mb-2">Aucun achat</h2>
               <p className="text-muted-foreground mb-6">
-                Vous n'avez pas encore acheté de scripts de sécurité
+                Vous n'avez pas encore achete de scripts de securite
               </p>
               <Button asChild data-testid="button-browse-scripts">
                 <Link href="/">Parcourir les scripts</Link>
@@ -840,7 +1203,6 @@ export default function Purchases() {
         )}
       </div>
 
-      {/* Footer */}
       <footer className="border-t border-border/40 py-8 mt-16">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>Infra Shield Tools - Security Compliance Toolkit</p>
