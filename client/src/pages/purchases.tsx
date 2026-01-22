@@ -129,7 +129,7 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
       const res = await fetch(`/api/purchases/${bundle.firstPurchaseId}/subscription-status`, { credentials: "include" });
       return res.json();
     },
-    enabled: !bundle.expired && (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly") && !!bundle.stripeSubscriptionId,
+    enabled: !bundle.expired && (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly" || bundle.purchaseType === "annual_bundle") && !!bundle.stripeSubscriptionId,
   });
 
   const cancelMutation = useMutation({
@@ -176,7 +176,7 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
     },
   });
 
-  const isSubscription = bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly";
+  const isSubscription = bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly" || bundle.purchaseType === "annual_bundle";
   const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
   const expirationDate = subscriptionStatus?.currentPeriodEnd || bundle.expiresAt;
 
@@ -389,7 +389,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
       const res = await fetch(`/api/purchases/${purchase.id}/subscription-status`, { credentials: "include" });
       return res.json();
     },
-    enabled: !expired && (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly") && !!purchase.stripeSubscriptionId,
+    enabled: !expired && (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly" || purchase.purchaseType === "annual_bundle") && !!purchase.stripeSubscriptionId,
   });
 
   const cancelMutation = useMutation({
@@ -436,7 +436,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
     },
   });
 
-  const isSubscription = purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly";
+  const isSubscription = purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly" || purchase.purchaseType === "annual_bundle";
   const cancelAtPeriodEnd = subscriptionStatus?.cancelAtPeriodEnd || false;
   const expirationDate = subscriptionStatus?.currentPeriodEnd || purchase.expiresAt;
 
