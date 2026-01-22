@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
-import type { ContactRequest, Script, Invoice, InvoiceItem } from "@shared/schema";
+import type { ContactRequest, Script, Invoice, InvoiceItem, AnnualBundle } from "@shared/schema";
 import { Link } from "wouter";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "overdue";
@@ -36,7 +36,7 @@ const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "defa
 
 const ITEMS_PER_PAGE = 10;
 
-type AdminSection = "users" | "tickets" | "toolkits" | "invoices";
+type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles";
 type ScriptStatus = "active" | "offline" | "maintenance";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
@@ -115,6 +115,27 @@ export default function AdminPage() {
     queryKey: ["/api/scripts/all"],
     enabled: !!user?.isAdmin,
   });
+
+  // Annual bundles query and state
+  const { data: annualBundles, isLoading: bundlesLoading } = useQuery<AnnualBundle[]>({
+    queryKey: ["/api/admin/annual-bundles"],
+    enabled: !!user?.isAdmin,
+  });
+  
+  const [editingBundle, setEditingBundle] = useState<AnnualBundle | null>(null);
+  const [showCreateBundleDialog, setShowCreateBundleDialog] = useState(false);
+  const [newBundleName, setNewBundleName] = useState("");
+  const [newBundleDescription, setNewBundleDescription] = useState("");
+  const [newBundleIcon, setNewBundleIcon] = useState("Shield");
+  const [newBundleDiscount, setNewBundleDiscount] = useState("10");
+  const [newBundleScriptIds, setNewBundleScriptIds] = useState<number[]>([]);
+  
+  const [editBundleName, setEditBundleName] = useState("");
+  const [editBundleDescription, setEditBundleDescription] = useState("");
+  const [editBundleIcon, setEditBundleIcon] = useState("");
+  const [editBundleDiscount, setEditBundleDiscount] = useState("");
+  const [editBundleScriptIds, setEditBundleScriptIds] = useState<number[]>([]);
+  const [editBundleIsActive, setEditBundleIsActive] = useState(true);
 
   // Invoice queries and state
   const [invoiceSearch, setInvoiceSearch] = useState("");
@@ -465,6 +486,86 @@ export default function AdminPage() {
     },
   });
 
+  // Bundle mutations
+  const updateBundleMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { name?: string; description?: string; icon?: string; discountPercent?: number; includedScriptIds?: number[]; isActive?: number } }) => {
+      const response = await apiRequest("PATCH", `/api/admin/annual-bundles/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/annual-bundles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/annual-bundles"] });
+      toast({ title: "Pack mis a jour" });
+      setEditingBundle(null);
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de mettre a jour le pack", variant: "destructive" });
+    },
+  });
+
+  const createBundleMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; icon: string; discountPercent: number; includedScriptIds: number[]; isActive: number }) => {
+      const response = await apiRequest("POST", "/api/admin/annual-bundles", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/annual-bundles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/annual-bundles"] });
+      toast({ title: "Pack cree" });
+      setShowCreateBundleDialog(false);
+      setNewBundleName("");
+      setNewBundleDescription("");
+      setNewBundleIcon("Shield");
+      setNewBundleDiscount("10");
+      setNewBundleScriptIds([]);
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de creer le pack", variant: "destructive" });
+    },
+  });
+
+  const startEditBundle = (bundle: AnnualBundle) => {
+    setEditingBundle(bundle);
+    setEditBundleName(bundle.name);
+    setEditBundleDescription(bundle.description);
+    setEditBundleIcon(bundle.icon);
+    setEditBundleDiscount(bundle.discountPercent.toString());
+    setEditBundleScriptIds(bundle.includedScriptIds || []);
+    setEditBundleIsActive(bundle.isActive === 1);
+  };
+
+  const saveEditBundle = () => {
+    if (!editingBundle) return;
+    updateBundleMutation.mutate({
+      id: editingBundle.id,
+      data: {
+        name: editBundleName,
+        description: editBundleDescription,
+        icon: editBundleIcon,
+        discountPercent: parseInt(editBundleDiscount) || 0,
+        includedScriptIds: editBundleScriptIds,
+        isActive: editBundleIsActive ? 1 : 0,
+      }
+    });
+  };
+
+  const createBundle = () => {
+    createBundleMutation.mutate({
+      name: newBundleName,
+      description: newBundleDescription,
+      icon: newBundleIcon,
+      discountPercent: parseInt(newBundleDiscount) || 10,
+      includedScriptIds: newBundleScriptIds,
+      isActive: 1,
+    });
+  };
+
+  // Get toolkits (scripts with bundledScriptIds) for bundle selection
+  const toolkits = useMemo(() => {
+    if (!scripts) return [];
+    return scripts.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0);
+  }, [scripts]);
+
   const viewInvoiceDetails = async (invoiceId: number) => {
     try {
       const response = await apiRequest("GET", `/api/admin/invoices/${invoiceId}`);
@@ -663,6 +764,7 @@ export default function AdminPage() {
     { id: "users" as AdminSection, label: "Utilisateurs", icon: Users, count: users?.length },
     { id: "tickets" as AdminSection, label: "Gestion des tickets", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
     { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: toolkitCount },
+    { id: "bundles" as AdminSection, label: "Packs Annuels", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Facturation", icon: FileText, count: allInvoices.length },
   ];
 
@@ -1214,6 +1316,261 @@ export default function AdminPage() {
               </Card>
             </div>
           )}
+
+          {/* Bundles Section */}
+          {activeSection === "bundles" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-8 w-8 text-primary" />
+                  <div>
+                    <h2 className="text-2xl font-bold">Packs Annuels</h2>
+                    <p className="text-muted-foreground">Gerer les packs annuels et leurs reductions</p>
+                  </div>
+                </div>
+                <Button onClick={() => setShowCreateBundleDialog(true)} data-testid="button-new-bundle">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau pack
+                </Button>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Liste des packs</CardTitle>
+                  <CardDescription>
+                    {annualBundles?.length || 0} pack(s) configures
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {bundlesLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : !annualBundles || annualBundles.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">Aucun pack configure</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {annualBundles.map((bundle) => (
+                        <div
+                          key={bundle.id}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
+                          data-testid={`row-bundle-${bundle.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Shield className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{bundle.name}</p>
+                                {bundle.isActive === 0 && (
+                                  <Badge variant="secondary">Inactif</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-1">{bundle.description}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline">{bundle.includedScriptIds?.length || 0} toolkits</Badge>
+                                <Badge variant="default" className="bg-green-600">{bundle.discountPercent}% reduction</Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEditBundle(bundle)}
+                            data-testid={`button-edit-bundle-${bundle.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Modifier
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Edit Bundle Dialog */}
+          <Dialog open={!!editingBundle} onOpenChange={(open) => !open && setEditingBundle(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Modifier le pack</DialogTitle>
+                <DialogDescription>Modifiez les parametres du pack annuel</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-bundle-name">Nom du pack</Label>
+                  <Input
+                    id="edit-bundle-name"
+                    value={editBundleName}
+                    onChange={(e) => setEditBundleName(e.target.value)}
+                    data-testid="input-edit-bundle-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-bundle-description">Description</Label>
+                  <Textarea
+                    id="edit-bundle-description"
+                    value={editBundleDescription}
+                    onChange={(e) => setEditBundleDescription(e.target.value)}
+                    rows={3}
+                    data-testid="input-edit-bundle-description"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-bundle-discount">Reduction (%)</Label>
+                  <Input
+                    id="edit-bundle-discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editBundleDiscount}
+                    onChange={(e) => setEditBundleDiscount(e.target.value)}
+                    data-testid="input-edit-bundle-discount"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Toolkits inclus</Label>
+                  <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                    {toolkits.map((toolkit) => (
+                      <div key={toolkit.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-toolkit-${toolkit.id}`}
+                          checked={editBundleScriptIds.includes(toolkit.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditBundleScriptIds([...editBundleScriptIds, toolkit.id]);
+                            } else {
+                              setEditBundleScriptIds(editBundleScriptIds.filter(id => id !== toolkit.id));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`edit-toolkit-${toolkit.id}`} className="text-sm flex-1 cursor-pointer">
+                          {toolkit.name}
+                          <span className="text-muted-foreground ml-2">({toolkit.os})</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="edit-bundle-active"
+                    checked={editBundleIsActive}
+                    onCheckedChange={(checked) => setEditBundleIsActive(!!checked)}
+                  />
+                  <label htmlFor="edit-bundle-active" className="text-sm cursor-pointer">
+                    Pack actif (visible pour les clients)
+                  </label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingBundle(null)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={saveEditBundle} 
+                  disabled={updateBundleMutation.isPending}
+                  data-testid="button-save-bundle"
+                >
+                  {updateBundleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
+                  Enregistrer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Create Bundle Dialog */}
+          <Dialog open={showCreateBundleDialog} onOpenChange={setShowCreateBundleDialog}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Nouveau pack annuel</DialogTitle>
+                <DialogDescription>Creez un nouveau pack avec reduction</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-bundle-name">Nom du pack</Label>
+                  <Input
+                    id="new-bundle-name"
+                    value={newBundleName}
+                    onChange={(e) => setNewBundleName(e.target.value)}
+                    placeholder="Ex: Infrastructure Pack"
+                    data-testid="input-new-bundle-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-bundle-description">Description</Label>
+                  <Textarea
+                    id="new-bundle-description"
+                    value={newBundleDescription}
+                    onChange={(e) => setNewBundleDescription(e.target.value)}
+                    placeholder="Description du pack..."
+                    rows={3}
+                    data-testid="input-new-bundle-description"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-bundle-discount">Reduction (%)</Label>
+                  <Input
+                    id="new-bundle-discount"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={newBundleDiscount}
+                    onChange={(e) => setNewBundleDiscount(e.target.value)}
+                    data-testid="input-new-bundle-discount"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Toolkits a inclure</Label>
+                  <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                    {toolkits.map((toolkit) => (
+                      <div key={toolkit.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`new-toolkit-${toolkit.id}`}
+                          checked={newBundleScriptIds.includes(toolkit.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setNewBundleScriptIds([...newBundleScriptIds, toolkit.id]);
+                            } else {
+                              setNewBundleScriptIds(newBundleScriptIds.filter(id => id !== toolkit.id));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`new-toolkit-${toolkit.id}`} className="text-sm flex-1 cursor-pointer">
+                          {toolkit.name}
+                          <span className="text-muted-foreground ml-2">({toolkit.os})</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowCreateBundleDialog(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={createBundle} 
+                  disabled={createBundleMutation.isPending || !newBundleName || newBundleScriptIds.length === 0}
+                  data-testid="button-create-bundle"
+                >
+                  {createBundleMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  Creer le pack
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Invoices Section */}
           {activeSection === "invoices" && (
