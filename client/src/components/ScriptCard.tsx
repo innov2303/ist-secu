@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Calendar } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -103,7 +104,12 @@ function formatPrice(cents: number) {
 export function ScriptCard({ script, index }: ScriptCardProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const Icon = IconMap[script.icon.toLowerCase()] || FileCode;
+
+  // Calculate yearly price with 15% discount
+  const yearlyPriceCents = Math.round(script.monthlyPriceCents * 12 * 0.85);
+  const monthlySavings = (script.monthlyPriceCents * 12) - yearlyPriceCents;
 
   const { data: purchaseStatus, isLoading: checkingPurchase } = useQuery<PurchaseStatus>({
     queryKey: ["/api/purchases/check", script.id],
@@ -204,15 +210,50 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
 
         {user && !isInDevelopment && !isAdmin && canPurchase && (
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setBillingCycle("monthly")}
+                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  billingCycle === "monthly" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-background hover:bg-muted"
+                }`}
+                data-testid={`button-cycle-monthly-${script.id}`}
+              >
+                <RefreshCw className="w-3 h-3 inline mr-1" />
+                Mensuel
+              </button>
+              <button
+                onClick={() => setBillingCycle("yearly")}
+                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  billingCycle === "yearly" 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-background hover:bg-muted"
+                }`}
+                data-testid={`button-cycle-yearly-${script.id}`}
+              >
+                <Calendar className="w-3 h-3 inline mr-1" />
+                Annuel -15%
+              </button>
+            </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" />
-                  Abonnement mensuel
-                </p>
-                <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
-                  {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground">/mois</span>
-                </p>
+                {billingCycle === "monthly" ? (
+                  <>
+                    <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
+                      {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground">/mois</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-bold text-primary" data-testid={`text-price-yearly-${script.id}`}>
+                      {formatPrice(yearlyPriceCents)}<span className="text-sm font-normal text-muted-foreground">/an</span>
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      Economisez {formatPrice(monthlySavings)}
+                    </p>
+                  </>
+                )}
               </div>
               <p className="text-xs text-muted-foreground max-w-[120px] text-right">
                 Mise a jour et support inclus
@@ -232,17 +273,19 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
 
           {user && !hasPurchased && !isAdmin && !checkingPurchase && !isInDevelopment && canPurchase && (
             <Button
-              onClick={() => checkoutMutation.mutate("monthly")}
+              onClick={() => checkoutMutation.mutate(billingCycle)}
               disabled={checkoutMutation.isPending}
               className="w-full"
-              data-testid={`button-purchase-monthly-${script.id}`}
+              data-testid={`button-purchase-${billingCycle}-${script.id}`}
             >
               {checkoutMutation.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : billingCycle === "yearly" ? (
+                <Calendar className="w-4 h-4 mr-2" />
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              S'abonner
+              {billingCycle === "yearly" ? "S'abonner pour 1 an" : "S'abonner"}
             </Button>
           )}
 
