@@ -1228,6 +1228,102 @@ export async function registerRoutes(
             }
           }
           
+          // Create invoice for bundle purchase
+          try {
+            const [user] = await db.select().from(users).where(eq(users.id, userId));
+            const bundle = await storage.getAnnualBundle(parseInt(bundleId));
+            
+            if (user && bundle) {
+              const personalName = user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user.firstName || user.email?.split('@')[0] || 'Client';
+              const customerName = user.companyName 
+                ? `${user.companyName} - ${personalName}`
+                : personalName;
+              
+              const addressParts = [
+                user.billingStreet,
+                [user.billingPostalCode, user.billingCity].filter(Boolean).join(' ')
+              ].filter(Boolean);
+              const customerAddress = addressParts.join(', ');
+              
+              const amountCents = parseInt(priceCents || "0");
+              const taxRate = 20;
+              const subtotalCents = Math.round(amountCents / (1 + taxRate / 100));
+              const taxCents = amountCents - subtotalCents;
+              
+              const date = new Date();
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+              const autoInvoiceNumber = `IST-${year}${month}-${random}`;
+              
+              const [newInvoice] = await db.insert(invoices).values({
+                invoiceNumber: autoInvoiceNumber,
+                userId,
+                customerName,
+                customerEmail: user.email || '',
+                customerAddress,
+                subtotalCents,
+                taxRate,
+                taxCents,
+                totalCents: amountCents,
+                status: 'paid',
+                notes: `Paiement automatique via Stripe - Pack annuel: ${bundle.name}`,
+                dueDate: new Date(),
+                paidAt: new Date(),
+              }).returning();
+              
+              // Create invoice items for each script in the bundle
+              const allScripts = await storage.getScripts();
+              const includedScriptsData = allScripts.filter(s => scriptIds.includes(s.id));
+              const pricePerScript = Math.round(subtotalCents / scriptIds.length);
+              
+              for (const script of includedScriptsData) {
+                await db.insert(invoiceItems).values({
+                  invoiceId: newInvoice.id,
+                  scriptId: script.id,
+                  description: script.name,
+                  quantity: 1,
+                  unitPriceCents: pricePerScript,
+                  totalCents: pricePerScript,
+                });
+              }
+              
+              console.log(`Invoice ${autoInvoiceNumber} created for bundle ${bundle.name} - user ${userId}`);
+            }
+          } catch (invoiceError) {
+            console.error('Error creating bundle invoice:', invoiceError);
+          }
+          
+          // Send purchase confirmation email for bundle
+          try {
+            const [user] = await db.select().from(users).where(eq(users.id, userId));
+            const bundle = await storage.getAnnualBundle(parseInt(bundleId));
+            
+            if (user && user.email && bundle) {
+              const { sendSubscriptionInvoiceEmail } = await import('./email');
+              const customerName = user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user.firstName || user.email.split('@')[0];
+              
+              const periodStart = new Date();
+              const periodEnd = expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+              
+              await sendSubscriptionInvoiceEmail({
+                customerEmail: user.email,
+                customerName,
+                productName: bundle.name,
+                amountCents: parseInt(priceCents || "0"),
+                periodStart,
+                periodEnd
+              });
+              console.log(`Bundle purchase email sent to ${user.email} for ${bundle.name}`);
+            }
+          } catch (emailError) {
+            console.error('Error sending bundle purchase email:', emailError);
+          }
+          
           return res.json({ success: true, message: "Bundle purchase recorded" });
         }
         
