@@ -933,33 +933,56 @@ export async function registerRoutes(
           .where(eq(users.id, userId));
       }
 
-      let stripePrices = await storage.getStripePricesForProduct(script.name);
-      let priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
+      // Calculate yearly price with 15% discount
+      const yearlyPriceCents = Math.round(script.monthlyPriceCents * 12 * 0.85);
       
-      // Auto-create Stripe product if not found
+      let stripePrices = await storage.getStripePricesForProduct(script.name);
+      let priceId: string | null = null;
+      
+      if (purchaseType === "monthly") {
+        priceId = stripePrices.recurringPrice;
+      } else if (purchaseType === "yearly") {
+        priceId = stripePrices.yearlyPrice || null;
+      } else {
+        priceId = stripePrices.oneTimePrice;
+      }
+      
+      // Auto-create Stripe product/prices if not found
       if (!priceId) {
-        console.log(`Auto-creating Stripe product for: ${script.name}`);
+        console.log(`Auto-creating Stripe product for: ${script.name} (${purchaseType})`);
         await storage.ensureStripeProductExists({
           name: script.name,
           description: script.description,
           os: script.os,
           compliance: script.compliance,
           monthlyPriceCents: script.monthlyPriceCents,
+          yearlyPriceCents: yearlyPriceCents,
         });
         
         // Retry getting prices after creation
         stripePrices = await storage.getStripePricesForProduct(script.name);
-        priceId = purchaseType === "monthly" ? stripePrices.recurringPrice : stripePrices.oneTimePrice;
+        if (purchaseType === "monthly") {
+          priceId = stripePrices.recurringPrice;
+        } else if (purchaseType === "yearly") {
+          priceId = stripePrices.yearlyPrice || null;
+        } else {
+          priceId = stripePrices.oneTimePrice;
+        }
         
         if (!priceId) {
-          console.error(`Still no Stripe price found for ${script.name} after auto-creation`);
+          console.error(`Still no Stripe price found for ${script.name} (${purchaseType}) after auto-creation`);
           return res.status(500).json({ message: "Prix Stripe non configuré" });
         }
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const mode = purchaseType === "monthly" ? "subscription" : "payment";
-      const priceAmount = purchaseType === "monthly" ? script.monthlyPriceCents : script.priceCents;
+      const mode = (purchaseType === "monthly" || purchaseType === "yearly") ? "subscription" : "payment";
+      let priceAmount = script.monthlyPriceCents;
+      if (purchaseType === "yearly") {
+        priceAmount = yearlyPriceCents;
+      } else if (purchaseType !== "monthly") {
+        priceAmount = script.priceCents;
+      }
 
       const sessionParams: any = {
         customer: customerId,

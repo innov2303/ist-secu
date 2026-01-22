@@ -151,24 +151,29 @@ export class DatabaseStorage implements IStorage {
     return null;
   }
 
-  private stripePricesCache: Map<string, {oneTimePrice: string | null, recurringPrice: string | null, timestamp: number}> = new Map();
+  private stripePricesCache: Map<string, {oneTimePrice: string | null, recurringPrice: string | null, yearlyPrice?: string | null, timestamp: number}> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  async ensureStripeProductExists(script: { name: string; description: string; os: string; compliance: string; monthlyPriceCents: number }): Promise<boolean> {
+  async ensureStripeProductExists(script: { name: string; description: string; os: string; compliance: string; monthlyPriceCents: number; yearlyPriceCents?: number }): Promise<boolean> {
     try {
       const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        console.error('Stripe client not available');
+        return false;
+      }
       
       // Check if product already exists
       const products = await stripe.products.list({ active: true, limit: 100 });
       const existingProduct = products.data.find(p => p.name === script.name);
       
       if (existingProduct) {
-        // Check if price exists
+        // Check if prices exist
         const prices = await stripe.prices.list({ product: existingProduct.id, active: true });
-        const hasRecurringPrice = prices.data.some(p => p.recurring?.interval === 'month');
+        const hasMonthlyPrice = prices.data.some(p => p.recurring?.interval === 'month');
+        const hasYearlyPrice = prices.data.some(p => p.recurring?.interval === 'year');
         
-        if (!hasRecurringPrice && script.monthlyPriceCents > 0) {
-          // Create missing recurring price
+        if (!hasMonthlyPrice && script.monthlyPriceCents > 0) {
+          // Create missing monthly price
           await stripe.prices.create({
             product: existingProduct.id,
             unit_amount: script.monthlyPriceCents,
@@ -178,6 +183,21 @@ export class DatabaseStorage implements IStorage {
           });
           console.log(`Created missing monthly price for: ${script.name}`);
         }
+        
+        if (!hasYearlyPrice && script.yearlyPriceCents && script.yearlyPriceCents > 0) {
+          // Create missing yearly price (Security Pack with 15% discount)
+          await stripe.prices.create({
+            product: existingProduct.id,
+            unit_amount: script.yearlyPriceCents,
+            currency: 'eur',
+            recurring: { interval: 'year' },
+            metadata: { type: 'yearly', discount: '15%' },
+          });
+          console.log(`Created missing yearly price for: ${script.name} (${script.yearlyPriceCents / 100} EUR/year)`);
+        }
+        
+        // Clear cache to pick up new prices
+        this.stripePricesCache.delete(script.name);
         
         console.log(`Stripe product already exists: ${script.name}`);
         return true;
@@ -191,7 +211,7 @@ export class DatabaseStorage implements IStorage {
       });
       console.log(`Created Stripe product: ${product.name} (${product.id})`);
       
-      // Create recurring price (subscription)
+      // Create recurring price (monthly subscription)
       if (script.monthlyPriceCents > 0) {
         const price = await stripe.prices.create({
           product: product.id,
@@ -201,6 +221,18 @@ export class DatabaseStorage implements IStorage {
           metadata: { type: 'monthly' },
         });
         console.log(`Created monthly price: ${price.id} (${script.monthlyPriceCents / 100} EUR/month)`);
+      }
+      
+      // Create yearly price (Security Pack with 15% discount)
+      if (script.yearlyPriceCents && script.yearlyPriceCents > 0) {
+        const yearlyPrice = await stripe.prices.create({
+          product: product.id,
+          unit_amount: script.yearlyPriceCents,
+          currency: 'eur',
+          recurring: { interval: 'year' },
+          metadata: { type: 'yearly', discount: '15%' },
+        });
+        console.log(`Created yearly price: ${yearlyPrice.id} (${script.yearlyPriceCents / 100} EUR/year)`);
       }
       
       // Clear cache for this product
@@ -213,15 +245,18 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getStripePricesForProduct(productName: string): Promise<{oneTimePrice: string | null, recurringPrice: string | null}> {
+  async getStripePricesForProduct(productName: string): Promise<{oneTimePrice: string | null, recurringPrice: string | null, yearlyPrice: string | null}> {
     // Check cache first
     const cached = this.stripePricesCache.get(productName);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return { oneTimePrice: cached.oneTimePrice, recurringPrice: cached.recurringPrice };
+      return { oneTimePrice: cached.oneTimePrice, recurringPrice: cached.recurringPrice, yearlyPrice: cached.yearlyPrice || null };
     }
 
     try {
       const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return { oneTimePrice: null, recurringPrice: null, yearlyPrice: null };
+      }
       
       // Find the product by name
       const products = await stripe.products.list({ active: true, limit: 100 });
@@ -229,7 +264,7 @@ export class DatabaseStorage implements IStorage {
       
       if (!product) {
         console.log(`Stripe product not found: ${productName}`);
-        return { oneTimePrice: null, recurringPrice: null };
+        return { oneTimePrice: null, recurringPrice: null, yearlyPrice: null };
       }
       
       // Get prices for this product
@@ -237,22 +272,27 @@ export class DatabaseStorage implements IStorage {
       
       let oneTimePrice: string | null = null;
       let recurringPrice: string | null = null;
+      let yearlyPrice: string | null = null;
       
       for (const price of prices.data) {
         if (price.recurring) {
-          recurringPrice = price.id;
+          if (price.recurring.interval === 'year') {
+            yearlyPrice = price.id;
+          } else if (price.recurring.interval === 'month') {
+            recurringPrice = price.id;
+          }
         } else {
           oneTimePrice = price.id;
         }
       }
       
       // Cache the result
-      this.stripePricesCache.set(productName, { oneTimePrice, recurringPrice, timestamp: Date.now() });
+      this.stripePricesCache.set(productName, { oneTimePrice, recurringPrice, yearlyPrice, timestamp: Date.now() });
       
-      return { oneTimePrice, recurringPrice };
+      return { oneTimePrice, recurringPrice, yearlyPrice };
     } catch (error) {
       console.error(`Error fetching Stripe prices for ${productName}:`, error);
-      return { oneTimePrice: null, recurringPrice: null };
+      return { oneTimePrice: null, recurringPrice: null, yearlyPrice: null };
     }
   }
 
