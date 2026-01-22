@@ -1123,11 +1123,18 @@ export async function registerRoutes(
         });
       }
 
-      // Find or create yearly price
+      // Find or create yearly price - always check if price matches current calculation
       const prices = await stripe.prices.list({ product: product.id, active: true });
-      let yearlyPrice = prices.data.find(p => p.recurring?.interval === 'year');
+      let yearlyPrice = prices.data.find(p => 
+        p.recurring?.interval === 'year' && p.unit_amount === discountedPrice
+      );
       
       if (!yearlyPrice) {
+        // Deactivate old prices that don't match
+        for (const oldPrice of prices.data.filter(p => p.recurring?.interval === 'year')) {
+          await stripe.prices.update(oldPrice.id, { active: false });
+        }
+        // Create new price with correct amount
         yearlyPrice = await stripe.prices.create({
           product: product.id,
           unit_amount: discountedPrice,
