@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ export default function Profile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -52,6 +53,7 @@ export default function Profile() {
       setFirstName("");
       setLastName("");
       setCompanyName("");
+      setBillingAddress("");
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -94,7 +96,7 @@ export default function Profile() {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() && !lastName.trim() && !companyName.trim()) {
+    if (!firstName.trim() && !lastName.trim() && !companyName.trim() && !billingAddress.trim()) {
       toast({ title: "Erreur", description: "Veuillez remplir au moins un champ", variant: "destructive" });
       return;
     }
@@ -102,6 +104,7 @@ export default function Profile() {
       ...(firstName.trim() && { firstName: firstName.trim() }),
       ...(lastName.trim() && { lastName: lastName.trim() }),
       ...(companyName.trim() && { companyName: companyName.trim() }),
+      ...(billingAddress.trim() && { billingAddress: billingAddress.trim() }),
     });
   };
 
@@ -285,7 +288,7 @@ export default function Profile() {
                   <CardTitle className="text-base">Informations actuelles</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-muted rounded-lg">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -302,6 +305,15 @@ export default function Profile() {
                       <div>
                         <p className="text-xs text-muted-foreground">Entreprise</p>
                         <p className="font-medium">{(user as any).companyName || "Non renseignee"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-muted rounded-lg">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Adresse</p>
+                        <p className="font-medium">{(user as any).billingAddress || "Non renseignee"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -388,6 +400,38 @@ export default function Profile() {
                         type="submit" 
                         disabled={updateProfileMutation.isPending}
                         data-testid="button-update-company"
+                      >
+                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Address Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <MapPin className="h-4 w-4" />
+                      Adresse de facturation
+                    </CardTitle>
+                    <CardDescription>Apparait sur vos factures</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="billingAddress">Adresse</Label>
+                        <Input
+                          id="billingAddress"
+                          value={billingAddress}
+                          onChange={(e) => setBillingAddress(e.target.value)}
+                          placeholder={(user as any).billingAddress || "Adresse complete"}
+                          data-testid="input-billing-address"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={updateProfileMutation.isPending}
+                        data-testid="button-update-address"
                       >
                         {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
                       </Button>
