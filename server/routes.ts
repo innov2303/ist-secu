@@ -674,6 +674,48 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // Admin: Reset user password
+  app.post("/api/admin/users/:id/reset-password", isAuthenticated, isAdmin, async (req, res) => {
+    const userId = req.params.id;
+    const requestingUserId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+
+    // Prevent self-reset (admin should use profile page)
+    if (userId === requestingUserId) {
+      return res.status(400).json({ message: "Utilisez la page profil pour changer votre mot de passe" });
+    }
+
+    // Check if user exists
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
+    if (!targetUser) {
+      return res.status(404).json({ message: "Utilisateur non trouve" });
+    }
+
+    // Check if user has a password (local auth)
+    if (!targetUser.password) {
+      return res.status(400).json({ message: "Cet utilisateur utilise l'authentification Replit, pas de mot de passe local" });
+    }
+
+    // Generate a random password (12 characters)
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+    let newPassword = "";
+    for (let i = 0; i < 12; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Hash and update
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
+
+    // Clear any lockouts for this user
+    loginAttempts.delete(targetUser.email || "");
+
+    res.json({ 
+      message: "Mot de passe reinitialise avec succes",
+      newPassword,
+      userEmail: targetUser.email 
+    });
+  });
+
   // Purchase routes
   app.get("/api/purchases", isAuthenticated, async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;

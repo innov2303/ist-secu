@@ -16,7 +16,7 @@ import {
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
-  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon
+  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
@@ -96,6 +96,9 @@ export default function AdminPage() {
     analysisDate: string;
     message: string;
   } | null>(null);
+
+  // Password reset state
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ email: string; password: string } | null>(null);
 
   const { data: users, isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -297,6 +300,24 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "Utilisateur supprimé" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("POST", `/api/admin/users/${userId}/reset-password`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ message: "Erreur inconnue" }));
+        throw new Error(data.message || "Erreur lors de la reinitialisation");
+      }
+      return response.json();
+    },
+    onSuccess: (data: { newPassword: string; userEmail: string }) => {
+      setResetPasswordResult({ email: data.userEmail, password: data.newPassword });
+      toast({ title: "Mot de passe reinitialise" });
     },
     onError: (error: Error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -776,15 +797,28 @@ export default function AdminPage() {
                               <div className="text-sm text-muted-foreground">{u.email}</div>
                             </div>
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            onClick={() => deleteUserMutation.mutate(u.id)}
-                            disabled={u.id === user.id || deleteUserMutation.isPending}
-                            data-testid={`button-delete-user-${u.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => resetPasswordMutation.mutate(u.id)}
+                              disabled={u.id === user.id || resetPasswordMutation.isPending}
+                              title="Regenerer le mot de passe"
+                              data-testid={`button-reset-password-${u.id}`}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => deleteUserMutation.mutate(u.id)}
+                              disabled={u.id === user.id || deleteUserMutation.isPending}
+                              title="Supprimer l'utilisateur"
+                              data-testid={`button-delete-user-${u.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1979,6 +2013,57 @@ export default function AdminPage() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingInvoice(null)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Result Dialog */}
+      <Dialog open={!!resetPasswordResult} onOpenChange={(open) => !open && setResetPasswordResult(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Nouveau mot de passe genere
+            </DialogTitle>
+            <DialogDescription>
+              Communiquez ce mot de passe a l'utilisateur. Il ne sera plus visible apres la fermeture de cette fenetre.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {resetPasswordResult && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Utilisateur</p>
+                <p className="font-medium">{resetPasswordResult.email}</p>
+              </div>
+              
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Nouveau mot de passe</p>
+                <div className="flex items-center justify-between gap-2">
+                  <code className="text-lg font-mono font-bold text-primary" data-testid="text-new-password">
+                    {resetPasswordResult.password}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resetPasswordResult.password);
+                      toast({ title: "Mot de passe copie" });
+                    }}
+                    title="Copier le mot de passe"
+                    data-testid="button-copy-password"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setResetPasswordResult(null)}>
               Fermer
             </Button>
           </DialogFooter>
