@@ -1,4 +1,4 @@
-import { scripts, purchases, annualBundles, type Script, type InsertScript, type Purchase, type InsertPurchase, type AnnualBundle, type InsertAnnualBundle } from "@shared/schema";
+import { scripts, purchases, annualBundles, type Script, type InsertScript, type Purchase, type InsertPurchase, type AnnualBundle, type InsertAnnualBundle, type UpdateAnnualBundle } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, ne, inArray } from "drizzle-orm";
 import * as fs from "fs";
@@ -23,8 +23,10 @@ export interface IStorage {
   getActivePurchase(userId: string, scriptId: number): Promise<Purchase | null>;
   // Annual bundle methods
   getAnnualBundles(): Promise<AnnualBundle[]>;
+  getAllAnnualBundles(): Promise<AnnualBundle[]>;
   getAnnualBundle(id: number): Promise<AnnualBundle | undefined>;
   createAnnualBundle(bundle: InsertAnnualBundle): Promise<AnnualBundle>;
+  updateAnnualBundle(id: number, data: UpdateAnnualBundle): Promise<AnnualBundle | undefined>;
   seedAnnualBundles(): Promise<void>;
 }
 
@@ -422,6 +424,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(annualBundles).where(eq(annualBundles.isActive, 1));
   }
 
+  async getAllAnnualBundles(): Promise<AnnualBundle[]> {
+    return await db.select().from(annualBundles);
+  }
+
   async getAnnualBundle(id: number): Promise<AnnualBundle | undefined> {
     const [bundle] = await db.select().from(annualBundles).where(eq(annualBundles.id, id));
     return bundle;
@@ -430,6 +436,11 @@ export class DatabaseStorage implements IStorage {
   async createAnnualBundle(bundle: InsertAnnualBundle): Promise<AnnualBundle> {
     const [newBundle] = await db.insert(annualBundles).values(bundle).returning();
     return newBundle;
+  }
+
+  async updateAnnualBundle(id: number, data: UpdateAnnualBundle): Promise<AnnualBundle | undefined> {
+    const [updated] = await db.update(annualBundles).set(data).where(eq(annualBundles.id, id)).returning();
+    return updated;
   }
 
   async seedAnnualBundles(): Promise<void> {

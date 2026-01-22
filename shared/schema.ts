@@ -181,5 +181,15 @@ export const annualBundles = pgTable("annual_bundles", {
 
 export const insertAnnualBundleSchema = createInsertSchema(annualBundles).omit({ id: true });
 
+export const updateAnnualBundleSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  icon: z.string().min(1).optional(),
+  includedScriptIds: z.array(z.number()).optional(),
+  discountPercent: z.number().int().min(0).max(100).optional(),
+  isActive: z.number().int().min(0).max(1).optional(),
+});
+
 export type AnnualBundle = typeof annualBundles.$inferSelect;
 export type InsertAnnualBundle = z.infer<typeof insertAnnualBundleSchema>;
+export type UpdateAnnualBundle = z.infer<typeof updateAnnualBundleSchema>;
