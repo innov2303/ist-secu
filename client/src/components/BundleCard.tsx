@@ -37,19 +37,12 @@ export function BundleCard({ bundle, scripts, index }: BundleCardProps) {
   // Get included scripts
   const includedScripts = scripts.filter(s => bundle.includedScriptIds.includes(s.id));
   
-  // Calculate prices HT (excluding 20% VAT)
+  // Calculate prices (prices are already HT)
   const totalMonthlyPrice = includedScripts.reduce((sum, s) => sum + s.monthlyPriceCents, 0);
   const annualPrice = totalMonthlyPrice * 12;
   const discountedPrice = Math.round(annualPrice * (1 - bundle.discountPercent / 100));
   const savings = annualPrice - discountedPrice;
   const monthlyEquivalent = Math.round(discountedPrice / 12);
-  
-  // HT prices (divide by 1.20 to remove 20% VAT)
-  const annualPriceHT = Math.round(annualPrice / 1.20);
-  const discountedPriceHT = Math.round(discountedPrice / 1.20);
-  const savingsHT = Math.round(savings / 1.20);
-  const monthlyEquivalentHT = Math.round(monthlyEquivalent / 1.20);
-  const scriptMonthlyPriceHT = (cents: number) => Math.round(cents / 1.20);
 
   // Check if user has all included scripts
   const purchaseChecks = useQuery<Record<number, boolean>>({
@@ -138,7 +131,7 @@ export function BundleCard({ bundle, scripts, index }: BundleCardProps) {
                 <li key={script.id} className="flex items-center gap-2 text-sm">
                   <Check className="w-4 h-4 text-green-500" />
                   <span>{script.name}</span>
-                  <span className="text-muted-foreground">({formatPrice(scriptMonthlyPriceHT(script.monthlyPriceCents))} HT/mois)</span>
+                  <span className="text-muted-foreground">({formatPrice(script.monthlyPriceCents)} HT/mois)</span>
                 </li>
               ))}
             </ul>
@@ -147,18 +140,18 @@ export function BundleCard({ bundle, scripts, index }: BundleCardProps) {
           <div className="pt-4 border-t space-y-2">
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-muted-foreground">Prix normal:</span>
-              <span className="text-sm line-through text-muted-foreground">{formatPrice(annualPriceHT)} HT/an</span>
+              <span className="text-sm line-through text-muted-foreground">{formatPrice(annualPrice)} HT/an</span>
             </div>
             <div className="flex items-baseline justify-between">
               <span className="font-medium">Votre prix:</span>
-              <span className="text-2xl font-bold text-primary">{formatPrice(discountedPriceHT)} HT/an</span>
+              <span className="text-2xl font-bold text-primary">{formatPrice(discountedPrice)} HT/an</span>
             </div>
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-muted-foreground">Soit:</span>
-              <span className="text-muted-foreground">{formatPrice(monthlyEquivalentHT)} HT/mois</span>
+              <span className="text-muted-foreground">{formatPrice(monthlyEquivalent)} HT/mois</span>
             </div>
             <div className="flex items-center justify-end gap-1 text-green-600">
-              <span className="text-sm font-medium">Economie: {formatPrice(savingsHT)} HT</span>
+              <span className="text-sm font-medium">Economie: {formatPrice(savings)} HT</span>
             </div>
           </div>
         </CardContent>

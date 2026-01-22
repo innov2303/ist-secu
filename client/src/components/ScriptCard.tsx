@@ -107,11 +107,9 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const Icon = IconMap[script.icon.toLowerCase()] || FileCode;
 
-  // Calculate prices HT (excluding 20% VAT)
-  const monthlyPriceHT = Math.round(script.monthlyPriceCents / 1.20);
+  // Calculate yearly price with 15% discount (prices are already HT)
   const yearlyPriceCents = Math.round(script.monthlyPriceCents * 12 * 0.85);
-  const yearlyPriceHT = Math.round(yearlyPriceCents / 1.20);
-  const monthlySavings = Math.round(((script.monthlyPriceCents * 12) - yearlyPriceCents) / 1.20);
+  const monthlySavings = (script.monthlyPriceCents * 12) - yearlyPriceCents;
 
   const { data: purchaseStatus, isLoading: checkingPurchase } = useQuery<PurchaseStatus>({
     queryKey: ["/api/purchases/check", script.id],
@@ -243,13 +241,13 @@ export function ScriptCard({ script, index }: ScriptCardProps) {
                 {billingCycle === "monthly" ? (
                   <>
                     <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
-                      {formatPrice(monthlyPriceHT)}<span className="text-sm font-normal text-muted-foreground"> HT/mois</span>
+                      {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> HT/mois</span>
                     </p>
                   </>
                 ) : (
                   <>
                     <p className="text-lg font-bold text-primary" data-testid={`text-price-yearly-${script.id}`}>
-                      {formatPrice(yearlyPriceHT)}<span className="text-sm font-normal text-muted-foreground"> HT/an</span>
+                      {formatPrice(yearlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> HT/an</span>
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400">
                       Economisez {formatPrice(monthlySavings)} HT
