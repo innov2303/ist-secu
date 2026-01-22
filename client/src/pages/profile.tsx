@@ -329,65 +329,41 @@ export default function Profile() {
                 </CardContent>
               </Card>
 
-              {/* Edit Cards Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Identity Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <User className="h-4 w-4" />
-                      Modifier l'identite
-                    </CardTitle>
-                    <CardDescription>Mettez a jour votre nom</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleUpdateProfile} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName">Prenom</Label>
-                          <Input
-                            id="firstName"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            placeholder={user.firstName || "Prenom"}
-                            data-testid="input-first-name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName">Nom</Label>
-                          <Input
-                            id="lastName"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            placeholder={user.lastName || "Nom"}
-                            data-testid="input-last-name"
-                          />
-                        </div>
+              {/* Combined Profile Card */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base">Modifier mes informations</CardTitle>
+                  <CardDescription>Ces informations apparaitront sur vos factures</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateProfile} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="firstName" className="text-xs flex items-center gap-1.5">
+                          <User className="h-3 w-3" /> Prenom
+                        </Label>
+                        <Input
+                          id="firstName"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder={user.firstName || "Prenom"}
+                          data-testid="input-first-name"
+                        />
                       </div>
-                      <Button 
-                        type="submit" 
-                        disabled={updateProfileMutation.isPending}
-                        data-testid="button-update-name"
-                      >
-                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-
-                {/* Company Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Building2 className="h-4 w-4" />
-                      Nom de l'entreprise
-                    </CardTitle>
-                    <CardDescription>Apparait sur vos factures</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleUpdateProfile} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName">Entreprise</Label>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="lastName" className="text-xs">Nom</Label>
+                        <Input
+                          id="lastName"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder={user.lastName || "Nom"}
+                          data-testid="input-last-name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="companyName" className="text-xs flex items-center gap-1.5">
+                          <Building2 className="h-3 w-3" /> Entreprise
+                        </Label>
                         <Input
                           id="companyName"
                           value={companyName}
@@ -396,30 +372,10 @@ export default function Profile() {
                           data-testid="input-company-name"
                         />
                       </div>
-                      <Button 
-                        type="submit" 
-                        disabled={updateProfileMutation.isPending}
-                        data-testid="button-update-company"
-                      >
-                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-
-                {/* Address Card */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <MapPin className="h-4 w-4" />
-                      Adresse de facturation
-                    </CardTitle>
-                    <CardDescription>Apparait sur vos factures</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleUpdateProfile} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="billingAddress">Adresse</Label>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="billingAddress" className="text-xs flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3" /> Adresse
+                        </Label>
                         <Input
                           id="billingAddress"
                           value={billingAddress}
@@ -428,126 +384,126 @@ export default function Profile() {
                           data-testid="input-billing-address"
                         />
                       </div>
-                      <Button 
-                        type="submit" 
-                        disabled={updateProfileMutation.isPending}
-                        data-testid="button-update-address"
-                      >
-                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
-                      </Button>
-                    </form>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      disabled={updateProfileMutation.isPending}
+                      data-testid="button-update-profile"
+                    >
+                      {updateProfileMutation.isPending ? "Mise a jour..." : "Enregistrer les modifications"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Security Section - Local users only */}
+              {isLocalUser && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Securite du compte
+                    </CardTitle>
+                    <CardDescription>Modifiez votre email ou mot de passe</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Email Change */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5" /> Changer l'email
+                        </h4>
+                        <form onSubmit={handleRequestEmailChange} className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="newEmail" className="text-xs">Nouvel email</Label>
+                              <Input
+                                id="newEmail"
+                                type="email"
+                                value={newEmail}
+                                onChange={(e) => setNewEmail(e.target.value)}
+                                placeholder="nouvelle@email.com"
+                                data-testid="input-new-email"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="emailPassword" className="text-xs">Mot de passe</Label>
+                              <Input
+                                id="emailPassword"
+                                type="password"
+                                value={emailPassword}
+                                onChange={(e) => setEmailPassword(e.target.value)}
+                                placeholder="Pour confirmer"
+                                data-testid="input-email-password"
+                              />
+                            </div>
+                          </div>
+                          <Button 
+                            type="submit" 
+                            size="sm"
+                            disabled={requestEmailChangeMutation.isPending}
+                            data-testid="button-request-email-change"
+                          >
+                            {requestEmailChangeMutation.isPending ? "Envoi..." : "Changer l'email"}
+                          </Button>
+                        </form>
+                      </div>
+
+                      {/* Password Change */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5" /> Changer le mot de passe
+                        </h4>
+                        <form onSubmit={handleChangePassword} className="space-y-3">
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="currentPassword" className="text-xs">Actuel</Label>
+                              <Input
+                                id="currentPassword"
+                                type="password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder="Actuel"
+                                data-testid="input-current-password"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="newPassword" className="text-xs">Nouveau</Label>
+                              <Input
+                                id="newPassword"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Nouveau"
+                                data-testid="input-new-password"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="confirmPassword" className="text-xs">Confirmer</Label>
+                              <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirmer"
+                                data-testid="input-confirm-password"
+                              />
+                            </div>
+                          </div>
+                          <Button 
+                            type="submit" 
+                            size="sm"
+                            disabled={changePasswordMutation.isPending}
+                            data-testid="button-change-password"
+                          >
+                            {changePasswordMutation.isPending ? "Modification..." : "Changer le mot de passe"}
+                          </Button>
+                        </form>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-
-                {/* Email Card - Local users only */}
-                {isLocalUser && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Mail className="h-4 w-4" />
-                        Changer l'email
-                      </CardTitle>
-                      <CardDescription>Modifiez votre adresse email</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Alert className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-xs">
-                          Un email de confirmation sera envoye a la nouvelle adresse.
-                        </AlertDescription>
-                      </Alert>
-                      <form onSubmit={handleRequestEmailChange} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="newEmail">Nouvel email</Label>
-                          <Input
-                            id="newEmail"
-                            type="email"
-                            value={newEmail}
-                            onChange={(e) => setNewEmail(e.target.value)}
-                            placeholder="nouvelle@email.com"
-                            data-testid="input-new-email"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="emailPassword">Mot de passe actuel</Label>
-                          <Input
-                            id="emailPassword"
-                            type="password"
-                            value={emailPassword}
-                            onChange={(e) => setEmailPassword(e.target.value)}
-                            placeholder="Pour confirmer votre identite"
-                            data-testid="input-email-password"
-                          />
-                        </div>
-                        <Button 
-                          type="submit" 
-                          disabled={requestEmailChangeMutation.isPending}
-                          data-testid="button-request-email-change"
-                        >
-                          {requestEmailChangeMutation.isPending ? "Envoi..." : "Changer l'email"}
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Password Card - Local users only */}
-                {isLocalUser && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Lock className="h-4 w-4" />
-                        Changer le mot de passe
-                      </CardTitle>
-                      <CardDescription>Mettez a jour votre mot de passe</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <form onSubmit={handleChangePassword} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-                          <Input
-                            id="currentPassword"
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            placeholder="Votre mot de passe actuel"
-                            data-testid="input-current-password"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                          <Input
-                            id="newPassword"
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="Minimum 6 caracteres"
-                            data-testid="input-new-password"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="confirmPassword">Confirmer</Label>
-                          <Input
-                            id="confirmPassword"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirmez le nouveau mot de passe"
-                            data-testid="input-confirm-password"
-                          />
-                        </div>
-                        <Button 
-                          type="submit" 
-                          disabled={changePasswordMutation.isPending}
-                          data-testid="button-change-password"
-                        >
-                          {changePasswordMutation.isPending ? "Modification..." : "Changer"}
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              )}
             </div>
           )}
 
