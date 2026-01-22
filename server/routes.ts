@@ -431,6 +431,63 @@ export async function registerRoutes(
     }
   });
 
+  // Get user's own invoices
+  app.get("/api/my-invoices", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
+      const userInvoices = await db
+        .select()
+        .from(invoices)
+        .where(eq(invoices.userId, userId))
+        .orderBy(sql`${invoices.createdAt} DESC`);
+
+      res.json({ invoices: userInvoices });
+    } catch (error) {
+      console.error("Error fetching user invoices:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération des factures" });
+    }
+  });
+
+  // Get single invoice with items (user's own)
+  app.get("/api/my-invoices/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
+      const { id } = req.params;
+      const invoiceId = parseInt(id);
+
+      if (isNaN(invoiceId) || invoiceId <= 0) {
+        return res.status(400).json({ message: "ID de facture invalide" });
+      }
+
+      const [invoice] = await db
+        .select()
+        .from(invoices)
+        .where(sql`${invoices.id} = ${invoiceId} AND ${invoices.userId} = ${userId}`);
+
+      if (!invoice) {
+        return res.status(404).json({ message: "Facture non trouvée" });
+      }
+
+      const items = await db
+        .select()
+        .from(invoiceItems)
+        .where(eq(invoiceItems.invoiceId, invoiceId));
+
+      res.json({ invoice, items });
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération de la facture" });
+    }
+  });
+
   // Initialize seed data and update scripts from files
   await storage.seed();
   await storage.updateScriptsFromFiles();

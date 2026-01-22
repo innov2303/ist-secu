@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, User, Mail, Lock, AlertCircle, Building2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, AlertCircle, Building2, FileText, Download, Eye, Calendar, CreditCard, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Invoice, InvoiceItem } from "@shared/schema";
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
@@ -24,6 +27,13 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [viewingInvoice, setViewingInvoice] = useState<{ invoice: Invoice; items: InvoiceItem[] } | null>(null);
+
+  // Fetch user invoices
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[] }>({
+    queryKey: ["/api/my-invoices"],
+    enabled: !!user,
+  });
 
   const isLocalUser = (user as any)?.isLocalAuth === true;
 
@@ -115,6 +125,38 @@ export default function Profile() {
       return;
     }
     changePasswordMutation.mutate({ currentPassword, newPassword });
+  };
+
+  const handleViewInvoice = async (invoiceId: number) => {
+    try {
+      const response = await apiRequest("GET", `/api/my-invoices/${invoiceId}`);
+      if (!response.ok) throw new Error("Erreur lors de la recuperation de la facture");
+      const data = await response.json();
+      setViewingInvoice(data);
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de charger la facture", variant: "destructive" });
+    }
+  };
+
+  const getInvoiceStatusBadge = (status: string) => {
+    switch (status) {
+      case "paid":
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Payee</Badge>;
+      case "sent":
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Envoyee</Badge>;
+      case "draft":
+        return <Badge variant="secondary">Brouillon</Badge>;
+      case "overdue":
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">En retard</Badge>;
+      case "cancelled":
+        return <Badge variant="outline">Annulee</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const formatCurrency = (cents: number) => {
+    return (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
   };
 
   if (isLoading) {
@@ -376,7 +418,149 @@ export default function Profile() {
             </Card>
           </div>
         )}
+
+        {/* Invoice History Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Historique des factures
+            </CardTitle>
+            <CardDescription>
+              Consultez vos factures liees a vos abonnements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {invoicesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !invoicesData?.invoices || invoicesData.invoices.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Aucune facture disponible</p>
+                <p className="text-sm mt-1">Vos factures apparaitront ici apres un achat</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invoicesData.invoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover-elevate cursor-pointer"
+                    onClick={() => handleViewInvoice(invoice.id)}
+                    data-testid={`invoice-row-${invoice.id}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-muted rounded-lg">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <div className="font-medium" data-testid={`text-invoice-number-${invoice.id}`}>
+                          {invoice.invoiceNumber}
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(invoice.createdAt).toLocaleDateString('fr-FR')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="font-semibold" data-testid={`text-invoice-total-${invoice.id}`}>
+                          {formatCurrency(invoice.totalCents)}
+                        </div>
+                        {getInvoiceStatusBadge(invoice.status)}
+                      </div>
+                      <Button variant="ghost" size="icon" data-testid={`button-view-invoice-${invoice.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Facture {viewingInvoice?.invoice.invoiceNumber}
+            </DialogTitle>
+            <DialogDescription>
+              Details de la facture
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewingInvoice && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Statut</span>
+                {getInvoiceStatusBadge(viewingInvoice.invoice.status)}
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Date</span>
+                <span>{new Date(viewingInvoice.invoice.createdAt).toLocaleDateString('fr-FR')}</span>
+              </div>
+
+              {viewingInvoice.invoice.paidAt && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Payee le</span>
+                  <span className="flex items-center gap-1 text-green-500">
+                    <CreditCard className="h-4 w-4" />
+                    {new Date(viewingInvoice.invoice.paidAt).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              )}
+
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">Articles</h4>
+                <div className="space-y-2">
+                  {viewingInvoice.items.map((item) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span>{item.description}</span>
+                      <span className="font-medium">{formatCurrency(item.totalCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Sous-total HT</span>
+                  <span>{formatCurrency(viewingInvoice.invoice.subtotalCents)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">TVA ({viewingInvoice.invoice.taxRate}%)</span>
+                  <span>{formatCurrency(viewingInvoice.invoice.taxCents)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                  <span>Total TTC</span>
+                  <span>{formatCurrency(viewingInvoice.invoice.totalCents)}</span>
+                </div>
+              </div>
+
+              {viewingInvoice.invoice.notes && (
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <p className="text-sm text-muted-foreground">{viewingInvoice.invoice.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingInvoice(null)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
