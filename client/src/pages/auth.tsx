@@ -93,7 +93,7 @@ export default function AuthPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12 max-w-md flex-1">
+      <div className="container mx-auto px-4 py-12 max-w-2xl flex-1">
 
         <Card>
           <CardHeader className="text-center">
@@ -207,46 +207,48 @@ export default function AuthPage() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Mot de passe</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-password"
-                        type="password"
-                        placeholder="••••••••"
-                        className="pl-10"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        required
-                        minLength={6}
-                        data-testid="input-register-password"
-                      />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="register-password">Mot de passe</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="register-password"
+                          type="password"
+                          placeholder="••••••••"
+                          className="pl-10"
+                          value={registerData.password}
+                          onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                          required
+                          minLength={6}
+                          data-testid="input-register-password"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Min. 8 car., majuscule, chiffre, special</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Minimum 6 caracteres</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password">Confirmer le mot de passe</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-confirm-password"
-                        type="password"
-                        placeholder="••••••••"
-                        className="pl-10"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                        required
-                        minLength={6}
-                        data-testid="input-register-confirm-password"
-                      />
+                    <div className="space-y-2">
+                      <Label htmlFor="register-confirm-password">Confirmer</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="register-confirm-password"
+                          type="password"
+                          placeholder="••••••••"
+                          className="pl-10"
+                          value={registerData.confirmPassword}
+                          onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                          required
+                          minLength={6}
+                          data-testid="input-register-confirm-password"
+                        />
+                      </div>
                     </div>
                   </div>
 
                   <div className="border-t pt-4 mt-4">
                     <h3 className="text-sm font-medium mb-3">Adresse</h3>
-                    <div className="space-y-3">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-6 gap-3">
+                      <div className="col-span-3 space-y-2">
                         <Label htmlFor="register-street">Rue</Label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -262,31 +264,29 @@ export default function AuthPage() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="register-postal-code">Code postal</Label>
-                          <Input
-                            id="register-postal-code"
-                            type="text"
-                            placeholder="75001"
-                            value={registerData.postalCode}
-                            onChange={(e) => setRegisterData({ ...registerData, postalCode: e.target.value })}
-                            required
-                            data-testid="input-register-postal-code"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="register-city">Ville</Label>
-                          <Input
-                            id="register-city"
-                            type="text"
-                            placeholder="Paris"
-                            value={registerData.city}
-                            onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
-                            required
-                            data-testid="input-register-city"
-                          />
-                        </div>
+                      <div className="col-span-1 space-y-2">
+                        <Label htmlFor="register-postal-code">Code postal</Label>
+                        <Input
+                          id="register-postal-code"
+                          type="text"
+                          placeholder="75001"
+                          value={registerData.postalCode}
+                          onChange={(e) => setRegisterData({ ...registerData, postalCode: e.target.value })}
+                          required
+                          data-testid="input-register-postal-code"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="register-city">Ville</Label>
+                        <Input
+                          id="register-city"
+                          type="text"
+                          placeholder="Paris"
+                          value={registerData.city}
+                          onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
+                          required
+                          data-testid="input-register-city"
+                        />
                       </div>
                     </div>
                   </div>
@@ -311,26 +311,26 @@ export default function AuthPage() {
                     </div>
 
                     {!registerData.billingAddressSameAsAddress && (
-                      <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2">
-                        <h3 className="text-sm font-medium">Adresse de facturation</h3>
-                        <div className="space-y-2">
-                          <Label htmlFor="register-billing-street">Rue</Label>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="register-billing-street"
-                              type="text"
-                              placeholder="456 avenue des Champs"
-                              className="pl-10"
-                              value={registerData.billingStreet}
-                              onChange={(e) => setRegisterData({ ...registerData, billingStreet: e.target.value })}
-                              required
-                              data-testid="input-register-billing-street"
-                            />
+                      <div className="animate-in fade-in-0 slide-in-from-top-2">
+                        <h3 className="text-sm font-medium mb-3">Adresse de facturation</h3>
+                        <div className="grid grid-cols-6 gap-3">
+                          <div className="col-span-3 space-y-2">
+                            <Label htmlFor="register-billing-street">Rue</Label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="register-billing-street"
+                                type="text"
+                                placeholder="456 avenue des Champs"
+                                className="pl-10"
+                                value={registerData.billingStreet}
+                                onChange={(e) => setRegisterData({ ...registerData, billingStreet: e.target.value })}
+                                required
+                                data-testid="input-register-billing-street"
+                              />
+                            </div>
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
+                          <div className="col-span-1 space-y-2">
                             <Label htmlFor="register-billing-postal-code">Code postal</Label>
                             <Input
                               id="register-billing-postal-code"
@@ -342,7 +342,7 @@ export default function AuthPage() {
                               data-testid="input-register-billing-postal-code"
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="col-span-2 space-y-2">
                             <Label htmlFor="register-billing-city">Ville</Label>
                             <Input
                               id="register-billing-city"
