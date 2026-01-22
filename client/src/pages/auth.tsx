@@ -20,6 +20,7 @@ export default function AuthPage() {
   const [registerData, setRegisterData] = useState({ 
     email: "", 
     password: "", 
+    confirmPassword: "",
     firstName: "", 
     lastName: "" 
   });
@@ -44,6 +45,12 @@ export default function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    if (registerData.password !== registerData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas");
+      return;
+    }
+    
     try {
       await register(registerData);
       setLocation("/");
@@ -208,7 +215,24 @@ export default function AuthPage() {
                         data-testid="input-register-password"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">Minimum 6 caractères</p>
+                    <p className="text-xs text-muted-foreground">Minimum 6 caracteres</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="register-confirm-password">Confirmer le mot de passe</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        className="pl-10"
+                        value={registerData.confirmPassword}
+                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                        required
+                        minLength={6}
+                        data-testid="input-register-confirm-password"
+                      />
+                    </div>
                   </div>
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
