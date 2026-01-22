@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -535,6 +535,71 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching annual bundles:", error);
       res.status(500).json({ message: "Error fetching bundles" });
+    }
+  });
+
+  // Admin: Get all annual bundles (including inactive)
+  app.get("/api/admin/annual-bundles", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as { id: string };
+      const dbUser = await authStorage.getUser(user.id);
+      if (!dbUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const bundles = await storage.getAllAnnualBundles();
+      res.json(bundles);
+    } catch (error) {
+      console.error("Error fetching all annual bundles:", error);
+      res.status(500).json({ message: "Error fetching bundles" });
+    }
+  });
+
+  // Admin: Update annual bundle
+  app.patch("/api/admin/annual-bundles/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as { id: string };
+      const dbUser = await authStorage.getUser(user.id);
+      if (!dbUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const bundleId = parseInt(req.params.id);
+      const validatedData = updateAnnualBundleSchema.parse(req.body);
+      
+      const updated = await storage.updateAnnualBundle(bundleId, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Bundle not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating annual bundle:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error updating bundle" });
+    }
+  });
+
+  // Admin: Create annual bundle
+  app.post("/api/admin/annual-bundles", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as { id: string };
+      const dbUser = await authStorage.getUser(user.id);
+      if (!dbUser?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const validatedData = insertAnnualBundleSchema.parse(req.body);
+      const newBundle = await storage.createAnnualBundle(validatedData);
+      
+      res.status(201).json(newBundle);
+    } catch (error) {
+      console.error("Error creating annual bundle:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error creating bundle" });
     }
   });
 
