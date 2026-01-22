@@ -236,13 +236,17 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
                 </span>
               </div>
               
-              {isSubscription && expirationDate && !bundle.expired && (
+              {isSubscription && !bundle.expired && (
                 <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-medium">
                       {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
                     </span>
-                    <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                    {expirationDate ? (
+                      <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                    )}
                     {cancelAtPeriodEnd && (
                       <span className="text-xs text-orange-600 dark:text-orange-400">
                         Le renouvellement automatique est desactive
@@ -520,13 +524,17 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
             </Button>
           </div>
           
-          {isSubscription && expirationDate && !expired && (
+          {isSubscription && !expired && (
             <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium">
                   {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
                 </span>
-                <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                {expirationDate ? (
+                  <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                )}
                 {cancelAtPeriodEnd && (
                   <span className="text-xs text-orange-600 dark:text-orange-400">
                     Le renouvellement automatique est desactive
