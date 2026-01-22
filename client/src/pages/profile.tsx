@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, User, Mail, Lock, AlertCircle } from "lucide-react";
+import { ArrowLeft, User, Mail, Lock, AlertCircle, Building2 } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -156,34 +156,50 @@ export default function Profile() {
           <h1 className="text-2xl font-bold">Mon Profil</h1>
         </div>
 
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Informations personnelles
+              Informations actuelles
             </CardTitle>
-            <CardDescription>
-              Modifiez votre nom et prénom à tout moment.
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-3 bg-muted rounded-md">
-              <p className="text-sm text-muted-foreground">Informations actuelles:</p>
-              <p className="font-medium" data-testid="text-current-name">
-                {user.firstName || "Non renseigné"} {user.lastName || ""}
-              </p>
-              {(user as any).companyName && (
-                <p className="text-sm font-medium" data-testid="text-current-company">
-                  {(user as any).companyName}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Identité</p>
+                <p className="font-medium" data-testid="text-current-name">
+                  {user.firstName || "Non renseigné"} {user.lastName || ""}
                 </p>
-              )}
-              <p className="text-sm text-muted-foreground" data-testid="text-current-email">
-                {user.email || "Email non disponible"}
-              </p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Société</p>
+                <p className="font-medium" data-testid="text-current-company">
+                  {(user as any).companyName || "Non renseignée"}
+                </p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Email</p>
+                <p className="font-medium" data-testid="text-current-email">
+                  {user.email || "Non disponible"}
+                </p>
+              </div>
             </div>
-            
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Identité
+              </CardTitle>
+              <CardDescription>
+                Modifiez votre nom et prénom.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Prénom</Label>
                   <Input
@@ -204,33 +220,53 @@ export default function Profile() {
                     data-testid="input-lastname"
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Nom de la société (optionnel)</Label>
-                <Input
-                  id="companyName"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder={(user as any).companyName || "Nom de votre entreprise"}
-                  data-testid="input-company-name"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ce nom apparaîtra sur vos factures.
-                </p>
-              </div>
-              <Button 
-                type="submit" 
-                disabled={updateProfileMutation.isPending}
-                data-testid="button-update-profile"
-              >
-                {updateProfileMutation.isPending ? "Mise à jour..." : "Mettre à jour"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <Button 
+                  type="submit" 
+                  disabled={updateProfileMutation.isPending}
+                  data-testid="button-update-profile"
+                >
+                  {updateProfileMutation.isPending ? "Mise à jour..." : "Mettre à jour"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Société
+              </CardTitle>
+              <CardDescription>
+                Ce nom apparaîtra sur vos factures.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); if (companyName.trim()) updateProfileMutation.mutate({ companyName: companyName.trim() }); }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Nom de la société</Label>
+                  <Input
+                    id="companyName"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder={(user as any).companyName || "Nom de votre entreprise"}
+                    data-testid="input-company-name"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={updateProfileMutation.isPending || !companyName.trim()}
+                  data-testid="button-update-company"
+                >
+                  {updateProfileMutation.isPending ? "Mise à jour..." : "Mettre à jour"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
         {isLocalUser && (
-          <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -238,14 +274,14 @@ export default function Profile() {
                   Changer d'email
                 </CardTitle>
                 <CardDescription>
-                  Un email de vérification sera envoyé à la nouvelle adresse.
+                  Un email de vérification sera envoyé.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Alert className="mb-4">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    La vérification par email sera disponible prochainement. Votre demande sera enregistrée.
+                    Vérification par email bientôt disponible.
                   </AlertDescription>
                 </Alert>
                 
@@ -287,10 +323,10 @@ export default function Profile() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
-                  Changer de mot de passe
+                  Mot de passe
                 </CardTitle>
                 <CardDescription>
-                  Modifiez votre mot de passe pour sécuriser votre compte.
+                  Modifiez votre mot de passe.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -318,7 +354,7 @@ export default function Profile() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
+                    <Label htmlFor="confirmPassword">Confirmer</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
@@ -333,12 +369,12 @@ export default function Profile() {
                     disabled={changePasswordMutation.isPending}
                     data-testid="button-change-password"
                   >
-                    {changePasswordMutation.isPending ? "Modification..." : "Changer le mot de passe"}
+                    {changePasswordMutation.isPending ? "Modification..." : "Changer"}
                   </Button>
                 </form>
               </CardContent>
             </Card>
-          </>
+          </div>
         )}
       </div>
     </div>
