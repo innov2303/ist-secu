@@ -993,7 +993,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Achat non trouve" });
       }
 
-      if (purchase.purchaseType !== "monthly" && purchase.purchaseType !== "yearly") {
+      if (purchase.purchaseType !== "monthly" && purchase.purchaseType !== "yearly" && purchase.purchaseType !== "annual_bundle") {
         return res.json({ 
           isSubscription: false,
           cancelAtPeriodEnd: false,
