@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import type { Purchase, Script } from "@shared/schema";
@@ -61,6 +63,8 @@ interface ToolkitBundle {
   priceCents: number;
   expired: boolean;
   scripts: PurchaseWithScript[];
+  stripeSubscriptionId: string | null;
+  firstPurchaseId: number;
 }
 
 function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Script[]): { bundles: ToolkitBundle[], standalone: PurchaseWithScript[] } {
@@ -92,6 +96,8 @@ function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Scrip
         priceCents: toolkit.monthlyPriceCents || 0,
         expired: anyExpired,
         scripts: matchingPurchases,
+        stripeSubscriptionId: firstPurchase.stripeSubscriptionId || null,
+        firstPurchaseId: firstPurchase.id,
       });
     }
   }
@@ -107,6 +113,32 @@ function groupPurchasesByToolkit(purchases: PurchaseWithScript[], scripts: Scrip
 
 function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
   const Icon = iconMap[bundle.icon] || Monitor;
+  const { toast } = useToast();
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${bundle.firstPurchaseId}/cancel`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Abonnement annule",
+        description: "Votre abonnement ne sera pas renouvele automatiquement.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'annuler l'abonnement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canCancel = !bundle.expired && 
+    (bundle.purchaseType === "monthly" || bundle.purchaseType === "yearly") && 
+    bundle.stripeSubscriptionId;
 
   return (
     <Card data-testid={`card-toolkit-${bundle.id}`}>
@@ -166,6 +198,25 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
                   </span>
                 )}
               </div>
+              {canCancel && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending}
+                  className="text-destructive hover:text-destructive"
+                  data-testid={`button-cancel-subscription-${bundle.id}`}
+                >
+                  {cancelMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Arreter le renouvellement
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
 
             <AccordionTrigger className="py-2 text-sm font-medium hover:no-underline" data-testid={`button-expand-toolkit-${bundle.id}`}>
@@ -221,6 +272,32 @@ function ToolkitCard({ bundle }: { bundle: ToolkitBundle }) {
 function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   const Icon = iconMap[purchase.script.icon] || Monitor;
   const expired = isExpired(purchase);
+  const { toast } = useToast();
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/purchases/${purchase.id}/cancel`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Abonnement annule",
+        description: "Votre abonnement ne sera pas renouvele automatiquement.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'annuler l'abonnement",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canCancel = !expired && 
+    (purchase.purchaseType === "monthly" || purchase.purchaseType === "yearly") && 
+    purchase.stripeSubscriptionId;
 
   return (
     <Card data-testid={`card-purchase-${purchase.id}`}>
@@ -279,25 +356,43 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
               </span>
             )}
           </div>
-          <Button 
-            size="sm" 
-            asChild={!expired}
-            disabled={expired}
-            variant={expired ? "secondary" : "default"}
-            data-testid={`button-download-${purchase.id}`}
-          >
-            {expired ? (
-              <span>
-                <Download className="h-4 w-4 mr-2" />
-                Renouveler
-              </span>
-            ) : (
-              <a href={`/api/scripts/${purchase.script.id}/download`} download>
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger
-              </a>
+          <div className="flex items-center gap-2">
+            {canCancel && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => cancelMutation.mutate()}
+                disabled={cancelMutation.isPending}
+                className="text-destructive hover:text-destructive"
+                data-testid={`button-cancel-subscription-${purchase.id}`}
+              >
+                {cancelMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+              </Button>
             )}
-          </Button>
+            <Button 
+              size="sm" 
+              asChild={!expired}
+              disabled={expired}
+              variant={expired ? "secondary" : "default"}
+              data-testid={`button-download-${purchase.id}`}
+            >
+              {expired ? (
+                <span>
+                  <Download className="h-4 w-4 mr-2" />
+                  Renouveler
+                </span>
+              ) : (
+                <a href={`/api/scripts/${purchase.script.id}/download`} download>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </a>
+              )}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

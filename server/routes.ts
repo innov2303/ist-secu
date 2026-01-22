@@ -873,6 +873,49 @@ export async function registerRoutes(
     });
   });
 
+  // Cancel subscription route
+  app.post("/api/purchases/:purchaseId/cancel", isAuthenticated, async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const purchaseId = parseInt(req.params.purchaseId);
+
+    if (isNaN(purchaseId)) {
+      return res.status(400).json({ message: "Invalid purchase ID" });
+    }
+
+    try {
+      // Get all purchases for this user to find the subscription
+      const userPurchases = await storage.getPurchasesByUser(userId);
+      const purchase = userPurchases.find(p => p.id === purchaseId);
+
+      if (!purchase) {
+        return res.status(404).json({ message: "Achat non trouve" });
+      }
+
+      if (purchase.purchaseType !== "monthly" && purchase.purchaseType !== "yearly") {
+        return res.status(400).json({ message: "Cet achat n'est pas un abonnement" });
+      }
+
+      if (!purchase.stripeSubscriptionId) {
+        return res.status(400).json({ message: "Aucun abonnement Stripe associe" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas encore configures." });
+      }
+
+      // Cancel the subscription at period end (won't renew)
+      await stripe.subscriptions.update(purchase.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      res.json({ success: true, message: "L'abonnement ne sera pas renouvele automatiquement" });
+    } catch (error: any) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ message: "Erreur lors de l'annulation de l'abonnement" });
+    }
+  });
+
   // Stripe checkout routes
   app.get("/api/stripe/publishable-key", async (req, res) => {
     try {
