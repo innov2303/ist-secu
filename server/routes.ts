@@ -850,7 +850,17 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Invalid script ID" });
     }
 
-    // Check if this is a bundle - if so, check if all bundled scripts are purchased
+    // First, check if user has a direct purchase for this script (toolkit purchase)
+    const activePurchase = await storage.getActivePurchase(userId, scriptId);
+    if (activePurchase) {
+      return res.json({ 
+        hasPurchased: true,
+        purchaseType: activePurchase.purchaseType || null,
+        expiresAt: activePurchase.expiresAt || null,
+      });
+    }
+
+    // If no direct purchase, check if this is a bundle and all bundled scripts are purchased individually
     const script = await storage.getScript(scriptId);
     if (script?.bundledScriptIds && script.bundledScriptIds.length > 0) {
       const hasPurchased = await storage.hasPurchasedBundle(userId, script.bundledScriptIds);
@@ -865,11 +875,10 @@ export async function registerRoutes(
       });
     }
 
-    const activePurchase = await storage.getActivePurchase(userId, scriptId);
     res.json({ 
-      hasPurchased: !!activePurchase,
-      purchaseType: activePurchase?.purchaseType || null,
-      expiresAt: activePurchase?.expiresAt || null,
+      hasPurchased: false,
+      purchaseType: null,
+      expiresAt: null,
     });
   });
 
