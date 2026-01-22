@@ -26,7 +26,9 @@ export default function Profile() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [billingAddress, setBillingAddress] = useState("");
+  const [billingStreet, setBillingStreet] = useState("");
+  const [billingPostalCode, setBillingPostalCode] = useState("");
+  const [billingCity, setBillingCity] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -43,7 +45,7 @@ export default function Profile() {
   const isLocalUser = (user as any)?.isLocalAuth === true;
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { firstName?: string; lastName?: string; companyName?: string }) => {
+    mutationFn: async (data: { firstName?: string; lastName?: string; companyName?: string; billingStreet?: string; billingPostalCode?: string; billingCity?: string }) => {
       const res = await apiRequest("PATCH", "/api/profile", data);
       return res.json();
     },
@@ -53,7 +55,9 @@ export default function Profile() {
       setFirstName("");
       setLastName("");
       setCompanyName("");
-      setBillingAddress("");
+      setBillingStreet("");
+      setBillingPostalCode("");
+      setBillingCity("");
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -96,7 +100,7 @@ export default function Profile() {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() && !lastName.trim() && !companyName.trim() && !billingAddress.trim()) {
+    if (!firstName.trim() && !lastName.trim() && !companyName.trim() && !billingStreet.trim() && !billingPostalCode.trim() && !billingCity.trim()) {
       toast({ title: "Erreur", description: "Veuillez remplir au moins un champ", variant: "destructive" });
       return;
     }
@@ -104,7 +108,9 @@ export default function Profile() {
       ...(firstName.trim() && { firstName: firstName.trim() }),
       ...(lastName.trim() && { lastName: lastName.trim() }),
       ...(companyName.trim() && { companyName: companyName.trim() }),
-      ...(billingAddress.trim() && { billingAddress: billingAddress.trim() }),
+      ...(billingStreet.trim() && { billingStreet: billingStreet.trim() }),
+      ...(billingPostalCode.trim() && { billingPostalCode: billingPostalCode.trim() }),
+      ...(billingCity.trim() && { billingCity: billingCity.trim() }),
     });
   };
 
@@ -313,7 +319,11 @@ export default function Profile() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Adresse</p>
-                        <p className="font-medium">{(user as any).billingAddress || "Non renseignee"}</p>
+                        <p className="font-medium">
+                          {(user as any).billingStreet || (user as any).billingCity 
+                            ? `${(user as any).billingPostalCode || ""} ${(user as any).billingCity || ""}`.trim() || "Non renseignee"
+                            : "Non renseignee"}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -372,16 +382,38 @@ export default function Profile() {
                           data-testid="input-company-name"
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="billingAddress" className="text-xs flex items-center gap-1.5">
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5 md:col-span-1">
+                        <Label htmlFor="billingStreet" className="text-xs flex items-center gap-1.5">
                           <MapPin className="h-3 w-3" /> Adresse
                         </Label>
                         <Input
-                          id="billingAddress"
-                          value={billingAddress}
-                          onChange={(e) => setBillingAddress(e.target.value)}
-                          placeholder={(user as any).billingAddress || "Adresse complete"}
-                          data-testid="input-billing-address"
+                          id="billingStreet"
+                          value={billingStreet}
+                          onChange={(e) => setBillingStreet(e.target.value)}
+                          placeholder={(user as any).billingStreet || "Rue, numero"}
+                          data-testid="input-billing-street"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="billingPostalCode" className="text-xs">Code postal</Label>
+                        <Input
+                          id="billingPostalCode"
+                          value={billingPostalCode}
+                          onChange={(e) => setBillingPostalCode(e.target.value)}
+                          placeholder={(user as any).billingPostalCode || "75000"}
+                          data-testid="input-billing-postal-code"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="billingCity" className="text-xs">Ville</Label>
+                        <Input
+                          id="billingCity"
+                          value={billingCity}
+                          onChange={(e) => setBillingCity(e.target.value)}
+                          placeholder={(user as any).billingCity || "Paris"}
+                          data-testid="input-billing-city"
                         />
                       </div>
                     </div>

@@ -241,7 +241,9 @@ export async function registerRoutes(
       firstName: users.firstName,
       lastName: users.lastName,
       companyName: users.companyName,
-      billingAddress: users.billingAddress,
+      billingStreet: users.billingStreet,
+      billingPostalCode: users.billingPostalCode,
+      billingCity: users.billingCity,
       profileImageUrl: users.profileImageUrl,
       isAdmin: users.isAdmin,
     }).from(users).where(eq(users.id, userId)).limit(1);
@@ -258,7 +260,9 @@ export async function registerRoutes(
     firstName: z.string().min(1, "Prénom requis").optional(),
     lastName: z.string().optional(),
     companyName: z.string().optional(),
-    billingAddress: z.string().optional(),
+    billingStreet: z.string().optional(),
+    billingPostalCode: z.string().optional(),
+    billingCity: z.string().optional(),
   });
 
   app.patch("/api/profile", isAuthenticated, async (req, res) => {
@@ -273,7 +277,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { firstName, lastName, companyName, billingAddress } = result.data;
+      const { firstName, lastName, companyName, billingStreet, billingPostalCode, billingCity } = result.data;
       
       const [updated] = await db
         .update(users)
@@ -281,7 +285,9 @@ export async function registerRoutes(
           ...(firstName !== undefined && { firstName }),
           ...(lastName !== undefined && { lastName }),
           ...(companyName !== undefined && { companyName }),
-          ...(billingAddress !== undefined && { billingAddress }),
+          ...(billingStreet !== undefined && { billingStreet }),
+          ...(billingPostalCode !== undefined && { billingPostalCode }),
+          ...(billingCity !== undefined && { billingCity }),
           updatedAt: new Date() 
         })
         .where(eq(users.id, userId))
@@ -291,7 +297,9 @@ export async function registerRoutes(
           firstName: users.firstName,
           lastName: users.lastName,
           companyName: users.companyName,
-          billingAddress: users.billingAddress,
+          billingStreet: users.billingStreet,
+          billingPostalCode: users.billingPostalCode,
+          billingCity: users.billingCity,
           profileImageUrl: users.profileImageUrl,
           isAdmin: users.isAdmin,
         });
