@@ -7,18 +7,22 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, User, Mail, Lock, AlertCircle, Building2, FileText, Download, Eye, Calendar, CreditCard, Loader2 } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Invoice, InvoiceItem } from "@shared/schema";
+
+type ProfileSection = "personal" | "purchases";
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [activeSection, setActiveSection] = useState<ProfileSection>("personal");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -43,7 +47,7 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Profil mis à jour" });
+      toast({ title: "Profil mis a jour" });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setFirstName("");
       setLastName("");
@@ -61,7 +65,7 @@ export default function Profile() {
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Demande enregistrée", 
+        title: "Demande enregistree", 
         description: data.message 
       });
       setNewEmail("");
@@ -78,7 +82,7 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Mot de passe modifié avec succès" });
+      toast({ title: "Mot de passe modifie avec succes" });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -121,7 +125,7 @@ export default function Profile() {
       return;
     }
     if (newPassword.length < 6) {
-      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 6 caractères", variant: "destructive" });
+      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 6 caracteres", variant: "destructive" });
       return;
     }
     changePasswordMutation.mutate({ currentPassword, newPassword });
@@ -173,7 +177,7 @@ export default function Profile() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
-              Veuillez vous connecter pour accéder à votre profil.
+              Veuillez vous connecter pour acceder a votre profil.
             </p>
             <div className="flex justify-center mt-4">
               <Link href="/auth">
@@ -186,302 +190,408 @@ export default function Profile() {
     );
   }
 
+  const sidebarItems = [
+    { id: "personal" as ProfileSection, label: "Informations personnelles", icon: User },
+    { id: "purchases" as ProfileSection, label: "Historique des achats", icon: ShoppingBag, count: invoicesData?.invoices?.length },
+  ];
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-background flex">
+      {/* Fixed Sidebar */}
+      <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
+        {/* Header */}
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <User className="h-5 w-5 text-primary" />
+            </div>
+            <h1 className="font-bold text-lg">Mon compte</h1>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {sidebarItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                activeSection === item.id 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover-elevate"
+              }`}
+              data-testid={`nav-${item.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </div>
+              {item.count !== undefined && item.count > 0 && (
+                <Badge 
+                  variant={activeSection === item.id ? "secondary" : "outline"} 
+                  className="text-xs h-5 min-w-[20px] flex items-center justify-center"
+                >
+                  {item.count}
+                </Badge>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Footer Links */}
+        <div className="p-4 border-t space-y-1">
           <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back-home">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" className="w-full justify-start gap-3" data-testid="button-goto-home">
+              <Home className="h-4 w-4" />
+              Retour au site
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Mon Profil</h1>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Informations actuelles
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Identité</p>
-                <p className="font-medium" data-testid="text-current-name">
-                  {user.firstName || "Non renseigné"} {user.lastName || ""}
-                </p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Société</p>
-                <p className="font-medium" data-testid="text-current-company">
-                  {(user as any).companyName || "Non renseignée"}
-                </p>
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Email</p>
-                <p className="font-medium" data-testid="text-current-email">
-                  {user.email || "Non disponible"}
-                </p>
-              </div>
+        {/* User Info */}
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={(user as any).profileImageUrl || undefined} />
+              <AvatarFallback className="text-xs">
+                {user.firstName?.[0] || user.email?.[0] || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user.firstName} {user.lastName}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Identité
-              </CardTitle>
-              <CardDescription>
-                Modifiez votre nom et prénom.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Prénom</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder={user.firstName || "Nouveau prénom"}
-                    data-testid="input-firstname"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Nom</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={user.lastName || "Nouveau nom"}
-                    data-testid="input-lastname"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={updateProfileMutation.isPending}
-                  data-testid="button-update-profile"
-                >
-                  {updateProfileMutation.isPending ? "Mise à jour..." : "Mettre à jour"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Société
-              </CardTitle>
-              <CardDescription>
-                Ce nom apparaîtra sur vos factures.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); if (companyName.trim()) updateProfileMutation.mutate({ companyName: companyName.trim() }); }} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Nom de la société</Label>
-                  <Input
-                    id="companyName"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder={(user as any).companyName || "Nom de votre entreprise"}
-                    data-testid="input-company-name"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={updateProfileMutation.isPending || !companyName.trim()}
-                  data-testid="button-update-company"
-                >
-                  {updateProfileMutation.isPending ? "Mise à jour..." : "Mettre à jour"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        {isLocalUser && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Changer d'email
-                </CardTitle>
-                <CardDescription>
-                  Un email de vérification sera envoyé.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Alert className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Vérification par email bientôt disponible.
-                  </AlertDescription>
-                </Alert>
-                
-                <form onSubmit={handleRequestEmailChange} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newEmail">Nouvel email</Label>
-                    <Input
-                      id="newEmail"
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="nouveau@email.com"
-                      data-testid="input-new-email"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emailPassword">Mot de passe actuel</Label>
-                    <Input
-                      id="emailPassword"
-                      type="password"
-                      value={emailPassword}
-                      onChange={(e) => setEmailPassword(e.target.value)}
-                      placeholder="Confirmez votre mot de passe"
-                      data-testid="input-email-password"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    disabled={requestEmailChangeMutation.isPending}
-                    data-testid="button-request-email-change"
-                  >
-                    {requestEmailChangeMutation.isPending ? "Envoi..." : "Demander le changement"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
-                  Mot de passe
-                </CardTitle>
-                <CardDescription>
-                  Modifiez votre mot de passe.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Votre mot de passe actuel"
-                      data-testid="input-current-password"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 caractères"
-                      data-testid="input-new-password"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirmer</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirmez le nouveau mot de passe"
-                      data-testid="input-confirm-password"
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    disabled={changePasswordMutation.isPending}
-                    data-testid="button-change-password"
-                  >
-                    {changePasswordMutation.isPending ? "Modification..." : "Changer"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           </div>
-        )}
+        </div>
+      </aside>
 
-        {/* Invoice History Section */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Historique des factures
-            </CardTitle>
-            <CardDescription>
-              Consultez vos factures liees a vos abonnements
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {invoicesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      {/* Main Content */}
+      <main className="flex-1 ml-64">
+        <div className="p-8">
+          {/* Personal Information Section */}
+          {activeSection === "personal" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <User className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Informations personnelles</h2>
+                  <p className="text-muted-foreground">Gerez vos informations de compte</p>
+                </div>
               </div>
-            ) : !invoicesData?.invoices || invoicesData.invoices.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Aucune facture disponible</p>
-                <p className="text-sm mt-1">Vos factures apparaitront ici apres un achat</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {invoicesData.invoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover-elevate cursor-pointer"
-                    onClick={() => handleViewInvoice(invoice.id)}
-                    data-testid={`invoice-row-${invoice.id}`}
-                  >
-                    <div className="flex items-center gap-4">
+
+              {/* Current Info Header */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Informations actuelles</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex items-center gap-3">
                       <div className="p-2 bg-muted rounded-lg">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <div className="font-medium" data-testid={`text-invoice-number-${invoice.id}`}>
-                          {invoice.invoiceNumber}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(invoice.createdAt).toLocaleDateString('fr-FR')}
-                        </div>
+                        <p className="text-xs text-muted-foreground">Identite</p>
+                        <p className="font-medium">{user.firstName} {user.lastName}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-semibold" data-testid={`text-invoice-total-${invoice.id}`}>
-                          {formatCurrency(invoice.totalCents)}
-                        </div>
-                        {getInvoiceStatusBadge(invoice.status)}
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-muted rounded-lg">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <Button variant="ghost" size="icon" data-testid={`button-view-invoice-${invoice.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Entreprise</p>
+                        <p className="font-medium">{(user as any).companyName || "Non renseignee"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-muted rounded-lg">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="font-medium">{user.email}</p>
+                      </div>
                     </div>
                   </div>
-                ))}
+                </CardContent>
+              </Card>
+
+              {/* Edit Cards Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Identity Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <User className="h-4 w-4" />
+                      Modifier l'identite
+                    </CardTitle>
+                    <CardDescription>Mettez a jour votre nom</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">Prenom</Label>
+                          <Input
+                            id="firstName"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            placeholder={user.firstName || "Prenom"}
+                            data-testid="input-first-name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Nom</Label>
+                          <Input
+                            id="lastName"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            placeholder={user.lastName || "Nom"}
+                            data-testid="input-last-name"
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={updateProfileMutation.isPending}
+                        data-testid="button-update-name"
+                      >
+                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Company Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Building2 className="h-4 w-4" />
+                      Nom de l'entreprise
+                    </CardTitle>
+                    <CardDescription>Apparait sur vos factures</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companyName">Entreprise</Label>
+                        <Input
+                          id="companyName"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder={(user as any).companyName || "Nom de l'entreprise"}
+                          data-testid="input-company-name"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={updateProfileMutation.isPending}
+                        data-testid="button-update-company"
+                      >
+                        {updateProfileMutation.isPending ? "Mise a jour..." : "Mettre a jour"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Email Card - Local users only */}
+                {isLocalUser && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Mail className="h-4 w-4" />
+                        Changer l'email
+                      </CardTitle>
+                      <CardDescription>Modifiez votre adresse email</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Alert className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          Un email de confirmation sera envoye a la nouvelle adresse.
+                        </AlertDescription>
+                      </Alert>
+                      <form onSubmit={handleRequestEmailChange} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="newEmail">Nouvel email</Label>
+                          <Input
+                            id="newEmail"
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="nouvelle@email.com"
+                            data-testid="input-new-email"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="emailPassword">Mot de passe actuel</Label>
+                          <Input
+                            id="emailPassword"
+                            type="password"
+                            value={emailPassword}
+                            onChange={(e) => setEmailPassword(e.target.value)}
+                            placeholder="Pour confirmer votre identite"
+                            data-testid="input-email-password"
+                          />
+                        </div>
+                        <Button 
+                          type="submit" 
+                          disabled={requestEmailChangeMutation.isPending}
+                          data-testid="button-request-email-change"
+                        >
+                          {requestEmailChangeMutation.isPending ? "Envoi..." : "Changer l'email"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Password Card - Local users only */}
+                {isLocalUser && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Lock className="h-4 w-4" />
+                        Changer le mot de passe
+                      </CardTitle>
+                      <CardDescription>Mettez a jour votre mot de passe</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                          <Input
+                            id="currentPassword"
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Votre mot de passe actuel"
+                            data-testid="input-current-password"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                          <Input
+                            id="newPassword"
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Minimum 6 caracteres"
+                            data-testid="input-new-password"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirmer</Label>
+                          <Input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirmez le nouveau mot de passe"
+                            data-testid="input-confirm-password"
+                          />
+                        </div>
+                        <Button 
+                          type="submit" 
+                          disabled={changePasswordMutation.isPending}
+                          data-testid="button-change-password"
+                        >
+                          {changePasswordMutation.isPending ? "Modification..." : "Changer"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+
+          {/* Purchases Section */}
+          {activeSection === "purchases" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Historique des achats</h2>
+                  <p className="text-muted-foreground">Consultez vos factures et abonnements</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Factures
+                  </CardTitle>
+                  <CardDescription>
+                    Toutes vos factures liees a vos abonnements
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {invoicesLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : !invoicesData?.invoices || invoicesData.invoices.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium">Aucune facture disponible</p>
+                      <p className="text-sm mt-2">Vos factures apparaitront ici apres un achat</p>
+                      <Link href="/#toolkits">
+                        <Button className="mt-6" data-testid="button-browse-toolkits">
+                          Decouvrir nos toolkits
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {invoicesData.invoices.map((invoice) => (
+                        <div
+                          key={invoice.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover-elevate cursor-pointer"
+                          onClick={() => handleViewInvoice(invoice.id)}
+                          data-testid={`invoice-row-${invoice.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-muted rounded-lg">
+                              <FileText className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <div className="font-medium" data-testid={`text-invoice-number-${invoice.id}`}>
+                                {invoice.invoiceNumber}
+                              </div>
+                              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(invoice.createdAt).toLocaleDateString('fr-FR', { 
+                                  day: 'numeric', 
+                                  month: 'long', 
+                                  year: 'numeric' 
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="font-semibold text-lg" data-testid={`text-invoice-total-${invoice.id}`}>
+                                {formatCurrency(invoice.totalCents)}
+                              </div>
+                              {getInvoiceStatusBadge(invoice.status)}
+                            </div>
+                            <Button variant="ghost" size="icon" data-testid={`button-view-invoice-${invoice.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Invoice Detail Dialog */}
       <Dialog open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
