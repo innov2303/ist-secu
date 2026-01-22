@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
@@ -822,16 +823,36 @@ export default function AdminPage() {
                             >
                               <KeyRound className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => deleteUserMutation.mutate(u.id)}
-                              disabled={u.id === user.id || deleteUserMutation.isPending}
-                              title="Supprimer l'utilisateur"
-                              data-testid={`button-delete-user-${u.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  disabled={u.id === user.id || deleteUserMutation.isPending}
+                                  title="Supprimer l'utilisateur"
+                                  data-testid={`button-delete-user-${u.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Etes-vous sur de vouloir supprimer l'utilisateur {u.firstName} {u.lastName} ({u.email}) ? Cette action est irreversible.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteUserMutation.mutate(u.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}
@@ -962,16 +983,36 @@ export default function AdminPage() {
                                     <Clock className="h-4 w-4 mr-1" />
                                     Rouvrir
                                   </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => deleteContactMutation.mutate(request.id)}
-                                    disabled={deleteContactMutation.isPending}
-                                    data-testid={`button-delete-contact-${request.id}`}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Supprimer
-                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        disabled={deleteContactMutation.isPending}
+                                        data-testid={`button-delete-contact-${request.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Supprimer
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Etes-vous sur de vouloir supprimer cette demande de contact de {request.name} ? Cette action est irreversible.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteContactMutation.mutate(request.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Supprimer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </>
                               )}
                             </div>
@@ -1341,16 +1382,37 @@ export default function AdminPage() {
                                             <CreditCard className="h-4 w-4" />
                                           </Button>
                                         )}
-                                        <Button
-                                          variant="destructive"
-                                          size="icon"
-                                          onClick={(e) => { e.stopPropagation(); deleteInvoiceMutation.mutate(invoice.id); }}
-                                          disabled={deleteInvoiceMutation.isPending}
-                                          title="Supprimer"
-                                          data-testid={`button-delete-invoice-${invoice.id}`}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              variant="destructive"
+                                              size="icon"
+                                              onClick={(e) => e.stopPropagation()}
+                                              disabled={deleteInvoiceMutation.isPending}
+                                              title="Supprimer"
+                                              data-testid={`button-delete-invoice-${invoice.id}`}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Etes-vous sur de vouloir supprimer la facture {invoice.invoiceNumber} ? Cette action est irreversible.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => deleteInvoiceMutation.mutate(invoice.id)}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                              >
+                                                Supprimer
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
                                       </div>
                                     </div>
                                   );
@@ -1698,15 +1760,35 @@ export default function AdminPage() {
                             <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                           )}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteControlMutation.mutate(control.id)}
-                          title="Supprimer"
-                          data-testid={`button-delete-control-${control.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Supprimer"
+                              data-testid={`button-delete-control-${control.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Etes-vous sur de vouloir supprimer le controle {control.controlId} ({control.name}) ? Cette action est irreversible.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteControlMutation.mutate(control.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </div>
