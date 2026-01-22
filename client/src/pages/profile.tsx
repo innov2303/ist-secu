@@ -640,6 +640,15 @@ export default function Profile() {
 
           {viewingInvoice && (
             <div className="space-y-4">
+              {/* Customer Info */}
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                <p className="font-medium">{viewingInvoice.invoice.customerName}</p>
+                <p className="text-sm text-muted-foreground">{viewingInvoice.invoice.customerEmail}</p>
+                {viewingInvoice.invoice.customerAddress && (
+                  <p className="text-sm text-muted-foreground">{viewingInvoice.invoice.customerAddress}</p>
+                )}
+              </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Statut</span>
                 {getInvoiceStatusBadge(viewingInvoice.invoice.status)}

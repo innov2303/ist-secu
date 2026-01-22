@@ -1064,6 +1064,13 @@ export async function registerRoutes(
               ? `${user.companyName} - ${personalName}`
               : personalName;
             
+            // Build customer address from profile fields
+            const addressParts = [
+              user.billingStreet,
+              [user.billingPostalCode, user.billingCity].filter(Boolean).join(' ')
+            ].filter(Boolean);
+            const customerAddress = addressParts.join(', ');
+            
             const amountCents = parseInt(priceCents || "0");
             const taxRate = 20; // TVA 20%
             const subtotalCents = Math.round(amountCents / (1 + taxRate / 100));
@@ -1082,7 +1089,7 @@ export async function registerRoutes(
               userId,
               customerName,
               customerEmail: user.email || '',
-              customerAddress: '',
+              customerAddress,
               subtotalCents,
               taxRate,
               taxCents,
