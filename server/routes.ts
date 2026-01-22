@@ -539,13 +539,8 @@ export async function registerRoutes(
   });
 
   // Admin: Get all annual bundles (including inactive)
-  app.get("/api/admin/annual-bundles", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/annual-bundles", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = req.user as { id: string };
-      const dbUser = await authStorage.getUser(user.id);
-      if (!dbUser?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
       const bundles = await storage.getAllAnnualBundles();
       res.json(bundles);
     } catch (error) {
@@ -555,14 +550,8 @@ export async function registerRoutes(
   });
 
   // Admin: Update annual bundle
-  app.patch("/api/admin/annual-bundles/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/admin/annual-bundles/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = req.user as { id: string };
-      const dbUser = await authStorage.getUser(user.id);
-      if (!dbUser?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const bundleId = parseInt(req.params.id);
       const validatedData = updateAnnualBundleSchema.parse(req.body);
       
@@ -582,14 +571,8 @@ export async function registerRoutes(
   });
 
   // Admin: Create annual bundle
-  app.post("/api/admin/annual-bundles", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/annual-bundles", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const user = req.user as { id: string };
-      const dbUser = await authStorage.getUser(user.id);
-      if (!dbUser?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const validatedData = insertAnnualBundleSchema.parse(req.body);
       const newBundle = await storage.createAnnualBundle(validatedData);
       
