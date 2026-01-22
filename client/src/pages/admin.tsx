@@ -14,9 +14,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { 
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
-  ChevronLeft, ChevronRight, Package, Shield, Home, Settings, Pencil, Loader2,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
-  FileText, Plus, Eye, Send, CreditCard, CalendarDays
+  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
@@ -114,9 +114,9 @@ export default function AdminPage() {
 
   // Invoice queries and state
   const [invoiceSearch, setInvoiceSearch] = useState("");
-  const [invoicePage, setInvoicePage] = useState(1);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<{ invoice: Invoice; items: InvoiceItem[] } | null>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [newInvoice, setNewInvoice] = useState({
     userId: "",
     customerName: "",
@@ -207,11 +207,55 @@ export default function AdminPage() {
     );
   }, [allInvoices, invoiceSearch]);
 
-  const totalInvoicePages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
-  const paginatedInvoices = useMemo(() => {
-    const start = (invoicePage - 1) * ITEMS_PER_PAGE;
-    return filteredInvoices.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredInvoices, invoicePage]);
+  // Group invoices by user for the grouped display
+  const invoicesByUser = useMemo(() => {
+    const grouped: Record<string, { 
+      userId: string; 
+      customerName: string; 
+      customerEmail: string;
+      invoices: Invoice[];
+      totalAmount: number;
+      paidCount: number;
+    }> = {};
+    
+    filteredInvoices.forEach(invoice => {
+      const userId = invoice.userId || 'unknown';
+      if (!grouped[userId]) {
+        grouped[userId] = {
+          userId,
+          customerName: invoice.customerName,
+          customerEmail: invoice.customerEmail,
+          invoices: [],
+          totalAmount: 0,
+          paidCount: 0,
+        };
+      }
+      grouped[userId].invoices.push(invoice);
+      grouped[userId].totalAmount += invoice.totalCents;
+      if (invoice.status === 'paid') {
+        grouped[userId].paidCount++;
+      }
+    });
+    
+    // Sort by most recent invoice
+    return Object.values(grouped).sort((a, b) => {
+      const aLatest = Math.max(...a.invoices.map(i => new Date(i.createdAt).getTime()));
+      const bLatest = Math.max(...b.invoices.map(i => new Date(i.createdAt).getTime()));
+      return bLatest - aLatest;
+    });
+  }, [filteredInvoices]);
+
+  const toggleUserExpanded = (userId: string) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
 
   // Count by invoice status
   const toolkitCount = useMemo(() => {
@@ -1097,7 +1141,7 @@ export default function AdminPage() {
                       <Input
                         placeholder="Rechercher..."
                         value={invoiceSearch}
-                        onChange={(e) => { setInvoiceSearch(e.target.value); setInvoicePage(1); }}
+                        onChange={(e) => setInvoiceSearch(e.target.value)}
                         className="pl-9"
                         data-testid="input-invoice-search"
                       />
@@ -1109,7 +1153,7 @@ export default function AdminPage() {
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
-                  ) : paginatedInvoices.length === 0 ? (
+                  ) : invoicesByUser.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <p>{invoiceSearch ? "Aucune facture trouvee" : "Aucune facture"}</p>
@@ -1117,117 +1161,146 @@ export default function AdminPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {paginatedInvoices.map((invoice) => {
-                        const statusInfo = invoiceStatusLabels[invoice.status as InvoiceStatus] || invoiceStatusLabels.draft;
+                      {invoicesByUser.map((userGroup) => {
+                        const isExpanded = expandedUsers.has(userGroup.userId);
                         return (
                           <div
-                            key={invoice.id}
-                            className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
-                            data-testid={`row-invoice-${invoice.id}`}
+                            key={userGroup.userId}
+                            className="rounded-lg border bg-card overflow-hidden"
+                            data-testid={`row-user-invoices-${userGroup.userId}`}
                           >
-                            <div className="flex items-center gap-4 flex-1">
-                              <div className="p-2 rounded-lg bg-muted">
-                                <FileText className="h-5 w-5 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium font-mono" data-testid={`text-invoice-number-${invoice.id}`}>
-                                    {invoice.invoiceNumber}
-                                  </span>
-                                  <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                            <div
+                              className="flex items-center justify-between p-4 cursor-pointer hover-elevate"
+                              onClick={() => toggleUserExpanded(userGroup.userId)}
+                              data-testid={`button-expand-user-${userGroup.userId}`}
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="p-2 rounded-lg bg-muted">
+                                  <UserIcon className="h-5 w-5 text-primary" />
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {invoice.customerName} - {invoice.customerEmail}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Cree le {new Date(invoice.createdAt).toLocaleDateString('fr-FR')}
-                                  {invoice.dueDate && (
-                                    <span className="ml-2">
-                                      Echeance: {new Date(invoice.dueDate).toLocaleDateString('fr-FR')}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium" data-testid={`text-user-name-${userGroup.userId}`}>
+                                      {userGroup.customerName}
                                     </span>
-                                  )}
+                                    <Badge variant="outline">{userGroup.invoices.length} facture(s)</Badge>
+                                    <Badge variant="default">{userGroup.paidCount} payee(s)</Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {userGroup.customerEmail}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-bold text-lg" data-testid={`text-invoice-total-${invoice.id}`}>
-                                  {formatPrice(invoice.totalCents)}
+                                <div className="text-right mr-4">
+                                  <div className="font-bold text-lg" data-testid={`text-user-total-${userGroup.userId}`}>
+                                    {formatPrice(userGroup.totalAmount)}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Total factures
+                                  </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                  HT: {formatPrice(invoice.subtotalCents)} + TVA {invoice.taxRate}%
-                                </div>
+                                {isExpanded ? (
+                                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => viewInvoiceDetails(invoice.id)}
-                                title="Voir details"
-                                data-testid={`button-view-invoice-${invoice.id}`}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {invoice.status === "draft" && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" })}
-                                  title="Marquer comme envoyee"
-                                  data-testid={`button-send-invoice-${invoice.id}`}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {invoice.status === "sent" && (
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" })}
-                                  title="Marquer comme payee"
-                                  data-testid={`button-paid-invoice-${invoice.id}`}
-                                >
-                                  <CreditCard className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => deleteInvoiceMutation.mutate(invoice.id)}
-                                disabled={deleteInvoiceMutation.isPending}
-                                title="Supprimer"
-                                data-testid={`button-delete-invoice-${invoice.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            
+                            {isExpanded && (
+                              <div className="border-t bg-muted/30 p-4 space-y-3">
+                                {userGroup.invoices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((invoice) => {
+                                  const statusInfo = invoiceStatusLabels[invoice.status as InvoiceStatus] || invoiceStatusLabels.draft;
+                                  return (
+                                    <div
+                                      key={invoice.id}
+                                      className="flex items-center justify-between p-3 rounded-lg bg-card border hover-elevate"
+                                      data-testid={`row-invoice-${invoice.id}`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <div className="p-1.5 rounded bg-muted">
+                                          <FileText className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium font-mono text-sm" data-testid={`text-invoice-number-${invoice.id}`}>
+                                              {invoice.invoiceNumber}
+                                            </span>
+                                            <Badge variant={statusInfo.variant} className="text-xs">{statusInfo.label}</Badge>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground mt-1">
+                                            Cree le {new Date(invoice.createdAt).toLocaleDateString('fr-FR')}
+                                            {invoice.dueDate && (
+                                              <span className="ml-2">
+                                                Echeance: {new Date(invoice.dueDate).toLocaleDateString('fr-FR')}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-bold" data-testid={`text-invoice-total-${invoice.id}`}>
+                                            {formatPrice(invoice.totalCents)}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            HT: {formatPrice(invoice.subtotalCents)} + TVA {invoice.taxRate}%
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 ml-4">
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          onClick={(e) => { e.stopPropagation(); viewInvoiceDetails(invoice.id); }}
+                                          title="Voir details"
+                                          data-testid={`button-view-invoice-${invoice.id}`}
+                                        >
+                                          <Eye className="h-4 w-4" />
+                                        </Button>
+                                        {invoice.status === "draft" && (
+                                          <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={(e) => { e.stopPropagation(); updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" }); }}
+                                            title="Marquer comme envoyee"
+                                            data-testid={`button-send-invoice-${invoice.id}`}
+                                          >
+                                            <Send className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                        {invoice.status === "sent" && (
+                                          <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={(e) => { e.stopPropagation(); updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" }); }}
+                                            title="Marquer comme payee"
+                                            data-testid={`button-paid-invoice-${invoice.id}`}
+                                          >
+                                            <CreditCard className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                        <Button
+                                          variant="destructive"
+                                          size="icon"
+                                          onClick={(e) => { e.stopPropagation(); deleteInvoiceMutation.mutate(invoice.id); }}
+                                          disabled={deleteInvoiceMutation.isPending}
+                                          title="Supprimer"
+                                          data-testid={`button-delete-invoice-${invoice.id}`}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   )}
-                  {totalInvoicePages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">Page {invoicePage} sur {totalInvoicePages}</p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setInvoicePage(p => Math.max(1, p - 1))}
-                          disabled={invoicePage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4 mr-1" />
-                          Precedent
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setInvoicePage(p => Math.min(totalInvoicePages, p + 1))}
-                          disabled={invoicePage === totalInvoicePages}
-                        >
-                          Suivant
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </div>
+                  {invoicesByUser.length > 10 && (
+                    <div className="flex items-center justify-center mt-6 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">{invoicesByUser.length} utilisateur(s) - {filteredInvoices.length} facture(s) au total</p>
                     </div>
                   )}
                 </CardContent>

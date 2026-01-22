@@ -938,6 +938,60 @@ export async function registerRoutes(
           }
         }
 
+        // Create automatic invoice for the purchase
+        try {
+          const [user] = await db.select().from(users).where(eq(users.id, userId));
+          if (user) {
+            const customerName = user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user.firstName || user.email?.split('@')[0] || 'Client';
+            
+            const amountCents = parseInt(priceCents || "0");
+            const taxRate = 20; // TVA 20%
+            const subtotalCents = Math.round(amountCents / (1 + taxRate / 100));
+            const taxCents = amountCents - subtotalCents;
+            
+            // Generate invoice number
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            const autoInvoiceNumber = `IST-${year}${month}-${random}`;
+            
+            // Create the invoice
+            const [newInvoice] = await db.insert(invoices).values({
+              invoiceNumber: autoInvoiceNumber,
+              userId,
+              customerName,
+              customerEmail: user.email || '',
+              customerAddress: '',
+              subtotalCents,
+              taxRate,
+              taxCents,
+              totalCents: amountCents,
+              status: 'paid',
+              notes: `Paiement automatique via Stripe - ${purchaseType === 'monthly' ? 'Abonnement mensuel' : 'Achat unique'}`,
+              dueDate: new Date(),
+              paidAt: new Date(),
+            }).returning();
+            
+            // Create invoice item for the script
+            await db.insert(invoiceItems).values({
+              invoiceId: newInvoice.id,
+              scriptId: script.id,
+              description: script.name,
+              quantity: 1,
+              unitPriceCents: subtotalCents,
+              totalCents: subtotalCents,
+            });
+            
+            console.log(`Invoice ${autoInvoiceNumber} created automatically for user ${userId}`);
+          }
+        } catch (invoiceError) {
+          console.error('Error creating automatic invoice:', invoiceError);
+          // Don't fail the request, just log the error
+        }
+
         // Send purchase confirmation email
         try {
           const [user] = await db.select().from(users).where(eq(users.id, userId));
