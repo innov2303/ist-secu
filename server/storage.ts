@@ -1,4 +1,4 @@
-import { scripts, purchases, type Script, type InsertScript, type Purchase, type InsertPurchase } from "@shared/schema";
+import { scripts, purchases, annualBundles, type Script, type InsertScript, type Purchase, type InsertPurchase, type AnnualBundle, type InsertAnnualBundle } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, ne, inArray } from "drizzle-orm";
 import * as fs from "fs";
@@ -21,6 +21,11 @@ export interface IStorage {
   hasPurchasedBundle(userId: string, bundleScriptIds: number[]): Promise<boolean>;
   hasPurchased(userId: string, scriptId: number): Promise<boolean>;
   getActivePurchase(userId: string, scriptId: number): Promise<Purchase | null>;
+  // Annual bundle methods
+  getAnnualBundles(): Promise<AnnualBundle[]>;
+  getAnnualBundle(id: number): Promise<AnnualBundle | undefined>;
+  createAnnualBundle(bundle: InsertAnnualBundle): Promise<AnnualBundle>;
+  seedAnnualBundles(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -411,6 +416,56 @@ export class DatabaseStorage implements IStorage {
     for (const script of defaultScripts) {
       await this.createScript(script);
     }
+  }
+
+  async getAnnualBundles(): Promise<AnnualBundle[]> {
+    return await db.select().from(annualBundles).where(eq(annualBundles.isActive, 1));
+  }
+
+  async getAnnualBundle(id: number): Promise<AnnualBundle | undefined> {
+    const [bundle] = await db.select().from(annualBundles).where(eq(annualBundles.id, id));
+    return bundle;
+  }
+
+  async createAnnualBundle(bundle: InsertAnnualBundle): Promise<AnnualBundle> {
+    const [newBundle] = await db.insert(annualBundles).values(bundle).returning();
+    return newBundle;
+  }
+
+  async seedAnnualBundles(): Promise<void> {
+    const existingBundles = await db.select().from(annualBundles);
+    if (existingBundles.length > 0) {
+      console.log("Annual bundles already seeded");
+      return;
+    }
+
+    const allScripts = await this.getScripts();
+    const windowsToolkit = allScripts.find(s => s.name === "Windows Compliance Toolkit");
+    const linuxToolkit = allScripts.find(s => s.name === "Linux Compliance Toolkit");
+    
+    const defaultBundles: InsertAnnualBundle[] = [
+      {
+        name: "System Security Pack",
+        description: "Pack annuel Windows + Linux avec 10% de reduction. Ideal pour securiser vos systemes d'exploitation.",
+        icon: "Shield",
+        includedScriptIds: [windowsToolkit?.id, linuxToolkit?.id].filter(Boolean) as number[],
+        discountPercent: 10,
+        isActive: 1,
+      },
+      {
+        name: "Complete Security Pack",
+        description: "Pack annuel complet incluant tous les toolkits disponibles avec 20% de reduction. La solution ultime pour une securite complete.",
+        icon: "ShieldCheck",
+        includedScriptIds: allScripts.filter(s => !s.isHidden && s.status !== "offline").map(s => s.id),
+        discountPercent: 20,
+        isActive: 1,
+      }
+    ];
+
+    for (const bundle of defaultBundles) {
+      await this.createAnnualBundle(bundle);
+    }
+    console.log("Annual bundles seeded");
   }
 }
 

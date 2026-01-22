@@ -503,6 +503,7 @@ export async function registerRoutes(
   // Initialize seed data and update scripts from files
   await storage.seed();
   await storage.updateScriptsFromFiles();
+  await storage.seedAnnualBundles();
 
   // Public routes
   app.get(api.scripts.list.path, async (req, res) => {
@@ -513,6 +514,17 @@ export async function registerRoutes(
   app.get(api.scripts.all.path, async (req, res) => {
     const scripts = await storage.getScripts();
     res.json(scripts);
+  });
+
+  // Annual bundles routes
+  app.get("/api/annual-bundles", async (req, res) => {
+    try {
+      const bundles = await storage.getAnnualBundles();
+      res.json(bundles);
+    } catch (error) {
+      console.error("Error fetching annual bundles:", error);
+      res.status(500).json({ message: "Error fetching bundles" });
+    }
   });
 
   // Get dynamic controls count for all scripts
@@ -1011,6 +1023,100 @@ export async function registerRoutes(
     }
   });
 
+  // Annual bundle checkout
+  app.post("/api/checkout/bundle", isAuthenticated, async (req, res) => {
+    const stripeReady = await isStripeAvailable();
+    if (!stripeReady) {
+      return res.status(503).json({ message: "Les paiements ne sont pas encore configures." });
+    }
+
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const { bundleId } = req.body;
+
+    if (!bundleId) {
+      return res.status(400).json({ message: "Bundle ID is required" });
+    }
+
+    const bundle = await storage.getAnnualBundle(bundleId);
+    if (!bundle) {
+      return res.status(404).json({ message: "Bundle not found" });
+    }
+
+    // Get all scripts in the bundle
+    const allScripts = await storage.getScripts();
+    const includedScripts = allScripts.filter(s => bundle.includedScriptIds.includes(s.id));
+    
+    // Calculate total annual price with discount
+    const totalMonthlyPrice = includedScripts.reduce((sum, s) => sum + s.monthlyPriceCents, 0);
+    const annualPrice = totalMonthlyPrice * 12;
+    const discountedPrice = Math.round(annualPrice * (1 - bundle.discountPercent / 100));
+
+    try {
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas configures." });
+      }
+      const user = await authStorage.getUser(userId);
+
+      let customerId = user?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user?.email || undefined,
+          metadata: { userId },
+        });
+        customerId = customer.id;
+        await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, userId));
+      }
+
+      // Find or create Stripe product for this bundle
+      const products = await stripe.products.list({ active: true, limit: 100 });
+      let product = products.data.find(p => p.name === bundle.name);
+      
+      if (!product) {
+        product = await stripe.products.create({
+          name: bundle.name,
+          description: bundle.description,
+          metadata: { bundleId: bundle.id.toString(), type: "annual_bundle" },
+        });
+      }
+
+      // Find or create yearly price
+      const prices = await stripe.prices.list({ product: product.id, active: true });
+      let yearlyPrice = prices.data.find(p => p.recurring?.interval === 'year');
+      
+      if (!yearlyPrice) {
+        yearlyPrice = await stripe.prices.create({
+          product: product.id,
+          unit_amount: discountedPrice,
+          currency: 'eur',
+          recurring: { interval: 'year' },
+        });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: yearlyPrice.id, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&bundle=${bundleId}`,
+        cancel_url: `${baseUrl}/checkout/cancel`,
+        metadata: {
+          userId,
+          bundleId: bundle.id.toString(),
+          purchaseType: 'annual_bundle',
+          priceCents: discountedPrice.toString(),
+          includedScriptIds: bundle.includedScriptIds.join(','),
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error('Bundle checkout error:', error);
+      res.status(500).json({ message: "Error creating checkout session" });
+    }
+  });
+
   app.get("/api/checkout/success", isAuthenticated, async (req, res) => {
     console.log('Checkout success endpoint called');
     const sessionId = req.query.session_id as string;
@@ -1033,7 +1139,48 @@ export async function registerRoutes(
       }
 
       if (session.payment_status === "paid" && session.metadata) {
-        const { scriptId, purchaseType, priceCents } = session.metadata;
+        const { scriptId, purchaseType, priceCents, bundleId, includedScriptIds } = session.metadata;
+        
+        // Handle annual bundle purchases
+        if (purchaseType === "annual_bundle" && bundleId && includedScriptIds) {
+          const scriptIds = includedScriptIds.split(',').map((id: string) => parseInt(id));
+          let subscriptionId: string | null = null;
+          
+          if (session.subscription) {
+            subscriptionId = typeof session.subscription === 'string' 
+              ? session.subscription 
+              : session.subscription.id;
+          }
+          
+          let expiresAt: Date | null = null;
+          if (subscriptionId) {
+            const stripe = await getUncachableStripeClient();
+            if (stripe) {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+              if (subscription.current_period_end) {
+                expiresAt = new Date(subscription.current_period_end * 1000);
+              }
+            }
+          }
+          
+          // Create purchase for each included script
+          for (const sid of scriptIds) {
+            const existing = await storage.getActivePurchase(userId, sid);
+            if (!existing) {
+              await storage.createPurchase({
+                userId,
+                scriptId: sid,
+                priceCents: Math.round(parseInt(priceCents || "0") / scriptIds.length),
+                purchaseType: "annual_bundle",
+                expiresAt,
+                stripeSubscriptionId: subscriptionId,
+              });
+            }
+          }
+          
+          return res.json({ success: true, message: "Bundle purchase recorded" });
+        }
+        
         const script = await storage.getScript(parseInt(scriptId));
         
         if (!script) {

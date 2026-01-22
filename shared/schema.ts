@@ -167,3 +167,19 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ i
 
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+
+// Annual bundles table - multi-toolkit packages with discounts
+export const annualBundles = pgTable("annual_bundles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull(),
+  includedScriptIds: integer("included_script_ids").array().notNull(),
+  discountPercent: integer("discount_percent").notNull().default(10),
+  isActive: integer("is_active").notNull().default(1),
+});
+
+export const insertAnnualBundleSchema = createInsertSchema(annualBundles).omit({ id: true });
+
+export type AnnualBundle = typeof annualBundles.$inferSelect;
+export type InsertAnnualBundle = z.infer<typeof insertAnnualBundleSchema>;

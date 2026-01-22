@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Hero } from "@/components/Hero";
 import { ScriptCard } from "@/components/ScriptCard";
+import { BundleCard } from "@/components/BundleCard";
 import { useScripts } from "@/hooks/use-scripts";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { AnnualBundle } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -31,6 +34,11 @@ export default function Home() {
   const [sent, setSent] = useState(false);
   const [ticketNumber, setTicketNumber] = useState("");
   const { toast } = useToast();
+  
+  // Fetch annual bundles
+  const { data: bundles } = useQuery<AnnualBundle[]>({
+    queryKey: ["/api/annual-bundles"],
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,6 +131,31 @@ export default function Home() {
             {scripts.map((script, index) => (
               <ScriptCard key={script.id} script={script} index={index} />
             ))}
+          </div>
+        )}
+
+        {/* Annual Bundles Section */}
+        {bundles && bundles.length > 0 && scripts && (
+          <div className="mt-16">
+            <div className="mb-12 text-center md:text-left border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold font-mono mb-2">
+                  Packs Annuels
+                </h2>
+                <p className="text-muted-foreground">
+                  Economisez avec nos packs multi-toolkits en abonnement annuel.
+                </p>
+              </div>
+              <div className="text-xs font-mono text-primary/80 bg-primary/5 px-3 py-1 rounded border border-primary/20">
+                Offres Groupees
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {bundles.map((bundle, index) => (
+                <BundleCard key={bundle.id} bundle={bundle} scripts={scripts} index={index} />
+              ))}
+            </div>
           </div>
         )}
       </main>
