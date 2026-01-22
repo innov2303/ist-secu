@@ -1049,7 +1049,7 @@ export default function Purchases() {
   });
 
   const { data: scripts } = useQuery<Script[]>({
-    queryKey: ["/api/scripts"],
+    queryKey: ["/api/scripts/all"],
     enabled: !!user,
   });
 
