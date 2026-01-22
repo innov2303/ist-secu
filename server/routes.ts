@@ -1066,6 +1066,51 @@ export async function registerRoutes(
     }
   });
 
+  // Reactivate renewal alias (for frontend compatibility)
+  app.post("/api/purchases/:purchaseId/reactivate-renewal", isAuthenticated, async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const purchaseId = parseInt(req.params.purchaseId);
+
+    if (isNaN(purchaseId)) {
+      return res.status(400).json({ message: "Invalid purchase ID" });
+    }
+
+    try {
+      const userPurchases = await storage.getPurchasesByUser(userId);
+      const purchase = userPurchases.find(p => p.id === purchaseId);
+
+      if (!purchase) {
+        return res.status(404).json({ message: "Achat non trouve" });
+      }
+
+      if (purchase.purchaseType !== "monthly" && purchase.purchaseType !== "yearly" && purchase.purchaseType !== "annual_bundle") {
+        return res.status(400).json({ message: "Cet achat n'est pas un abonnement" });
+      }
+
+      if (!purchase.stripeSubscriptionId) {
+        return res.status(400).json({ message: "Aucun abonnement Stripe associe" });
+      }
+
+      if (purchase.expiresAt && new Date(purchase.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "L'abonnement a expire, vous devez le renouveler" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ message: "Les paiements ne sont pas encore configures." });
+      }
+
+      await stripe.subscriptions.update(purchase.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+      });
+
+      res.json({ success: true, message: "Le renouvellement automatique a ete reactive" });
+    } catch (error: any) {
+      console.error("Error reactivating subscription renewal:", error);
+      res.status(500).json({ message: "Erreur lors de la reactivation du renouvellement" });
+    }
+  });
+
   // Get subscription status (whether it will auto-renew or not)
   app.get("/api/purchases/:purchaseId/subscription-status", isAuthenticated, async (req, res) => {
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
