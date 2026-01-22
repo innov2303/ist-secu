@@ -870,6 +870,18 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
               )}
             </Button>
           </div>
+
+          {/* Afficher la date d'expiration pour les achats directs */}
+          {purchase.purchaseType === "direct" && purchase.expiresAt && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">
+                  {expired ? "Expire le" : "Valide jusqu'au"}
+                </span>
+                <span className="text-sm text-muted-foreground">{formatDate(purchase.expiresAt)}</span>
+              </div>
+            </div>
+          )}
           
           {isSubscription && !expired && (
             <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
