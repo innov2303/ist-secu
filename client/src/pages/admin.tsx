@@ -1294,9 +1294,6 @@ export default function AdminPage() {
                                 <div className="space-y-2">
                                   {bundledScripts.map((bundledScript) => {
                                     if (!bundledScript) return null;
-                                    const bStatus = (bundledScript.status as ScriptStatus) || "active";
-                                    const bStatusInfo = statusLabels[bStatus];
-                                    const BStatusIcon = bStatusInfo.icon;
                                     return (
                                       <div
                                         key={bundledScript.id}
@@ -1309,10 +1306,6 @@ export default function AdminPage() {
                                             <div className="font-medium text-sm flex items-center gap-2">
                                               {bundledScript.name}
                                               <Badge variant="outline" className="text-xs">v{bundledScript.version || "1.0.0"}</Badge>
-                                              <Badge variant={bStatusInfo.variant} className="text-xs">
-                                                <BStatusIcon className="h-3 w-3 mr-1" />
-                                                {bStatusInfo.label}
-                                              </Badge>
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                               {bundledScript.filename} - ID: {bundledScript.id}
