@@ -38,7 +38,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Info } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -124,6 +128,9 @@ export default function Suivi() {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [selectedReport, setSelectedReport] = useState<AuditReport | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [machineName, setMachineName] = useState("");
 
   const { data: team, isLoading: teamLoading } = useQuery<Team>({
     queryKey: ["/api/teams/my-team"],
@@ -151,7 +158,7 @@ export default function Suivi() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (data: { jsonContent: string; htmlContent?: string; fileName: string }) => {
+    mutationFn: async (data: { jsonContent: string; htmlContent?: string; fileName: string; machineName?: string }) => {
       const res = await apiRequest("POST", "/api/fleet/upload-report", data);
       return res.json();
     },
@@ -198,30 +205,61 @@ export default function Suivi() {
 
   const isLoading = authLoading || teamLoading || membershipLoading;
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    setIsUploading(true);
-    
-    for (const file of Array.from(files)) {
-      if (file.name.endsWith('.json')) {
-        try {
-          const content = await file.text();
-          await uploadMutation.mutateAsync({
-            jsonContent: content,
-            fileName: file.name,
-          });
-        } catch (e) {
-          console.error("Error uploading file:", e);
-        }
-      }
+    const file = files[0];
+    if (file.name.endsWith('.json')) {
+      setUploadFile(file);
+      setMachineName("");
+      setShowUploadDialog(true);
+    } else {
+      toast({
+        title: "Format invalide",
+        description: "Veuillez selectionner un fichier JSON",
+        variant: "destructive",
+      });
     }
     
-    setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleConfirmUpload = async () => {
+    if (!uploadFile || !machineName.trim()) {
+      toast({
+        title: "Nom de machine requis",
+        description: "Veuillez renseigner le nom de la machine",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const content = await uploadFile.text();
+      await uploadMutation.mutateAsync({
+        jsonContent: content,
+        fileName: uploadFile.name,
+        machineName: machineName.trim(),
+      });
+      setShowUploadDialog(false);
+      setUploadFile(null);
+      setMachineName("");
+    } catch (e) {
+      console.error("Error uploading file:", e);
+    }
+    
+    setIsUploading(false);
+  };
+
+  const handleCancelUpload = () => {
+    setShowUploadDialog(false);
+    setUploadFile(null);
+    setMachineName("");
   };
 
   const formatDate = (dateString?: string) => {
@@ -480,7 +518,7 @@ export default function Suivi() {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileUpload}
+                    onChange={handleFileSelect}
                     accept=".json"
                     multiple
                     className="hidden"
@@ -998,6 +1036,71 @@ export default function Suivi() {
           )}
         </div>
       </main>
+
+      {/* Dialog for uploading report with machine name */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              Importer un rapport
+            </DialogTitle>
+            <DialogDescription>
+              Renseignez le nom de la machine associee a ce rapport
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+              <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Aucune donnee systeme n'est recuperee lors de l'import. Seuls les resultats des tests de securite sont analyses. Veuillez renseigner manuellement le nom de la machine.
+              </p>
+            </div>
+
+            {uploadFile && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                <FileJson className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium truncate">{uploadFile.name}</span>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="machine-name">Nom de la machine *</Label>
+              <Input
+                id="machine-name"
+                placeholder="ex: srv-web-01, pc-compta-jean..."
+                value={machineName}
+                onChange={(e) => setMachineName(e.target.value)}
+                data-testid="input-machine-name"
+              />
+              <p className="text-xs text-muted-foreground">
+                Identifiant unique pour cette machine dans votre parc
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCancelUpload} disabled={isUploading}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleConfirmUpload} 
+              disabled={isUploading || !machineName.trim()}
+              data-testid="button-confirm-upload"
+            >
+              {isUploading ? (
+                <>Import en cours...</>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Confirmer l'import
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog for viewing report details */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>

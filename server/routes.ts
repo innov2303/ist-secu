@@ -3184,10 +3184,14 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Non autorise" });
       }
 
-      const { jsonContent, htmlContent, fileName } = req.body;
+      const { jsonContent, htmlContent, fileName, machineName } = req.body;
       
       if (!jsonContent) {
         return res.status(400).json({ message: "Contenu JSON requis" });
+      }
+
+      if (!machineName || machineName.trim() === '') {
+        return res.status(400).json({ message: "Nom de la machine requis" });
       }
 
       // Parse JSON report
@@ -3215,8 +3219,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Vous devez appartenir a une equipe pour uploader des rapports" });
       }
 
-      // Extract machine info from JSON
-      const hostname = reportData.hostname || reportData.machine_name || reportData.systemInfo?.hostname || "Unknown";
+      // Use manually provided machine name (required)
+      const hostname = machineName.trim();
       const machineIdFromReport = reportData.machine_id || reportData.systemInfo?.uuid || null;
       const os = detectOS(reportData);
       const osVersion = reportData.os_version || reportData.systemInfo?.osVersion || null;
