@@ -3981,19 +3981,28 @@ export async function registerRoutes(
 
       const history = await historyQuery;
 
-      // Format month labels (e.g., "Jan 2026")
-      const formattedHistory = history.map(h => {
-        const [year, month] = h.month.split('-');
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return {
-          month: `${monthNames[parseInt(month) - 1]} ${year}`,
-          originalScore: h.avgOriginalScore,
-          currentScore: h.avgCurrentScore,
-          reports: h.reportCount
-        };
-      });
+      // Generate all 12 months (from 11 months ago to current month)
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const allMonths: { month: string; originalScore: number; currentScore: number; reports: number }[] = [];
+      
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        
+        // Find matching data from query
+        const existingData = history.find(h => h.month === yearMonth);
+        
+        allMonths.push({
+          month: monthLabel,
+          originalScore: existingData?.avgOriginalScore || 0,
+          currentScore: existingData?.avgCurrentScore || 0,
+          reports: existingData?.reportCount || 0
+        });
+      }
 
-      res.json({ history: formattedHistory });
+      res.json({ history: allMonths });
     } catch (error) {
       console.error("Error fetching score history:", error);
       res.status(500).json({ message: "Erreur lors de la recuperation de l'historique" });
