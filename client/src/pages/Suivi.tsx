@@ -1531,29 +1531,104 @@ export default function Suivi() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="machine-group">Groupe de machines (optionnel)</Label>
-              <Select 
-                value={selectedGroupId?.toString() || ""} 
-                onValueChange={(value) => setSelectedGroupId(value ? parseInt(value) : null)}
-              >
-                <SelectTrigger data-testid="select-machine-group">
-                  <SelectValue placeholder="Selectionner un groupe..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Aucun groupe (non assigne)</SelectItem>
-                  {organizations.flatMap(org => 
-                    org.sites.flatMap(site => 
-                      site.groups.map(group => (
-                        <SelectItem key={group.id} value={group.id.toString()}>
-                          {org.name} / {site.name} / {group.name}
-                        </SelectItem>
-                      ))
-                    )
-                  )}
-                </SelectContent>
-              </Select>
+              <Label>Emplacement dans l'arborescence (optionnel)</Label>
+              <div className="border rounded-lg p-3 max-h-64 overflow-y-auto bg-muted/30">
+                {organizations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucune organisation creee. Creez d'abord une structure dans l'onglet Machines.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    <div 
+                      className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                        selectedGroupId === null ? 'bg-primary/10 border border-primary' : 'hover-elevate'
+                      }`}
+                      onClick={() => setSelectedGroupId(null)}
+                      data-testid="select-no-group"
+                    >
+                      <Monitor className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">Non assigne</span>
+                    </div>
+                    
+                    {organizations.map(org => (
+                      <div key={org.id} className="pl-0">
+                        <div 
+                          className="flex items-center gap-1 p-2 rounded cursor-pointer hover-elevate"
+                          onClick={() => {
+                            const newExpanded = new Set(expandedOrgs);
+                            if (newExpanded.has(org.id)) {
+                              newExpanded.delete(org.id);
+                            } else {
+                              newExpanded.add(org.id);
+                            }
+                            setExpandedOrgs(newExpanded);
+                          }}
+                        >
+                          {org.sites.length > 0 ? (
+                            expandedOrgs.has(org.id) ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            )
+                          ) : (
+                            <div className="w-4" />
+                          )}
+                          <Building2 className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium">{org.name}</span>
+                        </div>
+                        
+                        {expandedOrgs.has(org.id) && org.sites.map(site => (
+                          <div key={site.id} className="pl-6">
+                            <div 
+                              className="flex items-center gap-1 p-2 rounded cursor-pointer hover-elevate"
+                              onClick={() => {
+                                const newExpanded = new Set(expandedSites);
+                                if (newExpanded.has(site.id)) {
+                                  newExpanded.delete(site.id);
+                                } else {
+                                  newExpanded.add(site.id);
+                                }
+                                setExpandedSites(newExpanded);
+                              }}
+                            >
+                              {site.groups.length > 0 ? (
+                                expandedSites.has(site.id) ? (
+                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                )
+                              ) : (
+                                <div className="w-4" />
+                              )}
+                              <MapPin className="w-4 h-4 text-green-600" />
+                              <span className="text-sm">{site.name}</span>
+                            </div>
+                            
+                            {expandedSites.has(site.id) && site.groups.map(group => (
+                              <div 
+                                key={group.id} 
+                                className={`pl-12 flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                  selectedGroupId === group.id ? 'bg-primary/10 border border-primary' : 'hover-elevate'
+                                }`}
+                                onClick={() => setSelectedGroupId(group.id)}
+                                data-testid={`select-group-${group.id}`}
+                              >
+                                <Layers className="w-4 h-4 text-purple-600" />
+                                <span className="text-sm">{group.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Assignez cette machine a un groupe pour une meilleure organisation
+                {selectedGroupId ? 
+                  `Machine assignee au groupe selectionne` : 
+                  `Cliquez sur un groupe pour assigner la machine`
+                }
               </p>
             </div>
           </div>
