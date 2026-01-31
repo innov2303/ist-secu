@@ -1086,17 +1086,31 @@ export default function Suivi() {
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
-                          {Object.entries(stats.osCounts).map(([os, count]) => (
-                              <div key={os} className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+                          {[
+                            { key: 'windows', label: 'Windows', color: '#0078d4' },
+                            { key: 'linux', label: 'Linux', color: '#f59e0b' },
+                            { key: 'vmware', label: 'VMware', color: '#6d9a2e' },
+                            { key: 'docker', label: 'Docker', color: '#2496ed' },
+                            { key: 'netapp', label: 'NetApp', color: '#0067c5' },
+                            { key: 'web', label: 'Web', color: '#ef4444' },
+                          ].map(({ key, label, color }) => {
+                            const count = Object.entries(stats.osCounts).find(([os]) => 
+                              os.toLowerCase().includes(key)
+                            )?.[1] || 0;
+                            return (
+                              <div key={key} className={`flex items-center gap-1.5 text-xs ${count === 0 ? 'opacity-40' : ''}`}>
                                 <div 
-                                  className="w-3 h-3 rounded-sm" 
-                                  style={{ backgroundColor: getOsColor(os) }}
+                                  className="w-2.5 h-2.5 rounded-sm" 
+                                  style={{ backgroundColor: color }}
                                 />
-                                <span className="capitalize">{os}</span>
-                                <span className="text-muted-foreground">({Math.round((count / stats.totalMachines) * 100)}%)</span>
+                                <span>{label}</span>
+                                {count > 0 && (
+                                  <span className="text-muted-foreground">({Math.round((count / stats.totalMachines) * 100)}%)</span>
+                                )}
                               </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ) : (
