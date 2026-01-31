@@ -51,7 +51,7 @@ export function Hero() {
               </CardContent>
             </Card>
             <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
-              <img src={featureAudit} alt="Audit Sécurité" className="w-full h-48 object-contain" />
+              <img src={featureAudit} alt="Audit Sécurité" className="w-full h-56 object-contain" />
             </div>
           </div>
 
@@ -72,7 +72,7 @@ export function Hero() {
               </CardContent>
             </Card>
             <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
-              <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-48 object-contain" />
+              <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-56 object-contain" />
             </div>
           </div>
 
@@ -93,7 +93,7 @@ export function Hero() {
               </CardContent>
             </Card>
             <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
-              <img src={featureSecure} alt="Secure" className="w-full h-48 object-contain" />
+              <img src={featureSecure} alt="Secure" className="w-full h-56 object-contain" />
             </div>
           </div>
 
@@ -114,7 +114,7 @@ export function Hero() {
               </CardContent>
             </Card>
             <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
-              <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-48 object-contain" />
+              <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-56 object-contain" />
             </div>
           </div>
         </motion.div>
