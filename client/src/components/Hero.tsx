@@ -37,7 +37,7 @@ export function Hero() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
                 <FileCode className="w-5 h-5 text-primary" />
-                Audit & Conformité
+                Audit Sécurité & Conformité
               </CardTitle>
             </CardHeader>
             <CardContent>
