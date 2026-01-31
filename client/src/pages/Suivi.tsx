@@ -669,7 +669,8 @@ export default function Suivi() {
     reportId: number; 
     controls: ReportControl[]; 
     totalControls: number; 
-    correctedCount: number; 
+    correctedCount: number;
+    canEdit: boolean;
   }>({
     queryKey: ["/api/fleet/reports", selectedReportForControls?.id, "controls"],
     enabled: !!selectedReportForControls,
@@ -2653,7 +2654,7 @@ export default function Suivi() {
                           )}
                         </div>
                         
-                        {!isEditing && hasFullAccess && (control.status === 'FAIL' || control.status === 'WARN') && (
+                        {!isEditing && reportControlsData?.canEdit && (control.status === 'FAIL' || control.status === 'WARN') && (
                           <Button
                             size="sm"
                             variant="outline"

@@ -4896,6 +4896,20 @@ export async function registerRoutes(
         }
       }
 
+      // Check if user has edit access on this machine's group
+      let canEdit = false;
+      if (user?.isAdmin) {
+        canEdit = true;
+      } else {
+        const editGroupIds = await getAllowedGroupIdsForMember(userId, "edit");
+        if (editGroupIds === null) {
+          // Team owner/admin - full edit access
+          canEdit = true;
+        } else if (machine.groupId && editGroupIds.includes(machine.groupId)) {
+          canEdit = true;
+        }
+      }
+
       // Parse the JSON content to get controls
       let controls: any[] = [];
       try {
@@ -4924,7 +4938,8 @@ export async function registerRoutes(
         reportId,
         controls: controlsWithCorrections,
         totalControls: controls.length,
-        correctedCount: corrections.length
+        correctedCount: corrections.length,
+        canEdit
       });
     } catch (error) {
       console.error("Error fetching report controls:", error);
