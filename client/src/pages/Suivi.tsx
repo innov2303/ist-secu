@@ -76,10 +76,12 @@ export default function Suivi() {
     );
   }
 
+  const isAdmin = user.isAdmin;
   const isTeamOwner = !!team && team.ownerId === user.id;
   const isTeamMember = !!membership && membership.ownerId !== user.id;
   const memberRole = membership?.role || "member";
-  const hasTeamAccess = isTeamOwner || isTeamMember;
+  const hasTeamAccess = isAdmin || isTeamOwner || isTeamMember;
+  const hasFullAccess = isAdmin || isTeamOwner || memberRole === "admin";
 
   if (!hasTeamAccess) {
     return (
@@ -151,27 +153,34 @@ export default function Suivi() {
             <div>
               <h1 className="text-2xl font-bold">Suivi de votre parc</h1>
               <p className="text-muted-foreground text-sm">
-                {isTeamOwner 
-                  ? `Equipe: ${team?.name}` 
-                  : `Membre de: ${membership?.teamName}`}
+                {isAdmin && !isTeamOwner && !isTeamMember
+                  ? "Acces administrateur - Tous les parcs"
+                  : isTeamOwner 
+                    ? `Equipe: ${team?.name}` 
+                    : `Membre de: ${membership?.teamName}`}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isTeamOwner && (
+            {isAdmin && (
+              <Badge variant="default" className="bg-red-600">
+                Administrateur
+              </Badge>
+            )}
+            {isTeamOwner && !isAdmin && (
               <Badge variant="default" className="bg-green-600">
                 Proprietaire
               </Badge>
             )}
-            {isTeamMember && (
+            {isTeamMember && !isAdmin && (
               <Badge variant={memberRole === "admin" ? "default" : "secondary"}>
-                {memberRole === "admin" ? "Admin" : "Membre"}
+                {memberRole === "admin" ? "Admin equipe" : "Membre"}
               </Badge>
             )}
           </div>
         </div>
 
-        {isTeamMember && memberRole === "member" && (
+        {!hasFullAccess && (
           <Card className="mb-6 bg-blue-500/5 border-blue-500/20">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
