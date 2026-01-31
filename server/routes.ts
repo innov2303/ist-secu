@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -719,6 +719,246 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Error creating bundle" });
+    }
+  });
+
+  // ===== TEAM MANAGEMENT ROUTES =====
+  
+  // Check if user has any active purchases (required to create a team)
+  app.get("/api/teams/can-create", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Check if user has at least one active purchase
+      const userPurchases = await db.select().from(purchases).where(eq(purchases.userId, userId)).limit(1);
+      const canCreate = userPurchases.length > 0;
+      
+      res.json({ canCreate });
+    } catch (error) {
+      console.error("Error checking team creation eligibility:", error);
+      res.status(500).json({ message: "Erreur lors de la verification" });
+    }
+  });
+
+  // Get user's team
+  app.get("/api/teams/my-team", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      const [team] = await db.select().from(teams).where(eq(teams.ownerId, userId));
+      if (!team) {
+        return res.json({ team: null, members: [] });
+      }
+      
+      const members = await db.select().from(teamMembers).where(eq(teamMembers.teamId, team.id));
+      
+      res.json({ team, members });
+    } catch (error) {
+      console.error("Error fetching team:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation de l'equipe" });
+    }
+  });
+
+  // Create a team
+  app.post("/api/teams", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Check if user has at least one purchase
+      const userPurchases = await db.select().from(purchases).where(eq(purchases.userId, userId)).limit(1);
+      if (userPurchases.length === 0) {
+        return res.status(403).json({ message: "Vous devez avoir au moins un toolkit pour creer une equipe" });
+      }
+      
+      // Check if user already has a team
+      const existingTeam = await db.select().from(teams).where(eq(teams.ownerId, userId)).limit(1);
+      if (existingTeam.length > 0) {
+        return res.status(400).json({ message: "Vous avez deja une equipe" });
+      }
+      
+      const { name } = req.body;
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ message: "Le nom de l'equipe est requis" });
+      }
+      
+      const [newTeam] = await db.insert(teams).values({
+        name: name.trim(),
+        ownerId: userId,
+      }).returning();
+      
+      res.status(201).json(newTeam);
+    } catch (error) {
+      console.error("Error creating team:", error);
+      res.status(500).json({ message: "Erreur lors de la creation de l'equipe" });
+    }
+  });
+
+  // Update team name
+  app.patch("/api/teams/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const teamId = parseInt(req.params.id);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify ownership
+      const [team] = await db.select().from(teams).where(and(eq(teams.id, teamId), eq(teams.ownerId, userId)));
+      if (!team) {
+        return res.status(404).json({ message: "Equipe non trouvee" });
+      }
+      
+      const { name } = req.body;
+      if (!name || name.trim().length === 0) {
+        return res.status(400).json({ message: "Le nom de l'equipe est requis" });
+      }
+      
+      const [updated] = await db.update(teams).set({ name: name.trim() }).where(eq(teams.id, teamId)).returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating team:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour de l'equipe" });
+    }
+  });
+
+  // Delete team
+  app.delete("/api/teams/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const teamId = parseInt(req.params.id);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify ownership
+      const [team] = await db.select().from(teams).where(and(eq(teams.id, teamId), eq(teams.ownerId, userId)));
+      if (!team) {
+        return res.status(404).json({ message: "Equipe non trouvee" });
+      }
+      
+      // Delete all members first
+      await db.delete(teamMembers).where(eq(teamMembers.teamId, teamId));
+      // Delete team
+      await db.delete(teams).where(eq(teams.id, teamId));
+      
+      res.json({ message: "Equipe supprimee" });
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de l'equipe" });
+    }
+  });
+
+  // Add team member
+  app.post("/api/teams/:id/members", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const teamId = parseInt(req.params.id);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify ownership
+      const [team] = await db.select().from(teams).where(and(eq(teams.id, teamId), eq(teams.ownerId, userId)));
+      if (!team) {
+        return res.status(404).json({ message: "Equipe non trouvee" });
+      }
+      
+      const { email, name, role } = req.body;
+      if (!email || email.trim().length === 0) {
+        return res.status(400).json({ message: "L'email est requis" });
+      }
+      
+      // Check if member already exists
+      const existingMember = await db.select().from(teamMembers).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.email, email.trim().toLowerCase()))).limit(1);
+      if (existingMember.length > 0) {
+        return res.status(400).json({ message: "Ce membre existe deja dans l'equipe" });
+      }
+      
+      const [newMember] = await db.insert(teamMembers).values({
+        teamId,
+        email: email.trim().toLowerCase(),
+        name: name?.trim() || null,
+        role: role || "member",
+      }).returning();
+      
+      res.status(201).json(newMember);
+    } catch (error) {
+      console.error("Error adding team member:", error);
+      res.status(500).json({ message: "Erreur lors de l'ajout du membre" });
+    }
+  });
+
+  // Update team member
+  app.patch("/api/teams/:teamId/members/:memberId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const teamId = parseInt(req.params.teamId);
+      const memberId = parseInt(req.params.memberId);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify ownership
+      const [team] = await db.select().from(teams).where(and(eq(teams.id, teamId), eq(teams.ownerId, userId)));
+      if (!team) {
+        return res.status(404).json({ message: "Equipe non trouvee" });
+      }
+      
+      const { name, role } = req.body;
+      
+      const [updated] = await db.update(teamMembers).set({
+        name: name?.trim() || null,
+        role: role || "member",
+      }).where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId))).returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Membre non trouve" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating team member:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour du membre" });
+    }
+  });
+
+  // Remove team member
+  app.delete("/api/teams/:teamId/members/:memberId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const teamId = parseInt(req.params.teamId);
+      const memberId = parseInt(req.params.memberId);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify ownership
+      const [team] = await db.select().from(teams).where(and(eq(teams.id, teamId), eq(teams.ownerId, userId)));
+      if (!team) {
+        return res.status(404).json({ message: "Equipe non trouvee" });
+      }
+      
+      await db.delete(teamMembers).where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)));
+      
+      res.json({ message: "Membre supprime" });
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du membre" });
     }
   });
 
