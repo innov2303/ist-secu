@@ -3935,21 +3935,30 @@ export async function registerRoutes(
 
 // Helper function to detect OS from report data
 function detectOS(reportData: any): string {
+  // Check report_type first for IST script format (most reliable)
+  const reportType = reportData.report_type?.toLowerCase() || '';
+  if (reportType.includes('linux')) return 'linux';
+  if (reportType.includes('windows')) return 'windows';
+  if (reportType.includes('vmware') || reportType.includes('esxi')) return 'vmware';
+  if (reportType.includes('docker') || reportType.includes('container') || reportType.includes('kubernetes')) return 'docker';
+  if (reportType.includes('netapp') || reportType.includes('ontap')) return 'netapp';
+  if (reportType.includes('web')) return 'web';
+  
+  // Check other fields as fallback
   const osHints = [
     reportData.os,
     reportData.operating_system,
     reportData.system_info?.os,
     reportData.systemInfo?.os,
-    reportData.platform,
-    reportData.report_type
+    reportData.platform
   ].filter(Boolean);
 
   for (const hint of osHints) {
     const lower = String(hint).toLowerCase();
     if (lower.includes('windows')) return 'windows';
-    if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian') || lower.includes('centos') || lower.includes('rhel')) return 'linux';
+    if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian') || lower.includes('centos') || lower.includes('rhel') || lower.includes('fedora') || lower.includes('suse')) return 'linux';
     if (lower.includes('vmware') || lower.includes('esxi')) return 'vmware';
-    if (lower.includes('docker') || lower.includes('container')) return 'docker';
+    if (lower.includes('docker') || lower.includes('container') || lower.includes('kubernetes')) return 'docker';
     if (lower.includes('netapp') || lower.includes('ontap')) return 'netapp';
   }
   return 'unknown';
