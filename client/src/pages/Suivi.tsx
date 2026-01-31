@@ -1034,14 +1034,14 @@ export default function Suivi() {
                     {(() => {
                       // Define OS colors based on toolkits
                       const osColors: Record<string, string> = {
-                        'windows': '#0078d4',      // Windows blue
+                        'windows': '#7c3aed',      // Windows purple
                         'linux': '#f59e0b',        // Linux orange/yellow
                         'vmware': '#6d9a2e',       // VMware green
                         'esxi': '#6d9a2e',         // ESXi green (same as VMware)
-                        'docker': '#2496ed',       // Docker blue
-                        'container': '#2496ed',   // Container blue (same as Docker)
-                        'netapp': '#0067c5',       // NetApp blue
-                        'ontap': '#0067c5',        // ONTAP blue (same as NetApp)
+                        'docker': '#06b6d4',       // Container cyan
+                        'container': '#06b6d4',   // Container cyan
+                        'netapp': '#374151',       // NetApp dark gray
+                        'ontap': '#374151',        // ONTAP dark gray (same as NetApp)
                         'web': '#ef4444',          // Web red
                         'unknown': '#6b7280',      // Gray for unknown
                       };
@@ -1088,11 +1088,11 @@ export default function Suivi() {
                         </div>
                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
                           {[
-                            { key: 'windows', label: 'Windows', color: '#0078d4' },
+                            { key: 'windows', label: 'Windows', color: '#7c3aed' },
                             { key: 'linux', label: 'Linux', color: '#f59e0b' },
                             { key: 'vmware', label: 'VMware', color: '#6d9a2e' },
-                            { key: 'docker', label: 'Docker', color: '#2496ed' },
-                            { key: 'netapp', label: 'NetApp', color: '#0067c5' },
+                            { key: 'container', label: 'Container', color: '#06b6d4' },
+                            { key: 'netapp', label: 'NetApp', color: '#374151' },
                             { key: 'web', label: 'Web', color: '#ef4444' },
                           ].map(({ key, label, color }) => {
                             const count = Object.entries(stats.osCounts).find(([os]) => 
