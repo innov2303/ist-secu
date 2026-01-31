@@ -968,14 +968,14 @@ export default function Suivi() {
                             fill="#374151"
                             radius={[2, 2, 0, 0]}
                             name="originalScore"
-                            maxBarSize={18}
+                            maxBarSize={8}
                           />
                           <Bar 
                             dataKey="currentScore" 
                             fill="#10b981"
                             radius={[2, 2, 0, 0]}
                             name="currentScore"
-                            maxBarSize={18}
+                            maxBarSize={8}
                           />
                         </BarChart>
                       </ResponsiveContainer>
