@@ -926,9 +926,9 @@ export default function Suivi() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart 
                           data={scoreHistoryData.history} 
-                          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                          barGap={2}
-                          barCategoryGap="20%"
+                          margin={{ top: 10, right: 30, left: -10, bottom: 0 }}
+                          barGap={1}
+                          barCategoryGap="60%"
                         >
                           <CartesianGrid 
                             strokeDasharray="3 3" 
@@ -966,14 +966,16 @@ export default function Suivi() {
                           <Bar 
                             dataKey="originalScore" 
                             fill="#374151"
-                            radius={[3, 3, 0, 0]}
+                            radius={[2, 2, 0, 0]}
                             name="originalScore"
+                            maxBarSize={18}
                           />
                           <Bar 
                             dataKey="currentScore" 
                             fill="#10b981"
-                            radius={[3, 3, 0, 0]}
+                            radius={[2, 2, 0, 0]}
                             name="currentScore"
+                            maxBarSize={18}
                           />
                         </BarChart>
                       </ResponsiveContainer>
