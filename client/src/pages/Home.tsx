@@ -73,7 +73,7 @@ export default function Home() {
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         ) : user ? (
           <>
-            <Button variant="outline" size="sm" asChild data-testid="link-suivi">
+            <Button variant="default" size="sm" asChild data-testid="link-suivi">
               <Link href="/suivi">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Suivi de votre parc
