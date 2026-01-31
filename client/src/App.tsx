@@ -15,6 +15,7 @@ import ResetPassword from "@/pages/reset-password";
 import Profile from "@/pages/profile";
 import Privacy from "@/pages/Privacy";
 import Documentation from "@/pages/Documentation";
+import Suivi from "@/pages/Suivi";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/documentation" component={Documentation} />
+      <Route path="/suivi" component={Suivi} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route component={NotFound} />

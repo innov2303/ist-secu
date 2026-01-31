@@ -20,7 +20,7 @@ const CONTACT_SUBJECTS = [
   { value: "billing", label: "Facturation", description: "Questions sur les paiements, factures ou abonnements" },
   { value: "feedback", label: "Suggestion", description: "Idées d'amélioration ou nouvelles fonctionnalités" },
 ];
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -73,6 +73,12 @@ export default function Home() {
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         ) : user ? (
           <>
+            <Button variant="outline" size="sm" asChild data-testid="link-suivi">
+              <Link href="/suivi">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Suivi de votre parc
+              </Link>
+            </Button>
             <Button variant="default" size="sm" asChild data-testid="link-purchases">
               <Link href="/purchases">
                 <ShoppingBag className="h-4 w-4 mr-2" />
