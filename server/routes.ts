@@ -1169,6 +1169,42 @@ export async function registerRoutes(
 
   // ==================== USER GROUPS ENDPOINTS ====================
 
+  // Get all team member IDs who are in any user group
+  app.get("/api/teams/:teamId/members-in-groups", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Get all user groups for this team
+      const teamUserGroups = await db.select().from(userGroups).where(eq(userGroups.teamId, teamId));
+      
+      if (teamUserGroups.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all members in these groups
+      const groupIds = teamUserGroups.map(g => g.id);
+      const allGroupMembers = await db.select().from(userGroupMembers).where(inArray(userGroupMembers.userGroupId, groupIds));
+      
+      // Return unique team member IDs
+      const memberIds = [...new Set(allGroupMembers.map(m => m.teamMemberId))];
+      res.json(memberIds);
+    } catch (error) {
+      console.error("Error fetching members in groups:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des membres" });
+    }
+  });
+
   // Get all user groups for a team
   app.get("/api/teams/:teamId/user-groups", isAuthenticated, async (req, res) => {
     try {

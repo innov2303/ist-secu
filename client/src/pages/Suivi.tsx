@@ -402,6 +402,11 @@ export default function Suivi() {
     enabled: !!team?.id,
   });
 
+  const { data: membersInGroupsData } = useQuery<number[]>({
+    queryKey: ["/api/teams", team?.id, "members-in-groups"],
+    enabled: !!team?.id,
+  });
+
   const { data: userGroupMembersData } = useQuery<UserGroupMember[]>({
     queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"],
     enabled: !!team?.id && !!selectedUserGroup?.id && showUserGroupMembersDialog,
@@ -454,6 +459,7 @@ export default function Suivi() {
     onSuccess: () => {
       toast({ title: "Groupe utilisateur supprime" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
       toast({ title: "Erreur lors de la suppression", variant: "destructive" });
@@ -471,6 +477,7 @@ export default function Suivi() {
       toast({ title: "Membre ajoute au groupe" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
       toast({ title: "Erreur lors de l'ajout", variant: "destructive" });
@@ -485,6 +492,7 @@ export default function Suivi() {
       toast({ title: "Membre retire du groupe" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
       toast({ title: "Erreur lors du retrait", variant: "destructive" });
@@ -1889,10 +1897,10 @@ export default function Suivi() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Membres de l'equipe
+                    Membres de l'equipe sans groupe
                   </CardTitle>
                   <CardDescription>
-                    {team ? `${teamMembers.length} membre${teamMembers.length > 1 ? "s" : ""} dans l'equipe` : "Gestion des membres"}
+                    {team ? `${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length} membre${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length > 1 ? "s" : ""} sans groupe` : "Gestion des membres"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1905,9 +1913,15 @@ export default function Suivi() {
                         <Link href="/profile">Ajouter des membres</Link>
                       </Button>
                     </div>
+                  ) : teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <Layers className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-sm">Tous les membres sont dans des groupes</p>
+                      <p className="text-xs mt-1">Gerez leurs permissions via les groupes d'utilisateurs</p>
+                    </div>
                   ) : (
                     <div className="space-y-2">
-                      {teamMembers.map((member) => (
+                      {teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).map((member) => (
                         <div 
                           key={member.id} 
                           className="flex items-center justify-between p-3 rounded-lg border"
