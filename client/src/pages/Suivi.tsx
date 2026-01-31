@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { 
   Users, 
   Monitor, 
@@ -137,7 +137,8 @@ interface FleetStats {
 
 interface ScoreHistoryItem {
   month: string;
-  score: number;
+  originalScore: number;
+  currentScore: number;
   reports: number;
 }
 
@@ -905,44 +906,75 @@ export default function Suivi() {
                     <TrendingUp className="h-4 w-4" />
                     Evolution du score du parc
                   </CardTitle>
-                  <CardDescription>
-                    Score moyen par mois (derniers 12 mois)
+                  <CardDescription className="flex items-center gap-4">
+                    <span>Score moyen par mois (derniers 12 mois)</span>
+                    <div className="flex items-center gap-4 ml-auto">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm bg-gray-700 dark:bg-gray-500" />
+                        <span className="text-xs">Score initial</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm bg-emerald-500" />
+                        <span className="text-xs">Score actuel</span>
+                      </div>
+                    </div>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {scoreHistoryData?.history && scoreHistoryData.history.length > 0 ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={scoreHistoryData.history} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <BarChart 
+                          data={scoreHistoryData.history} 
+                          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                          barGap={2}
+                          barCategoryGap="20%"
+                        >
+                          <CartesianGrid 
+                            strokeDasharray="3 3" 
+                            vertical={false}
+                            className="stroke-muted/30" 
+                          />
                           <XAxis 
                             dataKey="month" 
-                            tick={{ fontSize: 12 }} 
-                            className="fill-muted-foreground"
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                            axisLine={false}
+                            tickLine={false}
                           />
                           <YAxis 
                             domain={[0, 100]} 
-                            tick={{ fontSize: 12 }} 
-                            className="fill-muted-foreground"
-                            tickFormatter={(value) => `${value}%`}
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                            tickFormatter={(value) => `${value}`}
+                            axisLine={false}
+                            tickLine={false}
+                            width={30}
                           />
                           <Tooltip 
-                            formatter={(value: number) => [`${value}%`, 'Score']}
+                            formatter={(value: number, name: string) => [
+                              `${value}%`, 
+                              name === 'originalScore' ? 'Score initial' : 'Score actuel'
+                            ]}
                             labelFormatter={(label) => label}
                             contentStyle={{ 
                               backgroundColor: 'hsl(var(--card))', 
                               border: '1px solid hsl(var(--border))',
-                              borderRadius: '6px'
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                             }}
+                            cursor={{ fill: 'hsl(var(--muted)/0.3)' }}
                           />
-                          <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                            {scoreHistoryData.history.map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#eab308' : '#ef4444'}
-                              />
-                            ))}
-                          </Bar>
+                          <Bar 
+                            dataKey="originalScore" 
+                            fill="#374151"
+                            radius={[3, 3, 0, 0]}
+                            name="originalScore"
+                          />
+                          <Bar 
+                            dataKey="currentScore" 
+                            fill="#10b981"
+                            radius={[3, 3, 0, 0]}
+                            name="currentScore"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

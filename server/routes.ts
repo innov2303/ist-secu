@@ -3952,11 +3952,12 @@ export async function registerRoutes(
         return res.json({ history: [] });
       }
 
-      // Get average score per month for the last 12 months
+      // Get average original and current score per month for the last 12 months
       const historyQuery = user?.isAdmin
         ? db.select({
             month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
-            avgScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
+            avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
+            avgCurrentScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
             reportCount: sql<number>`COUNT(*)::int`
           })
           .from(auditReports)
@@ -3965,7 +3966,8 @@ export async function registerRoutes(
           .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
         : db.select({
             month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
-            avgScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
+            avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
+            avgCurrentScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
             reportCount: sql<number>`COUNT(*)::int`
           })
           .from(auditReports)
@@ -3985,7 +3987,8 @@ export async function registerRoutes(
         const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
         return {
           month: `${monthNames[parseInt(month) - 1]} ${year}`,
-          score: h.avgScore,
+          originalScore: h.avgOriginalScore,
+          currentScore: h.avgCurrentScore,
           reports: h.reportCount
         };
       });
