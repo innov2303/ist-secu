@@ -538,11 +538,14 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
 
 function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: ToolkitBundle, allScripts: Script[], parentExpired: boolean }) {
   const Icon = iconMap[toolkit.icon] || Monitor;
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  
   const toolkitScript = allScripts.find(s => s.id === toolkit.id);
   const bundledScripts = toolkitScript?.bundledScriptIds 
     ? allScripts.filter(s => toolkitScript.bundledScriptIds!.includes(s.id))
     : [];
   
+  const currentVersion = toolkitScript?.version || "1.0.0";
   const isMaintenanceOrOffline = toolkitScript?.status === "maintenance" || toolkitScript?.status === "offline";
   const canDownload = !parentExpired && !toolkit.expired && toolkitScript?.status === "active";
 
@@ -557,8 +560,11 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                   <Icon className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     {toolkit.name}
+                    <Badge variant="outline" className="text-xs font-mono">
+                      v{currentVersion}
+                    </Badge>
                     {isMaintenanceOrOffline && (
                       <Badge variant="secondary" className="text-xs">
                         {toolkitScript?.status === "maintenance" ? "En maintenance" : "Hors ligne"}
@@ -568,7 +574,7 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                   <CardDescription className="text-xs">{toolkit.compliance}</CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   variant={canDownload ? "default" : "secondary"}
@@ -587,6 +593,15 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                       {isMaintenanceOrOffline ? "Indisponible" : "Telecharger"}
                     </>
                   )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setVersionHistoryOpen(true)}
+                  data-testid={`button-version-history-nested-${toolkit.id}`}
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  Mises a jour
                 </Button>
                 <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-toolkit-${toolkit.id}`}>
                   <Badge variant="outline" className="flex items-center gap-1">
@@ -627,6 +642,14 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+      
+      <VersionHistoryDialog
+        scriptId={toolkit.id}
+        scriptName={toolkit.name}
+        currentVersion={currentVersion}
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+      />
     </Card>
   );
 }
