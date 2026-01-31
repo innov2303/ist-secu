@@ -912,9 +912,11 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   const Icon = iconMap[purchase.script.icon] || Monitor;
   const expired = isExpired(purchase);
   const { toast } = useToast();
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   
   const isMaintenanceOrOffline = purchase.script.status === "maintenance" || purchase.script.status === "offline";
   const canDownload = !expired && purchase.script.status === "active";
+  const currentVersion = purchase.script.version || "1.0.0";
 
   const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/purchases", purchase.id, "subscription-status"],
@@ -967,8 +969,11 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
               {purchase.script.name}
+              <Badge variant="outline" className="text-xs font-mono">
+                v{currentVersion}
+              </Badge>
               {expired ? (
                 <Badge variant="destructive" className="text-xs">Expire</Badge>
               ) : (
@@ -1004,7 +1009,7 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
             </span>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               size="sm"
               variant={canDownload ? "default" : "secondary"}
@@ -1023,6 +1028,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
                   {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
                 </>
               )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setVersionHistoryOpen(true)}
+              data-testid={`button-version-history-${purchase.id}`}
+            >
+              <History className="h-4 w-4 mr-2" />
+              Mises a jour
             </Button>
           </div>
 
@@ -1130,6 +1144,14 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
           )}
         </div>
       </CardContent>
+      
+      <VersionHistoryDialog
+        scriptId={purchase.scriptId}
+        scriptName={purchase.script.name}
+        currentVersion={currentVersion}
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+      />
     </Card>
   );
 }
