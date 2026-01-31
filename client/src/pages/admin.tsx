@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
-  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy
+  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
@@ -1212,81 +1213,165 @@ export default function AdminPage() {
                       {scriptSearch ? "Aucun toolkit trouvé" : "Aucun toolkit configuré"}
                     </p>
                   ) : (
-                    <div className="space-y-3">
+                    <Accordion type="multiple" className="space-y-3">
                       {paginatedScripts.map((script) => {
                         const status = (script.status as ScriptStatus) || "active";
                         const statusInfo = statusLabels[status];
                         const StatusIcon = statusInfo.icon;
+                        const bundledScripts = script.bundledScriptIds?.map(id => scripts?.find(s => s.id === id)).filter(Boolean) || [];
                         
                         return (
-                          <div
-                            key={script.id}
-                            className="flex items-center justify-between p-4 rounded-lg border bg-card hover-elevate"
-                            data-testid={`row-script-${script.id}`}
+                          <AccordionItem 
+                            key={script.id} 
+                            value={`toolkit-${script.id}`}
+                            className="border rounded-lg bg-card overflow-hidden"
                           >
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Shield className="h-5 w-5 text-primary" />
+                            <div
+                              className="flex items-center justify-between p-4 hover-elevate"
+                              data-testid={`row-script-${script.id}`}
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                  <Shield className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium flex items-center gap-2 flex-wrap">
+                                    {script.name}
+                                    <Badge variant="outline" className="text-xs">{script.os}</Badge>
+                                    <Badge variant={statusInfo.variant} className="text-xs">
+                                      <StatusIcon className="h-3 w-3 mr-1" />
+                                      {statusInfo.label}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {bundledScripts.length} script(s)
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground line-clamp-1">
+                                    {script.description}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex-1">
-                                <div className="font-medium flex items-center gap-2 flex-wrap">
-                                  {script.name}
-                                  <Badge variant="outline" className="text-xs">{script.os}</Badge>
-                                  <Badge variant={statusInfo.variant} className="text-xs">
-                                    <StatusIcon className="h-3 w-3 mr-1" />
-                                    {statusInfo.label}
-                                  </Badge>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  <div className="font-medium text-primary">
+                                    {formatPrice(script.monthlyPriceCents)}/mois
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    ID: {script.id}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground line-clamp-1">
-                                  {script.description}
-                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => openControlsViewer(script)}
+                                  title="Voir les controles ajoutes"
+                                  data-testid={`button-view-controls-${script.id}`}
+                                >
+                                  <List className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => checkUpdatesMutation.mutate(script.id)}
+                                  disabled={checkingUpdatesFor === script.id}
+                                  title="Verifier les mises a jour"
+                                  data-testid={`button-check-updates-${script.id}`}
+                                >
+                                  {checkingUpdatesFor === script.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => openEditDialog(script)}
+                                  data-testid={`button-edit-script-${script.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AccordionTrigger className="p-0 hover:no-underline" />
                               </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <div className="font-medium text-primary">
-                                  {formatPrice(script.monthlyPriceCents)}/mois
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  ID: {script.id}
+                            <AccordionContent className="px-4 pb-4">
+                              <div className="border-t pt-4 mt-0">
+                                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                                  <FileCode className="h-4 w-4" />
+                                  Scripts inclus dans ce toolkit
+                                </h4>
+                                <div className="space-y-2">
+                                  {bundledScripts.map((bundledScript) => {
+                                    if (!bundledScript) return null;
+                                    const bStatus = (bundledScript.status as ScriptStatus) || "active";
+                                    const bStatusInfo = statusLabels[bStatus];
+                                    const BStatusIcon = bStatusInfo.icon;
+                                    return (
+                                      <div
+                                        key={bundledScript.id}
+                                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border"
+                                        data-testid={`row-bundled-script-${bundledScript.id}`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <FileCode className="h-4 w-4 text-muted-foreground" />
+                                          <div>
+                                            <div className="font-medium text-sm flex items-center gap-2">
+                                              {bundledScript.name}
+                                              <Badge variant="outline" className="text-xs">v{bundledScript.version || "1.0.0"}</Badge>
+                                              <Badge variant={bStatusInfo.variant} className="text-xs">
+                                                <BStatusIcon className="h-3 w-3 mr-1" />
+                                                {bStatusInfo.label}
+                                              </Badge>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {bundledScript.filename} - ID: {bundledScript.id}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openControlsViewer(bundledScript)}
+                                            title="Voir les controles ajoutes"
+                                            data-testid={`button-view-controls-bundled-${bundledScript.id}`}
+                                          >
+                                            <List className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => checkUpdatesMutation.mutate(bundledScript.id)}
+                                            disabled={checkingUpdatesFor === bundledScript.id}
+                                            title="Verifier les mises a jour"
+                                            data-testid={`button-check-updates-bundled-${bundledScript.id}`}
+                                          >
+                                            {checkingUpdatesFor === bundledScript.id ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <RefreshCw className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openEditDialog(bundledScript)}
+                                            title="Modifier ce script"
+                                            data-testid={`button-edit-bundled-${bundledScript.id}`}
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => openControlsViewer(script)}
-                                title="Voir les controles ajoutes"
-                                data-testid={`button-view-controls-${script.id}`}
-                              >
-                                <List className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => checkUpdatesMutation.mutate(script.id)}
-                                disabled={checkingUpdatesFor === script.id}
-                                title="Verifier les mises a jour"
-                                data-testid={`button-check-updates-${script.id}`}
-                              >
-                                {checkingUpdatesFor === script.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => openEditDialog(script)}
-                                data-testid={`button-edit-script-${script.id}`}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                            </AccordionContent>
+                          </AccordionItem>
                         );
                       })}
-                    </div>
+                    </Accordion>
                   )}
                   {totalScriptPages > 1 && (
                     <div className="flex items-center justify-between mt-6 pt-4 border-t">
