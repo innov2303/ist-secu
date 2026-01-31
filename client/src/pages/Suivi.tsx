@@ -113,6 +113,7 @@ interface AuditReport {
   scriptName?: string;
   scriptVersion?: string;
   score: number;
+  originalScore?: number | null;
   grade?: string;
   totalControls: number;
   passedControls: number;
@@ -381,8 +382,11 @@ export default function Suivi() {
       return await apiRequest("POST", `/api/fleet/reports/${data.reportId}/corrections`, data);
     },
     onSuccess: () => {
-      toast({ title: "Correction enregistree" });
+      toast({ title: "Correction enregistree - Score mis a jour" });
       refetchControls();
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
       setEditingControl(null);
       setCorrectionJustification("");
     },
@@ -932,9 +936,14 @@ export default function Suivi() {
                                 <p className="text-xs text-muted-foreground">{formatDate(report.auditDate)}</p>
                               </div>
                             </div>
-                            <Badge className={getGradeColor(report.grade)}>
-                              {report.score}% ({report.grade})
-                            </Badge>
+                            <div className="text-right">
+                              <Badge className={getGradeColor(report.grade)}>
+                                {report.score}% ({report.grade})
+                              </Badge>
+                              {report.originalScore != null && report.originalScore !== report.score && (
+                                <p className="text-xs text-muted-foreground mt-1">Initial: {report.originalScore}%</p>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1281,9 +1290,16 @@ export default function Suivi() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge className={getGradeColor(report.grade)}>
-                                {report.score}% ({report.grade})
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge className={getGradeColor(report.grade)}>
+                                  {report.score}% ({report.grade})
+                                </Badge>
+                                {report.originalScore != null && report.originalScore !== report.score && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Initial: {report.originalScore}%
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1 text-xs">
@@ -1942,13 +1958,18 @@ export default function Suivi() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground mb-1">Score</p>
+                  <p className="text-sm text-muted-foreground mb-1">Score actuel</p>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-bold">{selectedReport.score}%</span>
                     <Badge className={getGradeColor(selectedReport.grade)}>
                       {selectedReport.grade}
                     </Badge>
                   </div>
+                  {selectedReport.originalScore != null && selectedReport.originalScore !== selectedReport.score && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Score initial: {selectedReport.originalScore}%
+                    </p>
+                  )}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <p className="text-sm text-muted-foreground mb-1">Script</p>

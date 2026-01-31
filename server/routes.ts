@@ -4011,6 +4011,13 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Rapport non trouve" });
       }
 
+      // Save original score if not already saved (first correction)
+      if (report.originalScore === null) {
+        await db.update(auditReports)
+          .set({ originalScore: report.score })
+          .where(eq(auditReports.id, reportId));
+      }
+
       // Check if correction already exists
       const [existingCorrection] = await db.select().from(controlCorrections).where(
         and(
@@ -4019,9 +4026,10 @@ export async function registerRoutes(
         )
       );
 
+      let correction;
       if (existingCorrection) {
         // Update existing correction
-        const [updated] = await db.update(controlCorrections)
+        [correction] = await db.update(controlCorrections)
           .set({
             correctedStatus,
             justification,
@@ -4030,11 +4038,9 @@ export async function registerRoutes(
           })
           .where(eq(controlCorrections.id, existingCorrection.id))
           .returning();
-        
-        res.json({ success: true, correction: updated, updated: true });
       } else {
         // Create new correction
-        const [created] = await db.insert(controlCorrections).values({
+        [correction] = await db.insert(controlCorrections).values({
           reportId,
           controlId,
           originalStatus,
@@ -4042,9 +4048,70 @@ export async function registerRoutes(
           justification,
           correctedBy: userId
         }).returning();
-        
-        res.json({ success: true, correction: created, updated: false });
       }
+
+      // Recalculate the score based on corrections
+      const allCorrections = await db.select().from(controlCorrections).where(eq(controlCorrections.reportId, reportId));
+      
+      // Calculate adjusted counts based on corrections
+      let adjustedPassed = report.originalScore !== null 
+        ? Math.round((report.originalScore / 100) * report.totalControls)
+        : report.passedControls;
+      
+      // Count corrections that changed status to PASS
+      let passedFromCorrections = 0;
+      for (const corr of allCorrections) {
+        if (corr.correctedStatus === 'PASS' && corr.originalStatus !== 'PASS') {
+          passedFromCorrections++;
+        }
+      }
+      
+      // New score = original passed + corrections to PASS
+      const originalPassed = report.originalScore !== null 
+        ? Math.round((report.originalScore / 100) * report.totalControls)
+        : report.passedControls;
+      const newPassed = originalPassed + passedFromCorrections;
+      const newScore = report.totalControls > 0 ? Math.round((newPassed / report.totalControls) * 100) : 0;
+      
+      // Determine new grade
+      let newGrade = 'F';
+      if (newScore >= 90) newGrade = 'A';
+      else if (newScore >= 80) newGrade = 'B';
+      else if (newScore >= 70) newGrade = 'C';
+      else if (newScore >= 60) newGrade = 'D';
+      else if (newScore >= 50) newGrade = 'E';
+
+      // Update report with new score
+      await db.update(auditReports)
+        .set({ 
+          score: newScore,
+          grade: newGrade,
+          passedControls: newPassed,
+          failedControls: Math.max(0, report.totalControls - newPassed - report.warningControls)
+        })
+        .where(eq(auditReports.id, reportId));
+
+      // Also update the machine's last score if this is the latest report
+      const [latestReport] = await db.select()
+        .from(auditReports)
+        .where(eq(auditReports.machineId, report.machineId))
+        .orderBy(sql`${auditReports.auditDate} DESC`)
+        .limit(1);
+      
+      if (latestReport && latestReport.id === reportId) {
+        await db.update(machines)
+          .set({ lastScore: newScore, lastGrade: newGrade })
+          .where(eq(machines.id, report.machineId));
+      }
+
+      res.json({ 
+        success: true, 
+        correction, 
+        updated: !!existingCorrection,
+        newScore,
+        newGrade,
+        originalScore: report.originalScore ?? report.score
+      });
     } catch (error) {
       console.error("Error saving control correction:", error);
       res.status(500).json({ message: "Erreur lors de la sauvegarde de la correction" });

@@ -368,6 +368,7 @@ export const auditReports = pgTable("audit_reports", {
   scriptName: text("script_name"),
   scriptVersion: text("script_version"),
   score: integer("score").notNull(),
+  originalScore: integer("original_score"), // Score before any corrections
   grade: text("grade"),
   totalControls: integer("total_controls").notNull().default(0),
   passedControls: integer("passed_controls").notNull().default(0),
