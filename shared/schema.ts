@@ -336,6 +336,7 @@ export const machines = pgTable("machines", {
   osVersion: text("os_version"),
   lastAuditDate: timestamp("last_audit_date"),
   lastScore: integer("last_score"),
+  originalScore: integer("original_score"), // First audit score (never changes after first upload)
   lastGrade: text("last_grade"),
   totalAudits: integer("total_audits").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

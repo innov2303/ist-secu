@@ -100,6 +100,7 @@ interface Machine {
   osVersion?: string;
   lastAuditDate?: string;
   lastScore?: number;
+  originalScore?: number | null;
   lastGrade?: string;
   totalAudits: number;
   createdAt: string;
@@ -1148,9 +1149,19 @@ export default function Suivi() {
                                                           <span className="font-medium text-sm">{machine.hostname}</span>
                                                           <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
                                                           {machine.lastScore != null && (
-                                                            <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
-                                                              {machine.lastScore}%
-                                                            </Badge>
+                                                            <div className="flex items-center gap-1">
+                                                              {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                  {machine.originalScore}%
+                                                                </span>
+                                                              )}
+                                                              {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
+                                                                <span className="text-xs text-muted-foreground">-&gt;</span>
+                                                              )}
+                                                              <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
+                                                                {machine.lastScore}%
+                                                              </Badge>
+                                                            </div>
                                                           )}
                                                           {hasFullAccess && (
                                                             <Button 
@@ -1203,9 +1214,19 @@ export default function Suivi() {
                                 <span className="font-medium text-sm">{machine.hostname}</span>
                                 <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
                                 {machine.lastScore != null && (
-                                  <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
-                                    {machine.lastScore}%
-                                  </Badge>
+                                  <div className="flex items-center gap-1">
+                                    {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {machine.originalScore}%
+                                      </span>
+                                    )}
+                                    {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
+                                      <span className="text-xs text-muted-foreground">-&gt;</span>
+                                    )}
+                                    <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
+                                      {machine.lastScore}%
+                                    </Badge>
+                                  </div>
                                 )}
                                 {hasFullAccess && (
                                   <Button 

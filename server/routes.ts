@@ -3296,6 +3296,10 @@ export async function registerRoutes(
           osVersion: osVersion || machine.osVersion,
           updatedAt: new Date()
         };
+        // Set original score only if not already set (first report)
+        if (machine.originalScore === null) {
+          updateData.originalScore = score;
+        }
         // Update groupId if provided (even if null to unassign)
         if (parsedGroupId !== undefined) {
           updateData.groupId = parsedGroupId;
@@ -3314,6 +3318,7 @@ export async function registerRoutes(
           osVersion,
           lastAuditDate: auditDate,
           lastScore: score,
+          originalScore: score, // First report sets original score
           lastGrade: grade,
           totalAudits: 1
         }).returning();
