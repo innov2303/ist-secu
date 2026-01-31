@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { 
   Users, 
   Monitor, 
@@ -1032,16 +1032,55 @@ export default function Suivi() {
                   </CardHeader>
                   <CardContent>
                     {stats?.osCounts && Object.keys(stats.osCounts).length > 0 ? (
-                      <div className="space-y-3">
-                        {Object.entries(stats.osCounts).map(([os, count]) => (
-                          <div key={os}>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="capitalize">{os}</span>
-                              <span>{count} ({Math.round((count / stats.totalMachines) * 100)}%)</span>
-                            </div>
-                            <Progress value={(count / stats.totalMachines) * 100} className="h-2" />
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-4">
+                        <div className="w-40 h-40">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={Object.entries(stats.osCounts).map(([os, count]) => ({
+                                  name: os,
+                                  value: count
+                                }))}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={35}
+                                outerRadius={60}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {Object.entries(stats.osCounts).map(([os], index) => {
+                                  const colors = ['#374151', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+                                  return <Cell key={`cell-${os}`} fill={colors[index % colors.length]} />;
+                                })}
+                              </Pie>
+                              <Tooltip 
+                                formatter={(value: number) => [`${value} machine${value > 1 ? 's' : ''}`, '']}
+                                contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--card))', 
+                                  border: '1px solid hsl(var(--border))',
+                                  borderRadius: '8px'
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          {Object.entries(stats.osCounts).map(([os, count], index) => {
+                            const colors = ['#374151', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+                            return (
+                              <div key={os} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-sm" 
+                                    style={{ backgroundColor: colors[index % colors.length] }}
+                                  />
+                                  <span className="capitalize">{os}</span>
+                                </div>
+                                <span className="font-medium">{count} ({Math.round((count / stats.totalMachines) * 100)}%)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
