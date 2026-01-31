@@ -61,8 +61,7 @@ export default function AdminPage() {
   // Script editing state
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [editName, setEditName] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
+    const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
   
   // Update checker state
   const [checkingUpdatesFor, setCheckingUpdatesFor] = useState<number | null>(null);
@@ -709,23 +708,15 @@ export default function AdminPage() {
   const openEditDialog = (script: Script) => {
     setEditingScript(script);
     setEditName(script.name);
-    setEditPrice(String(script.monthlyPriceCents / 100));
     setEditStatus((script.status as ScriptStatus) || "active");
   };
 
   const handleSaveScript = () => {
     if (!editingScript) return;
     
-    const priceInCents = Math.round(parseFloat(editPrice) * 100);
-    if (isNaN(priceInCents) || priceInCents < 0) {
-      toast({ title: "Erreur", description: "Prix invalide", variant: "destructive" });
-      return;
-    }
-    
     updateScriptMutation.mutate({
       id: editingScript.id,
       name: editName,
-      monthlyPriceCents: priceInCents,
       status: editStatus,
     });
   };
@@ -1897,19 +1888,6 @@ export default function AdminPage() {
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="Nom du toolkit"
                 data-testid="input-edit-name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-price">Prix mensuel (EUR)</Label>
-              <Input
-                id="edit-price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                placeholder="300.00"
-                data-testid="input-edit-price"
               />
             </div>
             <div className="space-y-2">
