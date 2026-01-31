@@ -125,6 +125,7 @@ interface AuditReport {
   createdAt: string;
   hostname?: string;
   os?: string;
+  osVersion?: string | null;
 }
 
 interface FleetStats {
@@ -1141,6 +1142,7 @@ export default function Suivi() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium">{report.hostname}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Version inconnue'}</p>
                                 <p className="text-xs text-muted-foreground">{formatDate(report.auditDate)}</p>
                               </div>
                             </div>
@@ -1505,7 +1507,10 @@ export default function Suivi() {
                                 <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
                                   {getOSIcon(report.os || 'unknown')}
                                 </div>
-                                <span className="font-medium">{report.hostname || `Machine #${report.machineId}`}</span>
+                                <div>
+                                  <span className="font-medium">{report.hostname || `Machine #${report.machineId}`}</span>
+                                  <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Version inconnue'}</p>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>{formatDate(report.auditDate)}</TableCell>

@@ -3124,6 +3124,7 @@ export async function registerRoutes(
           createdAt: auditReports.createdAt,
           hostname: machines.hostname,
           os: machines.os,
+          osVersion: machines.osVersion,
         })
         .from(auditReports)
         .innerJoin(machines, eq(auditReports.machineId, machines.id));
