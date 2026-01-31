@@ -262,6 +262,50 @@ export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id:
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 
+// User groups table - groups of team members for easier permission management
+export const userGroups = pgTable("user_groups", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userGroupsRelations = relations(userGroups, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [userGroups.teamId],
+    references: [teams.id],
+  }),
+  members: many(userGroupMembers),
+}));
+
+export const insertUserGroupSchema = createInsertSchema(userGroups).omit({ id: true, createdAt: true });
+export type UserGroup = typeof userGroups.$inferSelect;
+export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
+
+// User group members - links team members to user groups
+export const userGroupMembers = pgTable("user_group_members", {
+  id: serial("id").primaryKey(),
+  userGroupId: integer("user_group_id").notNull(),
+  teamMemberId: integer("team_member_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userGroupMembersRelations = relations(userGroupMembers, ({ one }) => ({
+  userGroup: one(userGroups, {
+    fields: [userGroupMembers.userGroupId],
+    references: [userGroups.id],
+  }),
+  teamMember: one(teamMembers, {
+    fields: [userGroupMembers.teamMemberId],
+    references: [teamMembers.id],
+  }),
+}));
+
+export const insertUserGroupMemberSchema = createInsertSchema(userGroupMembers).omit({ id: true, createdAt: true });
+export type UserGroupMember = typeof userGroupMembers.$inferSelect;
+export type InsertUserGroupMember = z.infer<typeof insertUserGroupMemberSchema>;
+
 // Organizations table - top level of hierarchy
 export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
@@ -325,11 +369,12 @@ export const insertMachineGroupSchema = createInsertSchema(machineGroups).omit({
 export type MachineGroup = typeof machineGroups.$inferSelect;
 export type InsertMachineGroup = z.infer<typeof insertMachineGroupSchema>;
 
-// Machine group permissions - granular access control for team members
+// Machine group permissions - granular access control for team members or user groups
 export const machineGroupPermissions = pgTable("machine_group_permissions", {
   id: serial("id").primaryKey(),
-  teamMemberId: integer("team_member_id").notNull(),
-  groupId: integer("group_id").notNull(),
+  teamMemberId: integer("team_member_id"), // Optional - permission for individual member
+  userGroupId: integer("user_group_id"), // Optional - permission for entire user group
+  groupId: integer("group_id").notNull(), // The machine group this permission applies to
   canView: boolean("can_view").notNull().default(true),
   canEdit: boolean("can_edit").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -339,6 +384,10 @@ export const machineGroupPermissionsRelations = relations(machineGroupPermission
   teamMember: one(teamMembers, {
     fields: [machineGroupPermissions.teamMemberId],
     references: [teamMembers.id],
+  }),
+  userGroup: one(userGroups, {
+    fields: [machineGroupPermissions.userGroupId],
+    references: [userGroups.id],
   }),
   group: one(machineGroups, {
     fields: [machineGroupPermissions.groupId],
