@@ -118,7 +118,7 @@ export default function Documentation() {
 
   const toolkits = useMemo(() => {
     if (!scripts) return [];
-    return scripts.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0);
+    return scripts.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0 && s.status === "active");
   }, [scripts]);
 
   const selectedToolkitData = useMemo(() => {
