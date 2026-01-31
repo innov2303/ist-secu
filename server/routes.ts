@@ -4436,6 +4436,48 @@ export async function registerRoutes(
     }
   });
 
+  // Update organization
+  app.put("/api/fleet/organizations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const orgId = parseInt(req.params.id);
+      const { name, description } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Nom requis" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify organization belongs to user's team or user is admin
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+      if (!org) {
+        return res.status(404).json({ message: "Organisation non trouvee" });
+      }
+      
+      // Check access: admin, team owner, or org owner
+      const hasAccess = user?.isAdmin || org.teamId === teamId || org.ownerId === userId;
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      const [updated] = await db.update(organizations)
+        .set({ name, description })
+        .where(eq(organizations.id, orgId))
+        .returning();
+
+      res.json({ organization: updated });
+    } catch (error) {
+      console.error("Error updating organization:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour de l'organisation" });
+    }
+  });
+
   // Create site - with ownership validation
   app.post("/api/fleet/sites", isAuthenticated, async (req, res) => {
     try {
@@ -4515,6 +4557,57 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting site:", error);
       res.status(500).json({ message: "Erreur lors de la suppression du site" });
+    }
+  });
+
+  // Update site
+  app.put("/api/fleet/sites/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const siteId = parseInt(req.params.id);
+      const { name, location } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Nom requis" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify site belongs to user's team via organization
+      const siteCheck = await db.select({
+        site: sites,
+        org: organizations
+      })
+      .from(sites)
+      .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+      .where(eq(sites.id, siteId))
+      .limit(1);
+      
+      if (siteCheck.length === 0) {
+        return res.status(404).json({ message: "Site non trouve" });
+      }
+      
+      // Check access: admin, team owner, or org owner
+      const org = siteCheck[0].org;
+      const hasAccess = user?.isAdmin || org.teamId === teamId || org.ownerId === userId;
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      const [updated] = await db.update(sites)
+        .set({ name, location })
+        .where(eq(sites.id, siteId))
+        .returning();
+
+      res.json({ site: updated });
+    } catch (error) {
+      console.error("Error updating site:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour du site" });
     }
   });
 
@@ -4602,6 +4695,58 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting group:", error);
       res.status(500).json({ message: "Erreur lors de la suppression du groupe" });
+    }
+  });
+
+  // Update machine group
+  app.put("/api/fleet/groups/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const { name, description } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Nom requis" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify group belongs to user's team via site -> organization
+      const groupCheck = await db.select({
+        group: machineGroups,
+        org: organizations
+      })
+      .from(machineGroups)
+      .innerJoin(sites, eq(machineGroups.siteId, sites.id))
+      .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+      .where(eq(machineGroups.id, groupId))
+      .limit(1);
+      
+      if (groupCheck.length === 0) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Check access: admin, team owner, or org owner
+      const org = groupCheck[0].org;
+      const hasAccess = user?.isAdmin || org.teamId === teamId || org.ownerId === userId;
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      const [updated] = await db.update(machineGroups)
+        .set({ name, description })
+        .where(eq(machineGroups.id, groupId))
+        .returning();
+
+      res.json({ group: updated });
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour du groupe" });
     }
   });
 

@@ -286,6 +286,14 @@ export default function Suivi() {
   const [showUserGroupMembersDialog, setShowUserGroupMembersDialog] = useState(false);
   const [showUserGroupPermissionsDialog, setShowUserGroupPermissionsDialog] = useState(false);
   const [editingUserGroup, setEditingUserGroup] = useState<UserGroup | null>(null);
+  
+  // Edit hierarchy state
+  const [showEditHierarchyDialog, setShowEditHierarchyDialog] = useState(false);
+  const [editingHierarchyType, setEditingHierarchyType] = useState<"org" | "site" | "group" | null>(null);
+  const [editingHierarchyId, setEditingHierarchyId] = useState<number | null>(null);
+  const [editingHierarchyName, setEditingHierarchyName] = useState("");
+  const [editingHierarchyLocation, setEditingHierarchyLocation] = useState("");
+  const [editingHierarchyDescription, setEditingHierarchyDescription] = useState("");
 
   const { data: teamData, isLoading: teamLoading } = useQuery<TeamData>({
     queryKey: ["/api/teams/my-team"],
@@ -599,6 +607,39 @@ export default function Suivi() {
     onSuccess: () => {
       toast({ title: "Groupe supprime" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+    },
+  });
+
+  const updateOrgMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; description?: string }) => {
+      await apiRequest("PUT", `/api/fleet/organizations/${data.id}`, { name: data.name, description: data.description });
+    },
+    onSuccess: () => {
+      toast({ title: "Organisation mise a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowEditHierarchyDialog(false);
+    },
+  });
+
+  const updateSiteMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; location?: string }) => {
+      await apiRequest("PUT", `/api/fleet/sites/${data.id}`, { name: data.name, location: data.location });
+    },
+    onSuccess: () => {
+      toast({ title: "Site mis a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowEditHierarchyDialog(false);
+    },
+  });
+
+  const updateGroupMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; description?: string }) => {
+      await apiRequest("PUT", `/api/fleet/groups/${data.id}`, { name: data.name, description: data.description });
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe mis a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowEditHierarchyDialog(false);
     },
   });
 
@@ -1530,6 +1571,21 @@ export default function Suivi() {
                                 <Button 
                                   size="icon" 
                                   variant="ghost" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setEditingHierarchyType("org");
+                                    setEditingHierarchyId(org.id);
+                                    setEditingHierarchyName(org.name);
+                                    setEditingHierarchyDescription(org.description || "");
+                                    setShowEditHierarchyDialog(true);
+                                  }}
+                                  title="Modifier le nom"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
                                   onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'organisation "${org.name}" ?`)) deleteOrgMutation.mutate(org.id); }}
                                 >
                                   <Trash2 className="w-4 h-4 text-destructive" />
@@ -1573,6 +1629,21 @@ export default function Suivi() {
                                           <Button 
                                             size="icon" 
                                             variant="ghost" 
+                                            onClick={(e) => { 
+                                              e.stopPropagation(); 
+                                              setEditingHierarchyType("site");
+                                              setEditingHierarchyId(site.id);
+                                              setEditingHierarchyName(site.name);
+                                              setEditingHierarchyLocation(site.location || "");
+                                              setShowEditHierarchyDialog(true);
+                                            }}
+                                            title="Modifier le nom"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                          </Button>
+                                          <Button 
+                                            size="icon" 
+                                            variant="ghost" 
                                             onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le site "${site.name}" ?`)) deleteSiteMutation.mutate(site.id); }}
                                           >
                                             <Trash2 className="w-3 h-3 text-destructive" />
@@ -1601,7 +1672,22 @@ export default function Suivi() {
                                                 <span>{group.name}</span>
                                                 <Badge variant="outline" className="ml-2">{group.machines.length}</Badge>
                                                 {hasFullAccess && (
-                                                  <div className="ml-auto">
+                                                  <div className="ml-auto flex gap-1">
+                                                    <Button 
+                                                      size="icon" 
+                                                      variant="ghost" 
+                                                      onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        setEditingHierarchyType("group");
+                                                        setEditingHierarchyId(group.id);
+                                                        setEditingHierarchyName(group.name);
+                                                        setEditingHierarchyDescription(group.description || "");
+                                                        setShowEditHierarchyDialog(true);
+                                                      }}
+                                                      title="Modifier le nom"
+                                                    >
+                                                      <Pencil className="w-3 h-3" />
+                                                    </Button>
                                                     <Button 
                                                       size="icon" 
                                                       variant="ghost" 
@@ -2107,6 +2193,73 @@ export default function Suivi() {
               data-testid="button-confirm-add-org"
             >
               {createOrgMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for editing hierarchy item */}
+      <Dialog open={showEditHierarchyDialog} onOpenChange={(open) => { if (!open) { setShowEditHierarchyDialog(false); setEditingHierarchyType(null); setEditingHierarchyId(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editingHierarchyType === "org" && <Building2 className="w-5 h-5" />}
+              {editingHierarchyType === "site" && <MapPin className="w-5 h-5" />}
+              {editingHierarchyType === "group" && <Folder className="w-5 h-5" />}
+              Modifier {editingHierarchyType === "org" ? "l'organisation" : editingHierarchyType === "site" ? "le site" : "le groupe"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-hierarchy-name">Nom *</Label>
+              <Input
+                id="edit-hierarchy-name"
+                value={editingHierarchyName}
+                onChange={(e) => setEditingHierarchyName(e.target.value)}
+                data-testid="input-edit-hierarchy-name"
+              />
+            </div>
+            {editingHierarchyType === "site" && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-hierarchy-location">Localisation</Label>
+                <Input
+                  id="edit-hierarchy-location"
+                  value={editingHierarchyLocation}
+                  onChange={(e) => setEditingHierarchyLocation(e.target.value)}
+                  data-testid="input-edit-hierarchy-location"
+                />
+              </div>
+            )}
+            {(editingHierarchyType === "org" || editingHierarchyType === "group") && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-hierarchy-description">Description</Label>
+                <Input
+                  id="edit-hierarchy-description"
+                  value={editingHierarchyDescription}
+                  onChange={(e) => setEditingHierarchyDescription(e.target.value)}
+                  data-testid="input-edit-hierarchy-description"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowEditHierarchyDialog(false); setEditingHierarchyType(null); setEditingHierarchyId(null); }}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={() => {
+                if (editingHierarchyType === "org" && editingHierarchyId) {
+                  updateOrgMutation.mutate({ id: editingHierarchyId, name: editingHierarchyName, description: editingHierarchyDescription || undefined });
+                } else if (editingHierarchyType === "site" && editingHierarchyId) {
+                  updateSiteMutation.mutate({ id: editingHierarchyId, name: editingHierarchyName, location: editingHierarchyLocation || undefined });
+                } else if (editingHierarchyType === "group" && editingHierarchyId) {
+                  updateGroupMutation.mutate({ id: editingHierarchyId, name: editingHierarchyName, description: editingHierarchyDescription || undefined });
+                }
+              }} 
+              disabled={!editingHierarchyName.trim() || updateOrgMutation.isPending || updateSiteMutation.isPending || updateGroupMutation.isPending}
+              data-testid="button-confirm-edit-hierarchy"
+            >
+              {(updateOrgMutation.isPending || updateSiteMutation.isPending || updateGroupMutation.isPending) ? "Mise a jour..." : "Enregistrer"}
             </Button>
           </DialogFooter>
         </DialogContent>
