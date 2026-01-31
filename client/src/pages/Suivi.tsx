@@ -12,7 +12,6 @@ import {
   AlertTriangle, 
   LayoutDashboard,
   Server,
-  Settings,
   FileText,
   TrendingUp,
   LogOut,
@@ -225,7 +224,7 @@ interface MachineGroupPermission {
   canEdit: boolean;
 }
 
-type TabType = "dashboard" | "machines" | "reports" | "team" | "settings";
+type TabType = "dashboard" | "machines" | "reports" | "team";
 
 export default function Suivi() {
   const { user, isLoading: authLoading } = useAuth();
@@ -784,7 +783,6 @@ export default function Suivi() {
 
   const adminNavItems = [
     { id: "team" as TabType, label: "Equipe", icon: Users },
-    { id: "settings" as TabType, label: "Parametres", icon: Settings },
   ];
 
   const teamName = isAdmin && !isTeamOwner && !isTeamMember 
@@ -891,14 +889,12 @@ export default function Suivi() {
                 {activeTab === "machines" && "Machines"}
                 {activeTab === "reports" && "Rapports"}
                 {activeTab === "team" && "Equipe"}
-                {activeTab === "settings" && "Parametres"}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {activeTab === "dashboard" && "Vue d'ensemble de votre parc informatique"}
                 {activeTab === "machines" && "Gestion des machines enregistrees"}
                 {activeTab === "reports" && "Historique des rapports d'audit"}
                 {activeTab === "team" && "Gestion des membres de l'equipe"}
-                {activeTab === "settings" && "Configuration du suivi"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1804,34 +1800,6 @@ export default function Suivi() {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Settings */}
-          {activeTab === "settings" && hasFullAccess && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Parametres
-                  </CardTitle>
-                  <CardDescription>
-                    Configuration du suivi de parc
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Settings className="h-16 w-16 mb-4 opacity-20" />
-                    <p className="text-lg font-medium mb-1">Parametres a venir</p>
-                    <p className="text-sm">Les options de configuration seront bientot disponibles</p>
-                  </div>
                 </CardContent>
               </Card>
             </motion.div>
