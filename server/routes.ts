@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -3043,5 +3043,504 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // Fleet Tracking Routes (Suivi du Parc)
+  // ============================================
+
+  // Helper to get user's team ID
+  const getTeamIdForUser = async (userId: string): Promise<number | null> => {
+    // Check if user owns a team
+    const [ownedTeam] = await db.select().from(teams).where(eq(teams.ownerId, userId));
+    if (ownedTeam) return ownedTeam.id;
+    
+    // Check if user is a member of a team
+    const user = await authStorage.getUser(userId);
+    if (user?.email) {
+      const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.email, user.email.toLowerCase()));
+      if (membership) return membership.teamId;
+    }
+    return null;
+  };
+
+  // Get machines for user's team
+  app.get("/api/fleet/machines", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      if (!user?.isAdmin && !teamId) {
+        return res.json({ machines: [] });
+      }
+
+      const query = user?.isAdmin
+        ? db.select().from(machines).orderBy(desc(machines.lastAuditDate))
+        : db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(desc(machines.lastAuditDate));
+      
+      const result = await query;
+      res.json({ machines: result });
+    } catch (error) {
+      console.error("Error fetching machines:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des machines" });
+    }
+  });
+
+  // Get audit reports for user's team
+  app.get("/api/fleet/reports", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      if (!user?.isAdmin && !teamId) {
+        return res.json({ reports: [] });
+      }
+
+      // Get reports with machine info
+      const baseQuery = db
+        .select({
+          id: auditReports.id,
+          machineId: auditReports.machineId,
+          uploadedBy: auditReports.uploadedBy,
+          auditDate: auditReports.auditDate,
+          scriptName: auditReports.scriptName,
+          scriptVersion: auditReports.scriptVersion,
+          score: auditReports.score,
+          grade: auditReports.grade,
+          totalControls: auditReports.totalControls,
+          passedControls: auditReports.passedControls,
+          failedControls: auditReports.failedControls,
+          warningControls: auditReports.warningControls,
+          fileName: auditReports.fileName,
+          createdAt: auditReports.createdAt,
+          hostname: machines.hostname,
+          os: machines.os,
+        })
+        .from(auditReports)
+        .innerJoin(machines, eq(auditReports.machineId, machines.id));
+      
+      const reports = user?.isAdmin
+        ? await baseQuery.orderBy(desc(auditReports.auditDate))
+        : await baseQuery.where(eq(machines.teamId, teamId!)).orderBy(desc(auditReports.auditDate));
+      
+      res.json({ reports });
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des rapports" });
+    }
+  });
+
+  // Get reports for a specific machine
+  app.get("/api/fleet/machines/:id/reports", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const machineId = parseInt(req.params.id);
+      if (isNaN(machineId)) {
+        return res.status(400).json({ message: "ID machine invalide" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      // Verify machine belongs to user's team
+      const [machine] = await db.select().from(machines).where(eq(machines.id, machineId));
+      if (!machine) {
+        return res.status(404).json({ message: "Machine non trouvee" });
+      }
+      if (!user?.isAdmin && machine.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      const reports = await db
+        .select()
+        .from(auditReports)
+        .where(eq(auditReports.machineId, machineId))
+        .orderBy(desc(auditReports.auditDate));
+      
+      res.json({ machine, reports });
+    } catch (error) {
+      console.error("Error fetching machine reports:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des rapports" });
+    }
+  });
+
+  // Upload a new audit report (JSON parsing)
+  app.post("/api/fleet/upload-report", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const { jsonContent, htmlContent, fileName } = req.body;
+      
+      if (!jsonContent) {
+        return res.status(400).json({ message: "Contenu JSON requis" });
+      }
+
+      // Parse JSON report
+      let reportData: any;
+      try {
+        reportData = typeof jsonContent === 'string' ? JSON.parse(jsonContent) : jsonContent;
+      } catch (e) {
+        return res.status(400).json({ message: "Format JSON invalide" });
+      }
+
+      // Get team ID
+      const user = await authStorage.getUser(userId);
+      let teamId = await getTeamIdForUser(userId);
+      
+      // If admin without team, create a default "admin" team
+      if (!teamId && user?.isAdmin) {
+        const [adminTeam] = await db.insert(teams).values({
+          name: "Equipe Admin",
+          ownerId: userId
+        }).returning();
+        teamId = adminTeam.id;
+      }
+      
+      if (!teamId) {
+        return res.status(400).json({ message: "Vous devez appartenir a une equipe pour uploader des rapports" });
+      }
+
+      // Extract machine info from JSON
+      const hostname = reportData.hostname || reportData.machine_name || reportData.systemInfo?.hostname || "Unknown";
+      const machineIdFromReport = reportData.machine_id || reportData.systemInfo?.uuid || null;
+      const os = detectOS(reportData);
+      const osVersion = reportData.os_version || reportData.systemInfo?.osVersion || null;
+      
+      // Extract audit info
+      const auditDate = reportData.audit_date || reportData.date || reportData.timestamp 
+        ? new Date(reportData.audit_date || reportData.date || reportData.timestamp) 
+        : new Date();
+      const score = reportData.score ?? reportData.compliance_score ?? reportData.results?.score ?? 0;
+      const grade = reportData.grade || calculateGrade(score);
+      const totalControls = reportData.total_controls ?? reportData.results?.total ?? 0;
+      const passedControls = reportData.passed_controls ?? reportData.results?.passed ?? 0;
+      const failedControls = reportData.failed_controls ?? reportData.results?.failed ?? 0;
+      const warningControls = reportData.warning_controls ?? reportData.results?.warnings ?? 0;
+      const scriptName = reportData.script_name || reportData.toolkit_name || null;
+      const scriptVersion = reportData.script_version || reportData.version || null;
+
+      // Find or create machine
+      let machine;
+      const existingMachines = await db.select().from(machines).where(
+        and(
+          eq(machines.teamId, teamId),
+          eq(machines.hostname, hostname)
+        )
+      );
+      
+      if (existingMachines.length > 0) {
+        machine = existingMachines[0];
+        // Update machine with latest audit info
+        await db.update(machines)
+          .set({
+            lastAuditDate: auditDate,
+            lastScore: score,
+            lastGrade: grade,
+            totalAudits: sql`${machines.totalAudits} + 1`,
+            osVersion: osVersion || machine.osVersion,
+            updatedAt: new Date()
+          })
+          .where(eq(machines.id, machine.id));
+      } else {
+        // Create new machine
+        const [newMachine] = await db.insert(machines).values({
+          teamId,
+          hostname,
+          machineId: machineIdFromReport,
+          os,
+          osVersion,
+          lastAuditDate: auditDate,
+          lastScore: score,
+          lastGrade: grade,
+          totalAudits: 1
+        }).returning();
+        machine = newMachine;
+      }
+
+      // Create audit report
+      const [report] = await db.insert(auditReports).values({
+        machineId: machine.id,
+        uploadedBy: userId,
+        auditDate,
+        scriptName,
+        scriptVersion,
+        score,
+        grade,
+        totalControls,
+        passedControls,
+        failedControls,
+        warningControls,
+        jsonContent: typeof jsonContent === 'string' ? jsonContent : JSON.stringify(jsonContent),
+        htmlContent: htmlContent || null,
+        fileName
+      }).returning();
+
+      res.status(201).json({ 
+        success: true, 
+        report,
+        machine,
+        message: `Rapport importe pour ${hostname}`
+      });
+    } catch (error) {
+      console.error("Error uploading report:", error);
+      res.status(500).json({ message: "Erreur lors de l'upload du rapport" });
+    }
+  });
+
+  // Get a specific report with full content
+  app.get("/api/fleet/reports/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) {
+        return res.status(400).json({ message: "ID rapport invalide" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+
+      const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
+      if (!report) {
+        return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      // Verify access
+      const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
+      if (!user?.isAdmin && machine?.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      res.json({ report, machine });
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation du rapport" });
+    }
+  });
+
+  // Delete a report
+  app.delete("/api/fleet/reports/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) {
+        return res.status(400).json({ message: "ID rapport invalide" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+
+      // Check if user has admin access (site admin or team owner/admin)
+      const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
+      if (!report) {
+        return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
+      if (!user?.isAdmin && machine?.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Delete the report
+      await db.delete(auditReports).where(eq(auditReports.id, reportId));
+
+      // Update machine stats
+      if (machine) {
+        const remainingReports = await db.select().from(auditReports)
+          .where(eq(auditReports.machineId, machine.id))
+          .orderBy(desc(auditReports.auditDate))
+          .limit(1);
+        
+        if (remainingReports.length > 0) {
+          await db.update(machines)
+            .set({
+              lastAuditDate: remainingReports[0].auditDate,
+              lastScore: remainingReports[0].score,
+              lastGrade: remainingReports[0].grade,
+              totalAudits: sql`GREATEST(${machines.totalAudits} - 1, 0)`,
+              updatedAt: new Date()
+            })
+            .where(eq(machines.id, machine.id));
+        } else {
+          await db.update(machines)
+            .set({
+              lastAuditDate: null,
+              lastScore: null,
+              lastGrade: null,
+              totalAudits: 0,
+              updatedAt: new Date()
+            })
+            .where(eq(machines.id, machine.id));
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du rapport" });
+    }
+  });
+
+  // Delete a machine and all its reports
+  app.delete("/api/fleet/machines/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const machineId = parseInt(req.params.id);
+      if (isNaN(machineId)) {
+        return res.status(400).json({ message: "ID machine invalide" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+
+      const [machine] = await db.select().from(machines).where(eq(machines.id, machineId));
+      if (!machine) {
+        return res.status(404).json({ message: "Machine non trouvee" });
+      }
+
+      if (!user?.isAdmin && machine.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Delete all reports for this machine
+      await db.delete(auditReports).where(eq(auditReports.machineId, machineId));
+      
+      // Delete the machine
+      await db.delete(machines).where(eq(machines.id, machineId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting machine:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de la machine" });
+    }
+  });
+
+  // Fleet dashboard stats
+  app.get("/api/fleet/stats", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      if (!user?.isAdmin && !teamId) {
+        return res.json({ 
+          totalMachines: 0, 
+          totalReports: 0, 
+          averageScore: null,
+          lastAuditDate: null,
+          osCounts: {}
+        });
+      }
+
+      // Get machine count
+      const machineQuery = user?.isAdmin
+        ? db.select({ count: sql<number>`count(*)::int` }).from(machines)
+        : db.select({ count: sql<number>`count(*)::int` }).from(machines).where(eq(machines.teamId, teamId!));
+      const [{ count: totalMachines }] = await machineQuery;
+
+      // Get reports count
+      const reportsQuery = user?.isAdmin
+        ? db.select({ count: sql<number>`count(*)::int` }).from(auditReports)
+        : db.select({ count: sql<number>`count(*)::int` })
+            .from(auditReports)
+            .innerJoin(machines, eq(auditReports.machineId, machines.id))
+            .where(eq(machines.teamId, teamId!));
+      const [{ count: totalReports }] = await reportsQuery;
+
+      // Get average score from latest report per machine
+      const avgScoreQuery = user?.isAdmin
+        ? db.select({ avgScore: sql<number>`avg(${machines.lastScore})::int` }).from(machines).where(sql`${machines.lastScore} IS NOT NULL`)
+        : db.select({ avgScore: sql<number>`avg(${machines.lastScore})::int` }).from(machines).where(and(eq(machines.teamId, teamId!), sql`${machines.lastScore} IS NOT NULL`));
+      const [{ avgScore }] = await avgScoreQuery;
+
+      // Get last audit date
+      const lastAuditQuery = user?.isAdmin
+        ? db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines)
+        : db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines).where(eq(machines.teamId, teamId!));
+      const [{ lastDate }] = await lastAuditQuery;
+
+      // Get OS distribution
+      const osQuery = user?.isAdmin
+        ? db.select({ os: machines.os, count: sql<number>`count(*)::int` }).from(machines).groupBy(machines.os)
+        : db.select({ os: machines.os, count: sql<number>`count(*)::int` }).from(machines).where(eq(machines.teamId, teamId!)).groupBy(machines.os);
+      const osResults = await osQuery;
+      const osCounts: Record<string, number> = {};
+      for (const row of osResults) {
+        osCounts[row.os] = row.count;
+      }
+
+      res.json({
+        totalMachines,
+        totalReports,
+        averageScore: avgScore,
+        lastAuditDate: lastDate,
+        osCounts
+      });
+    } catch (error) {
+      console.error("Error fetching fleet stats:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des statistiques" });
+    }
+  });
+
   return httpServer;
+}
+
+// Helper function to detect OS from report data
+function detectOS(reportData: any): string {
+  const osHints = [
+    reportData.os,
+    reportData.operating_system,
+    reportData.systemInfo?.os,
+    reportData.platform
+  ].filter(Boolean);
+
+  for (const hint of osHints) {
+    const lower = String(hint).toLowerCase();
+    if (lower.includes('windows')) return 'windows';
+    if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian') || lower.includes('centos') || lower.includes('rhel')) return 'linux';
+    if (lower.includes('vmware') || lower.includes('esxi')) return 'vmware';
+    if (lower.includes('docker') || lower.includes('container')) return 'docker';
+    if (lower.includes('netapp') || lower.includes('ontap')) return 'netapp';
+  }
+  return 'unknown';
+}
+
+// Helper function to calculate grade from score
+function calculateGrade(score: number): string {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  if (score >= 50) return 'E';
+  return 'F';
 }

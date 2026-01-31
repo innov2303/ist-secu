@@ -1,23 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
-  Construction, 
   Users, 
   Monitor, 
   Shield, 
   BarChart3, 
   Clock, 
   AlertTriangle, 
-  CheckCircle,
   LayoutDashboard,
   Server,
   Settings,
   FileText,
   TrendingUp,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Trash2,
+  Eye,
+  Download,
+  X,
+  FileJson,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -25,6 +30,23 @@ import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface TeamMembership {
   teamId: number;
@@ -49,12 +71,59 @@ interface TeamMember {
   role: string;
 }
 
+interface Machine {
+  id: number;
+  teamId: number;
+  hostname: string;
+  machineId?: string;
+  os: string;
+  osVersion?: string;
+  lastAuditDate?: string;
+  lastScore?: number;
+  lastGrade?: string;
+  totalAudits: number;
+  createdAt: string;
+}
+
+interface AuditReport {
+  id: number;
+  machineId: number;
+  uploadedBy: string;
+  auditDate: string;
+  scriptName?: string;
+  scriptVersion?: string;
+  score: number;
+  grade?: string;
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  warningControls: number;
+  fileName?: string;
+  createdAt: string;
+  hostname?: string;
+  os?: string;
+}
+
+interface FleetStats {
+  totalMachines: number;
+  totalReports: number;
+  averageScore: number | null;
+  lastAuditDate: string | null;
+  osCounts: Record<string, number>;
+}
+
 type TabType = "dashboard" | "machines" | "reports" | "team" | "settings";
 
 export default function Suivi() {
   const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<AuditReport | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: team, isLoading: teamLoading } = useQuery<Team>({
     queryKey: ["/api/teams/my-team"],
@@ -66,7 +135,127 @@ export default function Suivi() {
     enabled: !!user,
   });
 
+  const { data: stats } = useQuery<FleetStats>({
+    queryKey: ["/api/fleet/stats"],
+    enabled: !!user,
+  });
+
+  const { data: machinesData } = useQuery<{ machines: Machine[] }>({
+    queryKey: ["/api/fleet/machines"],
+    enabled: !!user,
+  });
+
+  const { data: reportsData } = useQuery<{ reports: AuditReport[] }>({
+    queryKey: ["/api/fleet/reports"],
+    enabled: !!user,
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (data: { jsonContent: string; htmlContent?: string; fileName: string }) => {
+      const res = await apiRequest("POST", "/api/fleet/upload-report", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Rapport importe",
+        description: data.message || "Le rapport a ete importe avec succes",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de l'import du rapport",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMachineMutation = useMutation({
+    mutationFn: async (machineId: number) => {
+      await apiRequest("DELETE", `/api/fleet/machines/${machineId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Machine supprimee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
+    },
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: number) => {
+      await apiRequest("DELETE", `/api/fleet/reports/${reportId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Rapport supprime" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
+    },
+  });
+
   const isLoading = authLoading || teamLoading || membershipLoading;
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    
+    for (const file of Array.from(files)) {
+      if (file.name.endsWith('.json')) {
+        try {
+          const content = await file.text();
+          await uploadMutation.mutateAsync({
+            jsonContent: content,
+            fileName: file.name,
+          });
+        } catch (e) {
+          console.error("Error uploading file:", e);
+        }
+      }
+    }
+    
+    setIsUploading(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "--";
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getGradeColor = (grade?: string) => {
+    switch (grade) {
+      case 'A': return 'text-green-600 bg-green-100';
+      case 'B': return 'text-blue-600 bg-blue-100';
+      case 'C': return 'text-yellow-600 bg-yellow-100';
+      case 'D': return 'text-orange-600 bg-orange-100';
+      case 'E': case 'F': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getOSIcon = (os: string) => {
+    switch (os.toLowerCase()) {
+      case 'windows': return 'W';
+      case 'linux': return 'L';
+      case 'vmware': return 'V';
+      case 'docker': return 'D';
+      case 'netapp': return 'N';
+      default: return '?';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -127,7 +316,7 @@ export default function Suivi() {
           <Card className="border-primary/20">
             <CardContent className="pt-8 pb-8 text-center">
               <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mx-auto mb-6">
-                <Construction className="w-10 h-10 text-primary" />
+                <Server className="w-10 h-10 text-primary" />
               </div>
               <h1 className="text-2xl font-bold mb-2">Suivi de votre parc</h1>
               <p className="text-muted-foreground mb-6">
@@ -176,6 +365,9 @@ export default function Suivi() {
     : isTeamOwner 
       ? team?.name 
       : membership?.teamName;
+
+  const machines = machinesData?.machines || [];
+  const reports = reportsData?.reports || [];
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -283,6 +475,27 @@ export default function Suivi() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {(activeTab === "reports" || activeTab === "machines" || activeTab === "dashboard") && hasFullAccess && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".json"
+                    multiple
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    data-testid="button-upload-report"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {isUploading ? "Import en cours..." : "Importer un rapport"}
+                  </Button>
+                </>
+              )}
               {isAdmin && (
                 <Badge variant="default" className="bg-red-600">
                   Administrateur
@@ -334,7 +547,7 @@ export default function Suivi() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">0</div>
+                    <div className="text-3xl font-bold">{stats?.totalMachines || 0}</div>
                     <p className="text-xs text-muted-foreground">Total des machines</p>
                   </CardContent>
                 </Card>
@@ -347,7 +560,7 @@ export default function Suivi() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">0</div>
+                    <div className="text-3xl font-bold">{stats?.totalReports || 0}</div>
                     <p className="text-xs text-muted-foreground">Rapports generes</p>
                   </CardContent>
                 </Card>
@@ -360,8 +573,12 @@ export default function Suivi() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">--</div>
-                    <p className="text-xs text-muted-foreground">Aucun audit</p>
+                    <div className="text-3xl font-bold">
+                      {stats?.averageScore != null ? `${stats.averageScore}%` : "--"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.averageScore != null ? "Moyenne globale" : "Aucun audit"}
+                    </p>
                   </CardContent>
                 </Card>
                 
@@ -373,26 +590,44 @@ export default function Suivi() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">--</div>
-                    <p className="text-xs text-muted-foreground">Aucun historique</p>
+                    <div className="text-xl font-bold truncate">
+                      {stats?.lastAuditDate ? formatDate(stats.lastAuditDate).split(' ')[0] : "--"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.lastAuditDate ? formatDate(stats.lastAuditDate).split(' ')[1] : "Aucun historique"}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Taux de succes par solution */}
+              {/* Graphiques */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <CheckCircle className="h-4 w-4" />
-                      Taux de succes par solution
+                      <Check className="h-4 w-4" />
+                      Repartition par OS
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                      <CheckCircle className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="text-sm">Aucune donnee disponible</p>
-                    </div>
+                    {stats?.osCounts && Object.keys(stats.osCounts).length > 0 ? (
+                      <div className="space-y-3">
+                        {Object.entries(stats.osCounts).map(([os, count]) => (
+                          <div key={os}>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="capitalize">{os}</span>
+                              <span>{count} ({Math.round((count / stats.totalMachines) * 100)}%)</span>
+                            </div>
+                            <Progress value={(count / stats.totalMachines) * 100} className="h-2" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                        <Monitor className="h-12 w-12 mb-3 opacity-20" />
+                        <p className="text-sm">Aucune machine enregistree</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -400,74 +635,59 @@ export default function Suivi() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <TrendingUp className="h-4 w-4" />
-                      Suivi des scores
+                      Derniers audits
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">Windows</span>
-                          <span>0 (0%)</span>
-                        </div>
-                        <Progress value={0} className="h-2" />
+                    {reports.length > 0 ? (
+                      <div className="space-y-2">
+                        {reports.slice(0, 5).map((report) => (
+                          <div key={report.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
+                                {getOSIcon(report.os || 'unknown')}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{report.hostname}</p>
+                                <p className="text-xs text-muted-foreground">{formatDate(report.auditDate)}</p>
+                              </div>
+                            </div>
+                            <Badge className={getGradeColor(report.grade)}>
+                              {report.score}% ({report.grade})
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">Linux</span>
-                          <span>0 (0%)</span>
-                        </div>
-                        <Progress value={0} className="h-2" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mb-3 opacity-20" />
+                        <p className="text-sm">Aucun rapport disponible</p>
                       </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-muted-foreground">VMware</span>
-                          <span>0 (0%)</span>
-                        </div>
-                        <Progress value={0} className="h-2" />
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
-              {/* En developpement */}
-              <Card className="border-primary/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Construction className="h-5 w-5 text-primary" />
-                    En developpement
-                  </CardTitle>
-                  <CardDescription>
-                    Le suivi complet du parc sera bientot disponible
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted/50 rounded-lg p-6">
-                    <div className="max-w-md">
-                      <h3 className="font-semibold mb-3">Fonctionnalites a venir</h3>
-                      <ul className="text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          Enregistrement des machines (identifiant unique)
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          Historique des audits par machine
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          Graphiques d'evolution des scores
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          Export des rapports consolides
-                        </li>
-                      </ul>
+              {/* Instructions d'import */}
+              {machines.length === 0 && (
+                <Card className="border-dashed border-2">
+                  <CardContent className="py-8">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                        <FileJson className="w-8 h-8 text-primary" />
+                      </div>
+                      <h3 className="font-semibold mb-2">Importez vos rapports d'audit</h3>
+                      <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                        Executez vos scripts d'audit sur vos machines, puis importez les fichiers JSON generes pour suivre l'evolution de la securite de votre parc.
+                      </p>
+                      <Button onClick={() => fileInputRef.current?.click()} data-testid="button-first-upload">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Importer un rapport JSON
+                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </motion.div>
           )}
 
@@ -482,18 +702,93 @@ export default function Suivi() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Server className="h-5 w-5" />
-                    Machines enregistrees
+                    Machines enregistrees ({machines.length})
                   </CardTitle>
                   <CardDescription>
                     Liste des machines de votre parc informatique
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Server className="h-16 w-16 mb-4 opacity-20" />
-                    <p className="text-lg font-medium mb-1">Aucune machine enregistree</p>
-                    <p className="text-sm">Les machines apparaitront ici apres l'execution d'un audit</p>
-                  </div>
+                  {machines.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Server className="h-16 w-16 mb-4 opacity-20" />
+                      <p className="text-lg font-medium mb-1">Aucune machine enregistree</p>
+                      <p className="text-sm mb-4">Importez un rapport JSON pour enregistrer vos machines</p>
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Importer un rapport
+                      </Button>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Machine</TableHead>
+                          <TableHead>OS</TableHead>
+                          <TableHead>Dernier audit</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Audits</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {machines.map((machine) => (
+                          <TableRow key={machine.id} data-testid={`machine-row-${machine.id}`}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
+                                  {getOSIcon(machine.os)}
+                                </div>
+                                <div>
+                                  <p className="font-medium">{machine.hostname}</p>
+                                  {machine.machineId && (
+                                    <p className="text-xs text-muted-foreground truncate max-w-32">
+                                      {machine.machineId}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="capitalize">{machine.os}</span>
+                              {machine.osVersion && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  ({machine.osVersion})
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(machine.lastAuditDate)}</TableCell>
+                            <TableCell>
+                              {machine.lastScore != null ? (
+                                <Badge className={getGradeColor(machine.lastGrade)}>
+                                  {machine.lastScore}% ({machine.lastGrade})
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">--</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{machine.totalAudits}</TableCell>
+                            <TableCell className="text-right">
+                              {hasFullAccess && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    if (confirm(`Supprimer la machine "${machine.hostname}" et tous ses rapports ?`)) {
+                                      deleteMachineMutation.mutate(machine.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-machine-${machine.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -510,18 +805,103 @@ export default function Suivi() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Rapports d'audit
+                    Rapports d'audit ({reports.length})
                   </CardTitle>
                   <CardDescription>
                     Historique de tous les rapports generes
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <FileText className="h-16 w-16 mb-4 opacity-20" />
-                    <p className="text-lg font-medium mb-1">Aucun rapport disponible</p>
-                    <p className="text-sm">Les rapports apparaitront ici apres l'execution d'un audit</p>
-                  </div>
+                  {reports.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <FileText className="h-16 w-16 mb-4 opacity-20" />
+                      <p className="text-lg font-medium mb-1">Aucun rapport disponible</p>
+                      <p className="text-sm mb-4">Importez vos rapports JSON pour commencer le suivi</p>
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Importer un rapport
+                      </Button>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Machine</TableHead>
+                          <TableHead>Date d'audit</TableHead>
+                          <TableHead>Script</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Controles</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reports.map((report) => (
+                          <TableRow key={report.id} data-testid={`report-row-${report.id}`}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
+                                  {getOSIcon(report.os || 'unknown')}
+                                </div>
+                                <span className="font-medium">{report.hostname || `Machine #${report.machineId}`}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatDate(report.auditDate)}</TableCell>
+                            <TableCell>
+                              {report.scriptName || "Script inconnu"}
+                              {report.scriptVersion && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  v{report.scriptVersion}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getGradeColor(report.grade)}>
+                                {report.score}% ({report.grade})
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-green-600">{report.passedControls}</span>
+                                <span>/</span>
+                                <span className="text-red-600">{report.failedControls}</span>
+                                <span>/</span>
+                                <span>{report.totalControls}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedReport(report);
+                                    setShowReportDialog(true);
+                                  }}
+                                  data-testid={`button-view-report-${report.id}`}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                {hasFullAccess && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      if (confirm("Supprimer ce rapport ?")) {
+                                        deleteReportMutation.mutate(report.id);
+                                      }
+                                    }}
+                                    data-testid={`button-delete-report-${report.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -618,6 +998,72 @@ export default function Suivi() {
           )}
         </div>
       </main>
+
+      {/* Dialog for viewing report details */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Details du rapport
+            </DialogTitle>
+            <DialogDescription>
+              {selectedReport?.hostname} - {formatDate(selectedReport?.auditDate)}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReport && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground mb-1">Score</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">{selectedReport.score}%</span>
+                    <Badge className={getGradeColor(selectedReport.grade)}>
+                      {selectedReport.grade}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground mb-1">Script</p>
+                  <p className="font-medium">{selectedReport.scriptName || "Inconnu"}</p>
+                  {selectedReport.scriptVersion && (
+                    <p className="text-xs text-muted-foreground">v{selectedReport.scriptVersion}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground mb-2">Resultats des controles</p>
+                <div className="grid grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-xl font-bold">{selectedReport.totalControls}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-green-600">{selectedReport.passedControls}</p>
+                    <p className="text-xs text-muted-foreground">Reussis</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-red-600">{selectedReport.failedControls}</p>
+                    <p className="text-xs text-muted-foreground">Echoues</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-yellow-600">{selectedReport.warningControls}</p>
+                    <p className="text-xs text-muted-foreground">Avertissements</p>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedReport.fileName && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileJson className="w-4 h-4" />
+                  <span>Fichier: {selectedReport.fileName}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
