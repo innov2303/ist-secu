@@ -4274,7 +4274,6 @@ function detectOSVersion(reportData: any): string | null {
     reportData.systemInfo?.version,
     reportData.operating_system_version,
     reportData.platform_version,
-    reportData.version,
     reportData.distribution,
   ];
   
@@ -4282,6 +4281,13 @@ function detectOSVersion(reportData: any): string | null {
     if (source && typeof source === 'string' && source.trim()) {
       return source.trim();
     }
+  }
+  
+  // Try to extract from system_info.os field (contains full OS name with version)
+  // e.g., "Debian GNU/Linux 13 (trixie)", "Ubuntu 22.04 LTS", "Windows Server 2019"
+  const osField = reportData.system_info?.os || reportData.systemInfo?.os;
+  if (osField && typeof osField === 'string') {
+    return osField.trim();
   }
   
   return null;
