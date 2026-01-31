@@ -89,7 +89,7 @@ export default function Home() {
               <Button variant="secondary" size="sm" asChild data-testid="link-admin">
                 <Link href="/admin">
                   <Settings className="h-4 w-4 mr-2" />
-                  Admin
+                  IST Administration
                 </Link>
               </Button>
             )}
