@@ -35,7 +35,7 @@ export function Hero() {
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           <div className="space-y-2">
-            <Card className="border-transparent py-2 max-w-lg" data-testid="card-audit-conformite">
+            <Card className="border-transparent py-2 max-w-xl" data-testid="card-audit-conformite">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileCode className="w-4 h-4 text-primary" />
@@ -48,13 +48,13 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-lg">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-xl">
               <img src={featureAudit} alt="Audit Sécurité" className="w-full h-auto object-cover" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2 max-w-lg" data-testid="card-rapport">
+            <Card className="border-transparent py-2 max-w-xl" data-testid="card-rapport">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="w-4 h-4 text-primary" />
@@ -67,13 +67,13 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-lg">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-xl">
               <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-auto object-cover" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2 max-w-lg" data-testid="card-secure">
+            <Card className="border-transparent py-2 max-w-xl" data-testid="card-secure">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Lock className="w-4 h-4 text-primary" />
@@ -86,13 +86,13 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-lg">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-xl">
               <img src={featureSecure} alt="Secure" className="w-full h-auto object-cover" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2 max-w-lg" data-testid="card-evolution">
+            <Card className="border-transparent py-2 max-w-xl" data-testid="card-evolution">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Activity className="w-4 h-4 text-primary" />
@@ -105,7 +105,7 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-lg">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all max-w-xl">
               <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-auto object-cover" />
             </div>
           </div>
