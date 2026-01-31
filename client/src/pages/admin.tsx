@@ -37,12 +37,13 @@ const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "defa
 const ITEMS_PER_PAGE = 10;
 
 type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles";
-type ScriptStatus = "active" | "offline" | "maintenance";
+type ScriptStatus = "active" | "offline" | "maintenance" | "development";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
   active: { label: "Online", variant: "default", icon: Power },
   offline: { label: "Offline", variant: "destructive", icon: AlertTriangle },
   maintenance: { label: "Maintenance", variant: "secondary", icon: Wrench },
+  development: { label: "En developpement", variant: "secondary", icon: Clock },
 };
 
 export default function AdminPage() {
