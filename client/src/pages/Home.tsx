@@ -14,11 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import illustrationWindows from "@assets/images/illustration-windows.png";
-import illustrationLinux from "@assets/images/illustration-linux.png";
-import illustrationVmware from "@assets/images/illustration-vmware.png";
-import illustrationContainers from "@assets/images/illustration-containers.png";
-import illustrationWeb from "@assets/images/illustration-web.png";
 
 const CONTACT_SUBJECTS = [
   { value: "question", label: "Question générale", description: "Renseignements sur nos produits ou services" },
@@ -171,28 +166,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Illustrations Section */}
-        {!isLoading && !error && scripts && scripts.length > 0 && (
-          <div className={`mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(scripts.length, 5)} gap-6`}>
-            {scripts.map((script) => {
-              const illustrationMap: Record<string, string> = {
-                "Windows": illustrationWindows,
-                "Linux": illustrationLinux,
-                "VMware": illustrationVmware,
-                "Containers": illustrationContainers,
-                "Web": illustrationWeb,
-              };
-              const illustration = illustrationMap[script.os];
-              if (!illustration) return null;
-              return (
-                <div key={`illust-${script.id}`} className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
-                  <img src={illustration} alt={`${script.os} Security`} className="w-full h-auto object-cover" />
-                </div>
-              );
-            })}
-          </div>
-        )}
-
+        
         {/* Discover Packs CTA - Only visible when NOT logged in */}
         {!user && bundles && bundles.length > 0 && (
           <div className="mt-16 text-center">

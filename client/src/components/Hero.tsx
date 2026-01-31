@@ -2,6 +2,10 @@ import { motion } from "framer-motion";
 import { Lock, FileText, FileCode, Activity } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
+import featureAudit from "@assets/images/feature-audit.png";
+import featureRapport from "@assets/images/feature-rapport.png";
+import featureSecure from "@assets/images/feature-secure.png";
+import featureEvolution from "@assets/images/feature-evolution.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Hero() {
@@ -93,6 +97,27 @@ export function Hero() {
               </p>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Feature Illustrations */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8"
+        >
+          <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <img src={featureAudit} alt="Audit Sécurité" className="w-full h-auto object-cover" />
+          </div>
+          <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-auto object-cover" />
+          </div>
+          <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <img src={featureSecure} alt="Secure" className="w-full h-auto object-cover" />
+          </div>
+          <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-auto object-cover" />
+          </div>
         </motion.div>
       </div>
     </div>
