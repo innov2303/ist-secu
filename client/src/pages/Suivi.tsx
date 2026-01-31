@@ -30,7 +30,9 @@ import {
   FolderTree,
   Plus,
   Folder,
-  Layers
+  Layers,
+  Key,
+  Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -199,6 +201,23 @@ interface HierarchyData {
   unassignedMachines: Machine[];
 }
 
+interface MachineGroupWithHierarchy {
+  id: number;
+  siteId: number;
+  name: string;
+  description?: string;
+  siteName?: string;
+  organizationName?: string;
+}
+
+interface MachineGroupPermission {
+  id: number;
+  teamMemberId: number;
+  groupId: number;
+  canView: boolean;
+  canEdit: boolean;
+}
+
 type TabType = "dashboard" | "machines" | "reports" | "team" | "settings";
 
 export default function Suivi() {
@@ -233,6 +252,8 @@ export default function Suivi() {
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
+  const [selectedMemberForPermissions, setSelectedMemberForPermissions] = useState<TeamMember | null>(null);
 
   const { data: team, isLoading: teamLoading } = useQuery<Team>({
     queryKey: ["/api/teams/my-team"],
@@ -274,6 +295,52 @@ export default function Suivi() {
   const { data: hierarchyData } = useQuery<HierarchyData>({
     queryKey: ["/api/fleet/hierarchy"],
     enabled: !!user,
+  });
+
+  const { data: allMachineGroups } = useQuery<MachineGroupWithHierarchy[]>({
+    queryKey: ["/api/teams", team?.id, "machine-groups"],
+    enabled: !!team?.id,
+  });
+
+  const { data: memberPermissions } = useQuery<MachineGroupPermission[]>({
+    queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"],
+    enabled: !!team?.id && !!selectedMemberForPermissions?.id,
+  });
+
+  const setPermissionMutation = useMutation({
+    mutationFn: async (data: { groupId: number; canView: boolean; canEdit: boolean }) => {
+      const res = await apiRequest(
+        "POST", 
+        `/api/teams/${team?.id}/members/${selectedMemberForPermissions?.id}/permissions`,
+        data
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Permission mise a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+    },
+  });
+
+  const deletePermissionMutation = useMutation({
+    mutationFn: async (permissionId: number) => {
+      const res = await apiRequest(
+        "DELETE", 
+        `/api/teams/${team?.id}/members/${selectedMemberForPermissions?.id}/permissions/${permissionId}`,
+        {}
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Permission supprimee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+    },
   });
 
   const createOrgMutation = useMutation({
@@ -1646,9 +1713,23 @@ export default function Suivi() {
                               {member.firstName && <p className="text-sm text-muted-foreground">{member.email}</p>}
                             </div>
                           </div>
-                          <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                            {member.role === "admin" ? "Admin" : "Membre"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMemberForPermissions(member);
+                                setShowPermissionsDialog(true);
+                              }}
+                              data-testid={`btn-permissions-${member.id}`}
+                            >
+                              <Key className="h-4 w-4 mr-1" />
+                              Permissions
+                            </Button>
+                            <Badge variant={member.role === "admin" ? "default" : "secondary"}>
+                              {member.role === "admin" ? "Admin" : "Membre"}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1810,6 +1891,116 @@ export default function Suivi() {
               data-testid="button-confirm-add-group"
             >
               {createGroupMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for managing member permissions */}
+      <Dialog open={showPermissionsDialog} onOpenChange={(open) => {
+        setShowPermissionsDialog(open);
+        if (!open) setSelectedMemberForPermissions(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Permissions de {selectedMemberForPermissions?.firstName || selectedMemberForPermissions?.email}
+            </DialogTitle>
+            <DialogDescription>
+              Definissez les droits d'acces aux groupes de machines pour ce membre
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {!allMachineGroups || allMachineGroups.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Folder className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p>Aucun groupe de machines disponible</p>
+                <p className="text-sm">Creez d'abord des organisations, sites et groupes dans l'onglet Machines</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Cochez les groupes auxquels ce membre peut acceder et definissez ses droits (visualisation ou edition).
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Groupe</TableHead>
+                      <TableHead>Hierarchie</TableHead>
+                      <TableHead className="text-center">Voir</TableHead>
+                      <TableHead className="text-center">Editer</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allMachineGroups.map((group) => {
+                      const permission = memberPermissions?.find(p => p.groupId === group.id);
+                      return (
+                        <TableRow key={group.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Folder className="h-4 w-4 text-muted-foreground" />
+                              {group.name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {group.organizationName} / {group.siteName}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={permission?.canView || false}
+                              onChange={(e) => {
+                                setPermissionMutation.mutate({
+                                  groupId: group.id,
+                                  canView: e.target.checked,
+                                  canEdit: permission?.canEdit || false,
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-gray-300"
+                              data-testid={`checkbox-view-${group.id}`}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={permission?.canEdit || false}
+                              onChange={(e) => {
+                                setPermissionMutation.mutate({
+                                  groupId: group.id,
+                                  canView: permission?.canView || e.target.checked,
+                                  canEdit: e.target.checked,
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-gray-300"
+                              data-testid={`checkbox-edit-${group.id}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {permission && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deletePermissionMutation.mutate(permission.id)}
+                                className="text-destructive hover:text-destructive"
+                                data-testid={`btn-remove-permission-${group.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPermissionsDialog(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
