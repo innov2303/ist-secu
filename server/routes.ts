@@ -3292,6 +3292,7 @@ export async function registerRoutes(
           lastScore: score,
           lastGrade: grade,
           totalAudits: sql`${machines.totalAudits} + 1`,
+          os: os !== 'unknown' ? os : machine.os,
           osVersion: osVersion || machine.osVersion,
           updatedAt: new Date()
         };
