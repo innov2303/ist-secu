@@ -3255,7 +3255,7 @@ export async function registerRoutes(
       const hostname = machineName.trim();
       const machineIdFromReport = reportData.machine_id || reportData.systemInfo?.uuid || null;
       const os = detectOS(reportData);
-      const osVersion = reportData.os_version || reportData.systemInfo?.osVersion || null;
+      const osVersion = detectOSVersion(reportData);
       
       // Extract audit info - support multiple JSON formats (summary, results, root level)
       const auditDate = reportData.system_info?.audit_date || reportData.audit_date || reportData.date || reportData.timestamp 
@@ -4259,6 +4259,32 @@ function detectOS(reportData: any): string {
     if (lower.includes('netapp') || lower.includes('ontap')) return 'netapp';
   }
   return 'unknown';
+}
+
+// Helper function to detect OS version from report data
+function detectOSVersion(reportData: any): string | null {
+  // Check various common field locations for OS version
+  const versionSources = [
+    reportData.os_version,
+    reportData.osVersion,
+    reportData.system_info?.os_version,
+    reportData.system_info?.version,
+    reportData.system_info?.distribution,
+    reportData.systemInfo?.osVersion,
+    reportData.systemInfo?.version,
+    reportData.operating_system_version,
+    reportData.platform_version,
+    reportData.version,
+    reportData.distribution,
+  ];
+  
+  for (const source of versionSources) {
+    if (source && typeof source === 'string' && source.trim()) {
+      return source.trim();
+    }
+  }
+  
+  return null;
 }
 
 // Helper function to calculate grade from score
