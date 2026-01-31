@@ -16,13 +16,19 @@ import {
   TrendingUp,
   LogOut,
   ChevronRight,
+  ChevronDown,
   Upload,
   Trash2,
   Eye,
   Download,
   X,
   FileJson,
-  Check
+  Check,
+  Building2,
+  MapPin,
+  FolderTree,
+  Plus,
+  Folder
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -43,6 +49,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Info } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -116,6 +129,35 @@ interface FleetStats {
   osCounts: Record<string, number>;
 }
 
+interface MachineGroup {
+  id: number;
+  siteId: number;
+  name: string;
+  description?: string;
+  machines: Machine[];
+}
+
+interface Site {
+  id: number;
+  organizationId: number;
+  name: string;
+  location?: string;
+  groups: MachineGroup[];
+}
+
+interface Organization {
+  id: number;
+  teamId: number;
+  name: string;
+  description?: string;
+  sites: Site[];
+}
+
+interface HierarchyData {
+  organizations: Organization[];
+  unassignedMachines: Machine[];
+}
+
 type TabType = "dashboard" | "machines" | "reports" | "team" | "settings";
 
 export default function Suivi() {
@@ -131,6 +173,19 @@ export default function Suivi() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [machineName, setMachineName] = useState("");
+  const [expandedOrgs, setExpandedOrgs] = useState<Set<number>>(new Set());
+  const [expandedSites, setExpandedSites] = useState<Set<number>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
+  const [showAddOrgDialog, setShowAddOrgDialog] = useState(false);
+  const [showAddSiteDialog, setShowAddSiteDialog] = useState(false);
+  const [showAddGroupDialog, setShowAddGroupDialog] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteLocation, setNewSiteLocation] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
 
   const { data: team, isLoading: teamLoading } = useQuery<Team>({
     queryKey: ["/api/teams/my-team"],
@@ -157,8 +212,96 @@ export default function Suivi() {
     enabled: !!user,
   });
 
+  const { data: hierarchyData } = useQuery<HierarchyData>({
+    queryKey: ["/api/fleet/hierarchy"],
+    enabled: !!user,
+  });
+
+  const createOrgMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const res = await apiRequest("POST", "/api/fleet/organizations", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Organisation creee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowAddOrgDialog(false);
+      setNewOrgName("");
+    },
+  });
+
+  const createSiteMutation = useMutation({
+    mutationFn: async (data: { organizationId: number; name: string; location?: string }) => {
+      const res = await apiRequest("POST", "/api/fleet/sites", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Site cree" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowAddSiteDialog(false);
+      setNewSiteName("");
+      setNewSiteLocation("");
+      setSelectedOrgId(null);
+    },
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (data: { siteId: number; name: string; description?: string }) => {
+      const res = await apiRequest("POST", "/api/fleet/groups", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe cree" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowAddGroupDialog(false);
+      setNewGroupName("");
+      setSelectedSiteId(null);
+    },
+  });
+
+  const deleteOrgMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/fleet/organizations/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Organisation supprimee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+    },
+  });
+
+  const deleteSiteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/fleet/sites/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Site supprime" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/fleet/groups/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe supprime" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+    },
+  });
+
+  const assignMachineMutation = useMutation({
+    mutationFn: async (data: { machineId: number; groupId: number | null }) => {
+      await apiRequest("PUT", `/api/fleet/machines/${data.machineId}/assign`, { groupId: data.groupId });
+    },
+    onSuccess: () => {
+      toast({ title: "Machine assignee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+    },
+  });
+
   const uploadMutation = useMutation({
-    mutationFn: async (data: { jsonContent: string; htmlContent?: string; fileName: string; machineName?: string }) => {
+    mutationFn: async (data: { jsonContent: string; htmlContent?: string; fileName: string; machineName?: string; groupId?: number | null }) => {
       const res = await apiRequest("POST", "/api/fleet/upload-report", data);
       return res.json();
     },
@@ -245,10 +388,12 @@ export default function Suivi() {
         jsonContent: content,
         fileName: uploadFile.name,
         machineName: machineName.trim(),
+        groupId: selectedGroupId,
       });
       setShowUploadDialog(false);
       setUploadFile(null);
       setMachineName("");
+      setSelectedGroupId(null);
     } catch (e) {
       console.error("Error uploading file:", e);
     }
@@ -294,6 +439,39 @@ export default function Suivi() {
       default: return '?';
     }
   };
+
+  const toggleOrg = (id: number) => {
+    const newSet = new Set(expandedOrgs);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedOrgs(newSet);
+  };
+
+  const toggleSite = (id: number) => {
+    const newSet = new Set(expandedSites);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedSites(newSet);
+  };
+
+  const toggleGroup = (id: number) => {
+    const newSet = new Set(expandedGroups);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setExpandedGroups(newSet);
+  };
+
+  const organizations = hierarchyData?.organizations || [];
+  const unassignedMachines = hierarchyData?.unassignedMachines || [];
 
   if (isLoading) {
     return (
@@ -735,97 +913,243 @@ export default function Suivi() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
+              className="space-y-4"
             >
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Server className="h-5 w-5" />
-                    Machines enregistrees ({machines.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Liste des machines de votre parc informatique
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FolderTree className="h-5 w-5" />
+                      Arborescence du parc ({machines.length} machines)
+                    </CardTitle>
+                    <CardDescription>
+                      Organisation hierarchique: Organisation - Site - Groupe - Machines
+                    </CardDescription>
+                  </div>
+                  {hasFullAccess && (
+                    <Button size="sm" onClick={() => setShowAddOrgDialog(true)} data-testid="button-add-org">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Ajouter une organisation
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  {machines.length === 0 ? (
+                  {organizations.length === 0 && unassignedMachines.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <Server className="h-16 w-16 mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-1">Aucune machine enregistree</p>
-                      <p className="text-sm mb-4">Importez un rapport JSON pour enregistrer vos machines</p>
-                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Importer un rapport
-                      </Button>
+                      <FolderTree className="h-16 w-16 mb-4 opacity-20" />
+                      <p className="text-lg font-medium mb-1">Aucune organisation configuree</p>
+                      <p className="text-sm mb-4">Creez une organisation pour structurer votre parc</p>
+                      {hasFullAccess && (
+                        <Button variant="outline" onClick={() => setShowAddOrgDialog(true)}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Creer une organisation
+                        </Button>
+                      )}
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Machine</TableHead>
-                          <TableHead>OS</TableHead>
-                          <TableHead>Dernier audit</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead>Audits</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {machines.map((machine) => (
-                          <TableRow key={machine.id} data-testid={`machine-row-${machine.id}`}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
-                                  {getOSIcon(machine.os)}
-                                </div>
-                                <div>
-                                  <p className="font-medium">{machine.hostname}</p>
-                                  {machine.machineId && (
-                                    <p className="text-xs text-muted-foreground truncate max-w-32">
-                                      {machine.machineId}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="capitalize">{machine.os}</span>
-                              {machine.osVersion && (
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  ({machine.osVersion})
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatDate(machine.lastAuditDate)}</TableCell>
-                            <TableCell>
-                              {machine.lastScore != null ? (
-                                <Badge className={getGradeColor(machine.lastGrade)}>
-                                  {machine.lastScore}% ({machine.lastGrade})
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground">--</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{machine.totalAudits}</TableCell>
-                            <TableCell className="text-right">
-                              {hasFullAccess && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    if (confirm(`Supprimer la machine "${machine.hostname}" et tous ses rapports ?`)) {
-                                      deleteMachineMutation.mutate(machine.id);
-                                    }
-                                  }}
-                                  data-testid={`button-delete-machine-${machine.id}`}
+                    <div className="space-y-2">
+                      {/* Organizations tree */}
+                      {organizations.map((org) => (
+                        <div key={org.id} className="border rounded-lg" data-testid={`org-${org.id}`}>
+                          <div 
+                            className="flex items-center gap-2 p-3 hover-elevate cursor-pointer"
+                            onClick={() => toggleOrg(org.id)}
+                          >
+                            {expandedOrgs.has(org.id) ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <Building2 className="w-5 h-5 text-primary" />
+                            <span className="font-semibold">{org.name}</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {org.sites.reduce((acc, s) => acc + s.groups.reduce((a, g) => a + g.machines.length, 0), 0)} machines
+                            </Badge>
+                            {hasFullAccess && (
+                              <div className="ml-auto flex gap-1">
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={(e) => { e.stopPropagation(); setSelectedOrgId(org.id); setShowAddSiteDialog(true); }}
+                                  title="Ajouter un site"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'organisation "${org.name}" ?`)) deleteOrgMutation.mutate(org.id); }}
                                 >
                                   <Trash2 className="w-4 h-4 text-destructive" />
                                 </Button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {expandedOrgs.has(org.id) && (
+                            <div className="pl-6 pb-2">
+                              {org.sites.length === 0 ? (
+                                <p className="text-sm text-muted-foreground p-2 pl-6">Aucun site</p>
+                              ) : (
+                                org.sites.map((site) => (
+                                  <div key={site.id} className="ml-2 border-l-2 border-muted" data-testid={`site-${site.id}`}>
+                                    <div 
+                                      className="flex items-center gap-2 p-2 pl-4 hover-elevate cursor-pointer"
+                                      onClick={() => toggleSite(site.id)}
+                                    >
+                                      {expandedSites.has(site.id) ? (
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                      )}
+                                      <MapPin className="w-4 h-4 text-blue-500" />
+                                      <span className="font-medium">{site.name}</span>
+                                      {site.location && <span className="text-xs text-muted-foreground">({site.location})</span>}
+                                      <Badge variant="outline" className="ml-2">
+                                        {site.groups.reduce((a, g) => a + g.machines.length, 0)} machines
+                                      </Badge>
+                                      {hasFullAccess && (
+                                        <div className="ml-auto flex gap-1">
+                                          <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            onClick={(e) => { e.stopPropagation(); setSelectedSiteId(site.id); setShowAddGroupDialog(true); }}
+                                            title="Ajouter un groupe"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                          </Button>
+                                          <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le site "${site.name}" ?`)) deleteSiteMutation.mutate(site.id); }}
+                                          >
+                                            <Trash2 className="w-3 h-3 text-destructive" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {expandedSites.has(site.id) && (
+                                      <div className="pl-6">
+                                        {site.groups.length === 0 ? (
+                                          <p className="text-sm text-muted-foreground p-2 pl-4">Aucun groupe</p>
+                                        ) : (
+                                          site.groups.map((group) => (
+                                            <div key={group.id} className="ml-2 border-l-2 border-muted" data-testid={`group-${group.id}`}>
+                                              <div 
+                                                className="flex items-center gap-2 p-2 pl-4 hover-elevate cursor-pointer"
+                                                onClick={() => toggleGroup(group.id)}
+                                              >
+                                                {expandedGroups.has(group.id) ? (
+                                                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                                ) : (
+                                                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                                )}
+                                                <Folder className="w-4 h-4 text-yellow-500" />
+                                                <span>{group.name}</span>
+                                                <Badge variant="outline" className="ml-2">{group.machines.length}</Badge>
+                                                {hasFullAccess && (
+                                                  <div className="ml-auto">
+                                                    <Button 
+                                                      size="icon" 
+                                                      variant="ghost" 
+                                                      onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le groupe "${group.name}" ?`)) deleteGroupMutation.mutate(group.id); }}
+                                                    >
+                                                      <Trash2 className="w-3 h-3 text-destructive" />
+                                                    </Button>
+                                                  </div>
+                                                )}
+                                              </div>
+                                              
+                                              {expandedGroups.has(group.id) && (
+                                                <div className="pl-8 pb-2">
+                                                  {group.machines.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground p-2">Aucune machine</p>
+                                                  ) : (
+                                                    <div className="space-y-1">
+                                                      {group.machines.map((machine) => (
+                                                        <div key={machine.id} className="flex items-center gap-2 p-2 rounded bg-muted/30" data-testid={`machine-${machine.id}`}>
+                                                          <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
+                                                            {getOSIcon(machine.os)}
+                                                          </div>
+                                                          <span className="font-medium text-sm">{machine.hostname}</span>
+                                                          <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
+                                                          {machine.lastScore != null && (
+                                                            <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
+                                                              {machine.lastScore}%
+                                                            </Badge>
+                                                          )}
+                                                          {hasFullAccess && (
+                                                            <Button 
+                                                              size="icon" 
+                                                              variant="ghost" 
+                                                              className="ml-auto h-6 w-6"
+                                                              onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
+                                                            >
+                                                              <Trash2 className="w-3 h-3 text-destructive" />
+                                                            </Button>
+                                                          )}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
                               )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Unassigned machines */}
+                      {unassignedMachines.length > 0 && (
+                        <div className="border rounded-lg border-dashed" data-testid="unassigned-machines">
+                          <div className="p-3 bg-muted/30">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-orange-500" />
+                              <span className="font-medium">Machines non assignees</span>
+                              <Badge variant="secondary">{unassignedMachines.length}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Ces machines n'appartiennent a aucun groupe. Assignez-les a un groupe pour une meilleure organisation.
+                            </p>
+                          </div>
+                          <div className="p-3 space-y-1">
+                            {unassignedMachines.map((machine) => (
+                              <div key={machine.id} className="flex items-center gap-2 p-2 rounded bg-muted/30" data-testid={`unassigned-machine-${machine.id}`}>
+                                <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
+                                  {getOSIcon(machine.os)}
+                                </div>
+                                <span className="font-medium text-sm">{machine.hostname}</span>
+                                <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
+                                {machine.lastScore != null && (
+                                  <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
+                                    {machine.lastScore}%
+                                  </Badge>
+                                )}
+                                {hasFullAccess && (
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="ml-auto h-6 w-6"
+                                    onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
+                                  >
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -1037,6 +1361,133 @@ export default function Suivi() {
         </div>
       </main>
 
+      {/* Dialog for adding organization */}
+      <Dialog open={showAddOrgDialog} onOpenChange={setShowAddOrgDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Nouvelle organisation
+            </DialogTitle>
+            <DialogDescription>
+              Creez une organisation pour regrouper vos sites
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Nom de l'organisation *</Label>
+              <Input
+                id="org-name"
+                placeholder="ex: Entreprise ABC, Groupe XYZ..."
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                data-testid="input-org-name"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowAddOrgDialog(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={() => createOrgMutation.mutate({ name: newOrgName })} 
+              disabled={!newOrgName.trim() || createOrgMutation.isPending}
+              data-testid="button-confirm-add-org"
+            >
+              {createOrgMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for adding site */}
+      <Dialog open={showAddSiteDialog} onOpenChange={setShowAddSiteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Nouveau site
+            </DialogTitle>
+            <DialogDescription>
+              Creez un site pour regrouper vos groupes de machines
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="site-name">Nom du site *</Label>
+              <Input
+                id="site-name"
+                placeholder="ex: Siege Paris, Usine Lyon..."
+                value={newSiteName}
+                onChange={(e) => setNewSiteName(e.target.value)}
+                data-testid="input-site-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="site-location">Localisation</Label>
+              <Input
+                id="site-location"
+                placeholder="ex: 123 rue de Paris, 75001 Paris"
+                value={newSiteLocation}
+                onChange={(e) => setNewSiteLocation(e.target.value)}
+                data-testid="input-site-location"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowAddSiteDialog(false); setSelectedOrgId(null); }}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={() => selectedOrgId && createSiteMutation.mutate({ organizationId: selectedOrgId, name: newSiteName, location: newSiteLocation })} 
+              disabled={!newSiteName.trim() || !selectedOrgId || createSiteMutation.isPending}
+              data-testid="button-confirm-add-site"
+            >
+              {createSiteMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for adding group */}
+      <Dialog open={showAddGroupDialog} onOpenChange={setShowAddGroupDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Folder className="w-5 h-5" />
+              Nouveau groupe de machines
+            </DialogTitle>
+            <DialogDescription>
+              Creez un groupe pour organiser vos machines
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Nom du groupe *</Label>
+              <Input
+                id="group-name"
+                placeholder="ex: Serveurs Web, Postes Comptabilite..."
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                data-testid="input-group-name"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowAddGroupDialog(false); setSelectedSiteId(null); }}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={() => selectedSiteId && createGroupMutation.mutate({ siteId: selectedSiteId, name: newGroupName })} 
+              disabled={!newGroupName.trim() || !selectedSiteId || createGroupMutation.isPending}
+              data-testid="button-confirm-add-group"
+            >
+              {createGroupMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog for uploading report with machine name */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="max-w-md">
@@ -1076,6 +1527,33 @@ export default function Suivi() {
               />
               <p className="text-xs text-muted-foreground">
                 Identifiant unique pour cette machine dans votre parc
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="machine-group">Groupe de machines (optionnel)</Label>
+              <Select 
+                value={selectedGroupId?.toString() || ""} 
+                onValueChange={(value) => setSelectedGroupId(value ? parseInt(value) : null)}
+              >
+                <SelectTrigger data-testid="select-machine-group">
+                  <SelectValue placeholder="Selectionner un groupe..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun groupe (non assigne)</SelectItem>
+                  {organizations.flatMap(org => 
+                    org.sites.flatMap(site => 
+                      site.groups.map(group => (
+                        <SelectItem key={group.id} value={group.id.toString()}>
+                          {org.name} / {site.name} / {group.name}
+                        </SelectItem>
+                      ))
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Assignez cette machine a un groupe pour une meilleure organisation
               </p>
             </div>
           </div>

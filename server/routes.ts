@@ -3184,7 +3184,7 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Non autorise" });
       }
 
-      const { jsonContent, htmlContent, fileName, machineName } = req.body;
+      const { jsonContent, htmlContent, fileName, machineName, groupId } = req.body;
       
       if (!jsonContent) {
         return res.status(400).json({ message: "Contenu JSON requis" });
@@ -3193,6 +3193,40 @@ export async function registerRoutes(
       if (!machineName || machineName.trim() === '') {
         return res.status(400).json({ message: "Nom de la machine requis" });
       }
+
+      // Get user info for admin check
+      const uploadUser = await authStorage.getUser(userId);
+      
+      // Validate groupId if provided - verify it belongs to user's team
+      let parsedGroupId: number | null | undefined = undefined;
+      if (groupId !== undefined && groupId !== null && groupId !== '') {
+        parsedGroupId = parseInt(groupId);
+        if (!isNaN(parsedGroupId)) {
+          // Verify group belongs to user's team via organization -> site -> group chain
+          const groupCheck = await db.select({
+            groupId: machineGroups.id,
+            teamId: organizations.teamId
+          })
+          .from(machineGroups)
+          .innerJoin(sites, eq(machineGroups.siteId, sites.id))
+          .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+          .where(eq(machineGroups.id, parsedGroupId))
+          .limit(1);
+          
+          if (groupCheck.length === 0) {
+            return res.status(400).json({ message: "Groupe non trouve" });
+          }
+          
+          // Verify team ownership (admins can access any team)
+          if (!uploadUser?.isAdmin && groupCheck[0].teamId !== teamId) {
+            return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+          }
+        } else {
+          parsedGroupId = undefined;
+        }
+      }
+      // Note: Don't set parsedGroupId to null when groupId is omitted or empty
+      // This preserves existing group assignment when no group is explicitly selected
 
       // Parse JSON report
       let reportData: any;
@@ -3249,21 +3283,27 @@ export async function registerRoutes(
       
       if (existingMachines.length > 0) {
         machine = existingMachines[0];
-        // Update machine with latest audit info
+        // Update machine with latest audit info and groupId if provided
+        const updateData: any = {
+          lastAuditDate: auditDate,
+          lastScore: score,
+          lastGrade: grade,
+          totalAudits: sql`${machines.totalAudits} + 1`,
+          osVersion: osVersion || machine.osVersion,
+          updatedAt: new Date()
+        };
+        // Update groupId if provided (even if null to unassign)
+        if (parsedGroupId !== undefined) {
+          updateData.groupId = parsedGroupId;
+        }
         await db.update(machines)
-          .set({
-            lastAuditDate: auditDate,
-            lastScore: score,
-            lastGrade: grade,
-            totalAudits: sql`${machines.totalAudits} + 1`,
-            osVersion: osVersion || machine.osVersion,
-            updatedAt: new Date()
-          })
+          .set(updateData)
           .where(eq(machines.id, machine.id));
       } else {
-        // Create new machine
+        // Create new machine with optional groupId
         const [newMachine] = await db.insert(machines).values({
           teamId,
+          groupId: parsedGroupId,
           hostname,
           machineId: machineIdFromReport,
           os,
@@ -3550,10 +3590,26 @@ export async function registerRoutes(
     }
   });
 
-  // Delete organization
+  // Delete organization - with ownership validation
   app.delete("/api/fleet/organizations/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const orgId = parseInt(req.params.id);
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify organization belongs to user's team
+      const orgCheck = await db.select().from(organizations).where(eq(organizations.id, orgId)).limit(1);
+      if (orgCheck.length === 0) {
+        return res.status(404).json({ message: "Organisation non trouvee" });
+      }
+      if (!user?.isAdmin && orgCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a cette organisation" });
+      }
       
       // Delete all sites and groups under this organization
       const orgSites = await db.select().from(sites).where(eq(sites.organizationId, orgId));
@@ -3575,12 +3631,29 @@ export async function registerRoutes(
     }
   });
 
-  // Create site
+  // Create site - with ownership validation
   app.post("/api/fleet/sites", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const { organizationId, name, location } = req.body;
       if (!organizationId || !name) {
         return res.status(400).json({ message: "Organisation et nom requis" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify organization belongs to user's team
+      const orgCheck = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+      if (orgCheck.length === 0) {
+        return res.status(404).json({ message: "Organisation non trouvee" });
+      }
+      if (!user?.isAdmin && orgCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a cette organisation" });
       }
 
       const [site] = await db.insert(sites).values({
@@ -3596,10 +3669,34 @@ export async function registerRoutes(
     }
   });
 
-  // Delete site
+  // Delete site - with ownership validation
   app.delete("/api/fleet/sites/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const siteId = parseInt(req.params.id);
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify site belongs to user's team via organization
+      const siteCheck = await db.select({
+        siteId: sites.id,
+        teamId: organizations.teamId
+      })
+      .from(sites)
+      .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+      .where(eq(sites.id, siteId))
+      .limit(1);
+      
+      if (siteCheck.length === 0) {
+        return res.status(404).json({ message: "Site non trouve" });
+      }
+      if (!user?.isAdmin && siteCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a ce site" });
+      }
       
       // Delete all groups under this site
       const siteGroups = await db.select().from(machineGroups).where(eq(machineGroups.siteId, siteId));
@@ -3616,12 +3713,37 @@ export async function registerRoutes(
     }
   });
 
-  // Create machine group
+  // Create machine group - with ownership validation
   app.post("/api/fleet/groups", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const { siteId, name, description } = req.body;
       if (!siteId || !name) {
         return res.status(400).json({ message: "Site et nom requis" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify site belongs to user's team via organization
+      const siteCheck = await db.select({
+        siteId: sites.id,
+        teamId: organizations.teamId
+      })
+      .from(sites)
+      .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+      .where(eq(sites.id, siteId))
+      .limit(1);
+      
+      if (siteCheck.length === 0) {
+        return res.status(404).json({ message: "Site non trouve" });
+      }
+      if (!user?.isAdmin && siteCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a ce site" });
       }
 
       const [group] = await db.insert(machineGroups).values({
@@ -3637,10 +3759,35 @@ export async function registerRoutes(
     }
   });
 
-  // Delete machine group
+  // Delete machine group - with ownership validation
   app.delete("/api/fleet/groups/:id", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const groupId = parseInt(req.params.id);
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      // Verify group belongs to user's team via site -> organization
+      const groupCheck = await db.select({
+        groupId: machineGroups.id,
+        teamId: organizations.teamId
+      })
+      .from(machineGroups)
+      .innerJoin(sites, eq(machineGroups.siteId, sites.id))
+      .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+      .where(eq(machineGroups.id, groupId))
+      .limit(1);
+      
+      if (groupCheck.length === 0) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      if (!user?.isAdmin && groupCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+      }
       
       // Unassign machines from this group
       await db.update(machines).set({ groupId: null }).where(eq(machines.groupId, groupId));
@@ -3653,14 +3800,51 @@ export async function registerRoutes(
     }
   });
 
-  // Assign machine to group
+  // Assign machine to group - with ownership validation
   app.put("/api/fleet/machines/:id/assign", isAuthenticated, async (req, res) => {
     try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
       const machineId = parseInt(req.params.id);
       const { groupId } = req.body;
 
+      // Verify machine belongs to user's team
+      const user = await authStorage.getUser(userId);
+      const teamId = await getTeamIdForUser(userId);
+      
+      const machineCheck = await db.select().from(machines).where(eq(machines.id, machineId)).limit(1);
+      if (machineCheck.length === 0) {
+        return res.status(404).json({ message: "Machine non trouvee" });
+      }
+      if (!user?.isAdmin && machineCheck[0].teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise a cette machine" });
+      }
+
+      // Validate group ownership if groupId provided
+      if (groupId) {
+        const groupCheck = await db.select({
+          groupId: machineGroups.id,
+          teamId: organizations.teamId
+        })
+        .from(machineGroups)
+        .innerJoin(sites, eq(machineGroups.siteId, sites.id))
+        .innerJoin(organizations, eq(sites.organizationId, organizations.id))
+        .where(eq(machineGroups.id, parseInt(groupId)))
+        .limit(1);
+        
+        if (groupCheck.length === 0) {
+          return res.status(404).json({ message: "Groupe non trouve" });
+        }
+        if (!user?.isAdmin && groupCheck[0].teamId !== teamId) {
+          return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+        }
+      }
+
       await db.update(machines)
-        .set({ groupId: groupId || null })
+        .set({ groupId: groupId ? parseInt(groupId) : null })
         .where(eq(machines.id, machineId));
 
       res.json({ success: true });
