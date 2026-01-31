@@ -3683,18 +3683,35 @@ export async function registerRoutes(
     // Check if member has admin role - admins have full access
     if (membership.role === "admin") return null;
     
-    // Get permissions for this member
-    const permissions = await db.select().from(machineGroupPermissions).where(eq(machineGroupPermissions.teamMemberId, membership.id));
+    // Get direct permissions for this member
+    const directPermissions = await db.select().from(machineGroupPermissions).where(eq(machineGroupPermissions.teamMemberId, membership.id));
+    
+    // Get user groups the member belongs to
+    const userGroupMemberships = await db.select().from(userGroupMembers).where(eq(userGroupMembers.teamMemberId, membership.id));
+    
+    // Get permissions for user groups
+    let userGroupPermissions: typeof directPermissions = [];
+    if (userGroupMemberships.length > 0) {
+      const userGroupIds = userGroupMemberships.map(m => m.userGroupId);
+      userGroupPermissions = await db.select().from(machineGroupPermissions).where(inArray(machineGroupPermissions.userGroupId, userGroupIds));
+    }
+    
+    // Combine all permissions
+    const allPermissions = [...directPermissions, ...userGroupPermissions];
     
     // If no permissions defined, member sees nothing
-    if (permissions.length === 0) return [];
+    if (allPermissions.length === 0) return [];
     
-    // Filter by permission type
+    // Filter by permission type and get unique group IDs
+    let groupIds: number[];
     if (permissionType === "view") {
-      return permissions.filter(p => p.canView).map(p => p.groupId);
+      groupIds = allPermissions.filter(p => p.canView).map(p => p.groupId);
     } else {
-      return permissions.filter(p => p.canEdit).map(p => p.groupId);
+      groupIds = allPermissions.filter(p => p.canEdit).map(p => p.groupId);
     }
+    
+    // Return unique group IDs
+    return [...new Set(groupIds)];
   };
 
   // Get machines for user's team
