@@ -35,7 +35,7 @@ export function Hero() {
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           <div className="space-y-2">
-            <Card className="border-transparent py-2" data-testid="card-audit-conformite">
+            <Card className="border-transparent py-2 max-w-sm" data-testid="card-audit-conformite">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileCode className="w-4 h-4 text-primary" />
@@ -54,7 +54,7 @@ export function Hero() {
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2" data-testid="card-rapport">
+            <Card className="border-transparent py-2 max-w-sm" data-testid="card-rapport">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="w-4 h-4 text-primary" />
@@ -73,7 +73,7 @@ export function Hero() {
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2" data-testid="card-secure">
+            <Card className="border-transparent py-2 max-w-sm" data-testid="card-secure">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Lock className="w-4 h-4 text-primary" />
@@ -92,7 +92,7 @@ export function Hero() {
           </div>
 
           <div className="space-y-2">
-            <Card className="border-transparent py-2" data-testid="card-evolution">
+            <Card className="border-transparent py-2 max-w-sm" data-testid="card-evolution">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Activity className="w-4 h-4 text-primary" />
