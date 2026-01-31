@@ -32,7 +32,8 @@ import {
   Folder,
   Layers,
   Key,
-  Pencil
+  Pencil,
+  MoveHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -102,6 +103,7 @@ interface TeamMember {
 interface Machine {
   id: number;
   teamId: number;
+  groupId?: number | null;
   hostname: string;
   machineId?: string;
   os: string;
@@ -259,6 +261,9 @@ export default function Suivi() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
   const [selectedMemberForPermissions, setSelectedMemberForPermissions] = useState<TeamMember | null>(null);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [machineToMove, setMachineToMove] = useState<Machine | null>(null);
+  const [targetGroupId, setTargetGroupId] = useState<string>("");
 
   const { data: teamData, isLoading: teamLoading } = useQuery<TeamData>({
     queryKey: ["/api/teams/my-team"],
@@ -483,6 +488,23 @@ export default function Suivi() {
       toast({ title: "Machine supprimee" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
+    },
+  });
+
+  const moveMachineMutation = useMutation({
+    mutationFn: async ({ machineId, groupId }: { machineId: number; groupId: number | null }) => {
+      await apiRequest("PUT", `/api/fleet/machines/${machineId}/assign`, { groupId });
+    },
+    onSuccess: () => {
+      toast({ title: "Machine deplacee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
+      setShowMoveDialog(false);
+      setMachineToMove(null);
+      setTargetGroupId("");
+    },
+    onError: () => {
+      toast({ title: "Erreur lors du deplacement", variant: "destructive" });
     },
   });
 
@@ -1466,14 +1488,25 @@ export default function Suivi() {
                                                             </div>
                                                           )}
                                                           {hasFullAccess && (
-                                                            <Button 
-                                                              size="icon" 
-                                                              variant="ghost" 
-                                                              className="ml-auto h-6 w-6"
-                                                              onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
-                                                            >
-                                                              <Trash2 className="w-3 h-3 text-destructive" />
-                                                            </Button>
+                                                            <div className="ml-auto flex gap-1">
+                                                              <Button 
+                                                                size="icon" 
+                                                                variant="ghost"
+                                                                onClick={() => { setMachineToMove(machine); setShowMoveDialog(true); }}
+                                                                title="Deplacer vers un autre groupe"
+                                                                data-testid={`button-move-machine-${machine.id}`}
+                                                              >
+                                                                <MoveHorizontal className="w-4 h-4" />
+                                                              </Button>
+                                                              <Button 
+                                                                size="icon" 
+                                                                variant="ghost"
+                                                                onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
+                                                                data-testid={`button-delete-machine-${machine.id}`}
+                                                              >
+                                                                <Trash2 className="w-4 h-4 text-destructive" />
+                                                              </Button>
+                                                            </div>
                                                           )}
                                                         </div>
                                                       ))}
@@ -1531,14 +1564,25 @@ export default function Suivi() {
                                   </div>
                                 )}
                                 {hasFullAccess && (
-                                  <Button 
-                                    size="icon" 
-                                    variant="ghost" 
-                                    className="ml-auto h-6 w-6"
-                                    onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
-                                  >
-                                    <Trash2 className="w-3 h-3 text-destructive" />
-                                  </Button>
+                                  <div className="ml-auto flex gap-1">
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => { setMachineToMove(machine); setShowMoveDialog(true); }}
+                                      title="Affecter a un groupe"
+                                      data-testid={`button-move-unassigned-${machine.id}`}
+                                    >
+                                      <MoveHorizontal className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
+                                      data-testid={`button-delete-unassigned-${machine.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
                             ))}
@@ -2466,6 +2510,66 @@ export default function Suivi() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for moving machine to another group */}
+      <Dialog open={showMoveDialog} onOpenChange={(open) => {
+        setShowMoveDialog(open);
+        if (!open) {
+          setMachineToMove(null);
+          setTargetGroupId("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MoveHorizontal className="w-5 h-5" />
+              Deplacer la machine
+            </DialogTitle>
+            <DialogDescription>
+              {machineToMove && `Selectionnez le groupe de destination pour "${machineToMove.hostname}"`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Groupe de destination</label>
+              <Select value={targetGroupId} onValueChange={setTargetGroupId}>
+                <SelectTrigger data-testid="select-target-group">
+                  <SelectValue placeholder="Selectionnez un groupe..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Non affecte (retirer du groupe)</SelectItem>
+                  {allMachineGroups?.map((group) => (
+                    <SelectItem 
+                      key={group.id} 
+                      value={group.id.toString()}
+                      disabled={machineToMove?.groupId === group.id}
+                    >
+                      {group.organizationName} / {group.siteName} / {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => {
+                if (machineToMove && targetGroupId) {
+                  const groupId = targetGroupId === "unassigned" ? null : parseInt(targetGroupId);
+                  moveMachineMutation.mutate({ machineId: machineToMove.id, groupId });
+                }
+              }}
+              disabled={!targetGroupId || moveMachineMutation.isPending}
+              data-testid="button-confirm-move"
+            >
+              {moveMachineMutation.isPending ? "Deplacement..." : "Deplacer"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
