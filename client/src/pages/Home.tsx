@@ -100,7 +100,7 @@ export default function Home() {
               </Avatar>
               <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
             </Link>
-            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
+            <Button variant="secondary" size="sm" onClick={() => logout()} data-testid="button-logout" className="bg-white text-gray-700 hover:bg-gray-100">
               <LogOut className="h-4 w-4" />
             </Button>
           </>
