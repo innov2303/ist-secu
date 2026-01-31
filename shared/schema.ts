@@ -1,4 +1,4 @@
-import { pgTable, text, serial, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -324,6 +324,31 @@ export const machineGroupsRelations = relations(machineGroups, ({ one, many }) =
 export const insertMachineGroupSchema = createInsertSchema(machineGroups).omit({ id: true, createdAt: true });
 export type MachineGroup = typeof machineGroups.$inferSelect;
 export type InsertMachineGroup = z.infer<typeof insertMachineGroupSchema>;
+
+// Machine group permissions - granular access control for team members
+export const machineGroupPermissions = pgTable("machine_group_permissions", {
+  id: serial("id").primaryKey(),
+  teamMemberId: integer("team_member_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  canView: boolean("can_view").notNull().default(true),
+  canEdit: boolean("can_edit").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const machineGroupPermissionsRelations = relations(machineGroupPermissions, ({ one }) => ({
+  teamMember: one(teamMembers, {
+    fields: [machineGroupPermissions.teamMemberId],
+    references: [teamMembers.id],
+  }),
+  group: one(machineGroups, {
+    fields: [machineGroupPermissions.groupId],
+    references: [machineGroups.id],
+  }),
+}));
+
+export const insertMachineGroupPermissionSchema = createInsertSchema(machineGroupPermissions).omit({ id: true, createdAt: true });
+export type MachineGroupPermission = typeof machineGroupPermissions.$inferSelect;
+export type InsertMachineGroupPermission = z.infer<typeof insertMachineGroupPermissionSchema>;
 
 // Machines table - tracks registered machines for fleet management
 export const machines = pgTable("machines", {
