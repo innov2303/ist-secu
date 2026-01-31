@@ -305,11 +305,13 @@ export default function Suivi() {
     enabled: !!user,
   });
 
-  // Derive all machine groups from hierarchy data instead of separate API call
+  // Derive all machine groups from hierarchy data for current team only
   const allMachineGroups = useMemo(() => {
-    if (!hierarchyData?.organizations) return [];
+    if (!hierarchyData?.organizations || !team?.id) return [];
     const groups: MachineGroupWithHierarchy[] = [];
-    for (const org of hierarchyData.organizations) {
+    // Filter organizations by current team
+    const teamOrgs = hierarchyData.organizations.filter(org => org.teamId === team.id);
+    for (const org of teamOrgs) {
       for (const site of org.sites) {
         for (const group of site.groups) {
           groups.push({
@@ -324,7 +326,7 @@ export default function Suivi() {
       }
     }
     return groups;
-  }, [hierarchyData]);
+  }, [hierarchyData, team?.id]);
 
   const { data: memberPermissions } = useQuery<MachineGroupPermission[]>({
     queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"],
