@@ -4,9 +4,9 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, desc } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -2165,6 +2165,7 @@ export async function registerRoutes(
       
       // Insert each control into the script_controls table
       const insertedControls = [];
+      const addedControlNames: string[] = [];
       for (const control of controls) {
         // Check if control already exists for this script
         const [existing] = await db.select()
@@ -2203,6 +2204,36 @@ export async function registerRoutes(
         }).returning();
         
         insertedControls.push(inserted);
+        addedControlNames.push(control.name);
+      }
+      
+      // If controls were added, update version and create version history
+      if (insertedControls.length > 0) {
+        // Parse current version and increment patch number
+        const currentVersion = script.version || "1.0.0";
+        const versionParts = currentVersion.split(".");
+        const major = parseInt(versionParts[0]) || 1;
+        const minor = parseInt(versionParts[1]) || 0;
+        const patch = (parseInt(versionParts[2]) || 0) + 1;
+        const newVersion = `${major}.${minor}.${patch}`;
+        
+        // Update script version
+        await db.update(scripts)
+          .set({ version: newVersion })
+          .where(eq(scripts.id, scriptId));
+        
+        // Create version history entry
+        const changesSummary = `Ajout de ${insertedControls.length} controle(s): ${addedControlNames.slice(0, 5).join(", ")}${addedControlNames.length > 5 ? ` et ${addedControlNames.length - 5} autre(s)` : ""}`;
+        
+        await db.insert(scriptVersions).values({
+          scriptId,
+          version: newVersion,
+          previousVersion: currentVersion,
+          changeType: "controls_added",
+          changesSummary,
+          controlsAdded: insertedControls.length,
+          controlsRemoved: 0,
+        });
       }
       
       res.json({
@@ -2240,6 +2271,44 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching script controls:", error);
       res.status(500).json({ message: "Error fetching script controls" });
+    }
+  });
+
+  // Get version history for a script (for users viewing their purchases)
+  app.get("/api/scripts/:id/versions", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+
+      // Get script with current version
+      const [script] = await db.select({
+        id: scripts.id,
+        name: scripts.name,
+        version: scripts.version,
+      }).from(scripts).where(eq(scripts.id, scriptId));
+
+      if (!script) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      // Get version history
+      const versions = await db.select()
+        .from(scriptVersions)
+        .where(eq(scriptVersions.scriptId, scriptId))
+        .orderBy(desc(scriptVersions.createdAt));
+      
+      res.json({ 
+        currentVersion: script.version,
+        scriptName: script.name,
+        versions 
+      });
+    } catch (error) {
+      console.error("Error fetching script versions:", error);
+      res.status(500).json({ message: "Error fetching script versions" });
     }
   });
   
