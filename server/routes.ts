@@ -3937,6 +3937,66 @@ export async function registerRoutes(
     }
   });
 
+  // Get score history for chart (grouped by month)
+  app.get("/api/fleet/score-history", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      if (!user?.isAdmin && !teamId) {
+        return res.json({ history: [] });
+      }
+
+      // Get average score per month for the last 12 months
+      const historyQuery = user?.isAdmin
+        ? db.select({
+            month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
+            avgScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
+            reportCount: sql<number>`COUNT(*)::int`
+          })
+          .from(auditReports)
+          .where(sql`${auditReports.auditDate} >= NOW() - INTERVAL '12 months'`)
+          .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
+        : db.select({
+            month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
+            avgScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
+            reportCount: sql<number>`COUNT(*)::int`
+          })
+          .from(auditReports)
+          .innerJoin(machines, eq(auditReports.machineId, machines.id))
+          .where(and(
+            eq(machines.teamId, teamId!),
+            sql`${auditReports.auditDate} >= NOW() - INTERVAL '12 months'`
+          ))
+          .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`);
+
+      const history = await historyQuery;
+
+      // Format month labels (e.g., "Jan 2026")
+      const formattedHistory = history.map(h => {
+        const [year, month] = h.month.split('-');
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return {
+          month: `${monthNames[parseInt(month) - 1]} ${year}`,
+          score: h.avgScore,
+          reports: h.reportCount
+        };
+      });
+
+      res.json({ history: formattedHistory });
+    } catch (error) {
+      console.error("Error fetching score history:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation de l'historique" });
+    }
+  });
+
   // Get report details with controls and corrections
   app.get("/api/fleet/reports/:id/controls", isAuthenticated, async (req, res) => {
     try {

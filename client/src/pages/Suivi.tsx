@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { 
   Users, 
   Monitor, 
@@ -134,6 +135,12 @@ interface FleetStats {
   osCounts: Record<string, number>;
 }
 
+interface ScoreHistoryItem {
+  month: string;
+  score: number;
+  reports: number;
+}
+
 interface ControlCorrection {
   id: number;
   controlId: string;
@@ -231,6 +238,11 @@ export default function Suivi() {
 
   const { data: stats } = useQuery<FleetStats>({
     queryKey: ["/api/fleet/stats"],
+    enabled: !!user,
+  });
+
+  const { data: scoreHistoryData } = useQuery<{ history: ScoreHistoryItem[] }>({
+    queryKey: ["/api/fleet/score-history"],
     enabled: !!user,
   });
 
@@ -886,6 +898,64 @@ export default function Suivi() {
               </div>
 
               {/* Graphiques */}
+              {/* Score Evolution Chart */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <TrendingUp className="h-4 w-4" />
+                    Evolution du score du parc
+                  </CardTitle>
+                  <CardDescription>
+                    Score moyen par mois (derniers 12 mois)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {scoreHistoryData?.history && scoreHistoryData.history.length > 0 ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={scoreHistoryData.history} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis 
+                            dataKey="month" 
+                            tick={{ fontSize: 12 }} 
+                            className="fill-muted-foreground"
+                          />
+                          <YAxis 
+                            domain={[0, 100]} 
+                            tick={{ fontSize: 12 }} 
+                            className="fill-muted-foreground"
+                            tickFormatter={(value) => `${value}%`}
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [`${value}%`, 'Score']}
+                            labelFormatter={(label) => label}
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px'
+                            }}
+                          />
+                          <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                            {scoreHistoryData.history.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#eab308' : '#ef4444'}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+                      <BarChart3 className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-sm">Aucune donnee disponible</p>
+                      <p className="text-xs">Les scores apparaitront apres les premiers audits</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <Card>
                   <CardHeader>
