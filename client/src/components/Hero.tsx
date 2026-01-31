@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Lock, FileText, FileCode, TrendingUp } from "lucide-react";
+import { Lock, FileText, FileCode, Activity } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,17 +83,17 @@ export function Hero() {
 
           <Card className="overflow-hidden border-transparent" data-testid="card-evolution">
             <div className="flex items-center justify-center h-32 bg-primary/10">
-              <TrendingUp className="w-16 h-16 text-primary" />
+              <Activity className="w-16 h-16 text-primary" />
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
+                <Activity className="w-5 h-5 text-primary" />
                 Suivez l'évolution
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Suivi des versions et mises à jour des scripts pour rester conforme aux derniers standards de sécurité.
+                Mesurez et suivez l'évolution du niveau de sécurité de vos machines au fil des audits.
               </p>
             </CardContent>
           </Card>
