@@ -194,7 +194,16 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {bundles.map((bundle, index) => (
+              {bundles
+                .filter(bundle => {
+                  // Hide bundles that contain any toolkit with "development" status
+                  const hasDevToolkit = bundle.includedScriptIds.some(scriptId => {
+                    const script = scripts.find(s => s.id === scriptId);
+                    return script?.status === "development";
+                  });
+                  return !hasDevToolkit;
+                })
+                .map((bundle, index) => (
                 <BundleCard 
                   key={bundle.id} 
                   bundle={bundle} 
