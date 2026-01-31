@@ -390,3 +390,27 @@ export const insertAuditReportSchema = createInsertSchema(auditReports).omit({ i
 
 export type AuditReport = typeof auditReports.$inferSelect;
 export type InsertAuditReport = z.infer<typeof insertAuditReportSchema>;
+
+// Control corrections table - stores user corrections/overrides for individual controls in audit reports
+export const controlCorrections = pgTable("control_corrections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  controlId: varchar("control_id", { length: 100 }).notNull(),
+  originalStatus: varchar("original_status", { length: 20 }).notNull(),
+  correctedStatus: varchar("corrected_status", { length: 20 }).notNull(),
+  justification: text("justification").notNull(),
+  correctedBy: varchar("corrected_by").notNull(),
+  correctedAt: timestamp("corrected_at").defaultNow().notNull(),
+});
+
+export const controlCorrectionsRelations = relations(controlCorrections, ({ one }) => ({
+  report: one(auditReports, {
+    fields: [controlCorrections.reportId],
+    references: [auditReports.id],
+  }),
+}));
+
+export const insertControlCorrectionSchema = createInsertSchema(controlCorrections).omit({ id: true, correctedAt: true });
+
+export type ControlCorrection = typeof controlCorrections.$inferSelect;
+export type InsertControlCorrection = z.infer<typeof insertControlCorrectionSchema>;

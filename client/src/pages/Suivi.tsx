@@ -50,7 +50,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Info, Globe, HelpCircle } from "lucide-react";
-import { SiLinux, SiWindows, SiVmware, SiDocker } from "react-icons/si";
+import { SiLinux, SiVmware, SiDocker } from "react-icons/si";
+import { FaWindows } from "react-icons/fa";
 import {
   Select,
   SelectContent,
@@ -131,6 +132,27 @@ interface FleetStats {
   osCounts: Record<string, number>;
 }
 
+interface ControlCorrection {
+  id: number;
+  controlId: string;
+  originalStatus: string;
+  correctedStatus: string;
+  justification: string;
+  correctedAt: string;
+}
+
+interface ReportControl {
+  id: string;
+  category: string;
+  title: string;
+  status: string;
+  severity: string;
+  description: string;
+  remediation?: string;
+  reference?: string;
+  correction?: ControlCorrection | null;
+}
+
 interface MachineGroup {
   id: number;
   siteId: number;
@@ -175,6 +197,12 @@ export default function Suivi() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [machineName, setMachineName] = useState("");
+  const [showControlsDialog, setShowControlsDialog] = useState(false);
+  const [selectedReportForControls, setSelectedReportForControls] = useState<AuditReport | null>(null);
+  const [editingControl, setEditingControl] = useState<ReportControl | null>(null);
+  const [correctionJustification, setCorrectionJustification] = useState("");
+  const [correctionStatus, setCorrectionStatus] = useState("PASS");
+  const [controlsFilter, setControlsFilter] = useState<"all" | "PASS" | "FAIL" | "WARN">("all");
   const [expandedOrgs, setExpandedOrgs] = useState<Set<number>>(new Set());
   const [expandedSites, setExpandedSites] = useState<Set<number>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
@@ -336,6 +364,37 @@ export default function Suivi() {
     },
   });
 
+  // Query for report controls
+  const { data: reportControlsData, isLoading: isLoadingControls, refetch: refetchControls } = useQuery<{ 
+    reportId: number; 
+    controls: ReportControl[]; 
+    totalControls: number; 
+    correctedCount: number; 
+  }>({
+    queryKey: ["/api/fleet/reports", selectedReportForControls?.id, "controls"],
+    enabled: !!selectedReportForControls,
+  });
+
+  // Mutation for saving control correction
+  const saveControlCorrectionMutation = useMutation({
+    mutationFn: async (data: { reportId: number; controlId: string; originalStatus: string; correctedStatus: string; justification: string }) => {
+      return await apiRequest("POST", `/api/fleet/reports/${data.reportId}/corrections`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Correction enregistree" });
+      refetchControls();
+      setEditingControl(null);
+      setCorrectionJustification("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la sauvegarde",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteReportMutation = useMutation({
     mutationFn: async (reportId: number) => {
       await apiRequest("DELETE", `/api/fleet/reports/${reportId}`);
@@ -434,7 +493,7 @@ export default function Suivi() {
   const getOSIcon = (os: string) => {
     const iconClass = "w-4 h-4";
     switch (os.toLowerCase()) {
-      case 'windows': return <SiWindows className={`${iconClass} text-blue-500`} />;
+      case 'windows': return <FaWindows className={`${iconClass} text-blue-500`} />;
       case 'linux': return <SiLinux className={`${iconClass} text-orange-500`} />;
       case 'vmware': return <SiVmware className={`${iconClass} text-green-600`} />;
       case 'docker': 
@@ -1245,8 +1304,22 @@ export default function Suivi() {
                                     setShowReportDialog(true);
                                   }}
                                   data-testid={`button-view-report-${report.id}`}
+                                  title="Voir le resume"
                                 >
                                   <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedReportForControls(report);
+                                    setShowControlsDialog(true);
+                                    setControlsFilter("all");
+                                  }}
+                                  data-testid={`button-view-controls-${report.id}`}
+                                  title="Voir les controles"
+                                >
+                                  <Shield className="w-4 h-4" />
                                 </Button>
                                 {hasFullAccess && (
                                   <Button
@@ -1657,6 +1730,199 @@ export default function Suivi() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for viewing and editing controls */}
+      <Dialog open={showControlsDialog} onOpenChange={(open) => { 
+        setShowControlsDialog(open); 
+        if (!open) { 
+          setEditingControl(null); 
+          setCorrectionJustification(""); 
+        } 
+      }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Controles de securite
+            </DialogTitle>
+            <DialogDescription>
+              {selectedReportForControls?.hostname} - {selectedReportForControls?.totalControls} controles
+              {reportControlsData?.correctedCount ? ` (${reportControlsData.correctedCount} corrige(s))` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center gap-2 pb-2">
+            <Button
+              size="sm"
+              variant={controlsFilter === "all" ? "default" : "outline"}
+              onClick={() => setControlsFilter("all")}
+            >
+              Tous
+            </Button>
+            <Button
+              size="sm"
+              variant={controlsFilter === "PASS" ? "default" : "outline"}
+              onClick={() => setControlsFilter("PASS")}
+              className="text-green-600"
+            >
+              Reussis
+            </Button>
+            <Button
+              size="sm"
+              variant={controlsFilter === "FAIL" ? "default" : "outline"}
+              onClick={() => setControlsFilter("FAIL")}
+              className="text-red-600"
+            >
+              Echoues
+            </Button>
+            <Button
+              size="sm"
+              variant={controlsFilter === "WARN" ? "default" : "outline"}
+              onClick={() => setControlsFilter("WARN")}
+              className="text-yellow-600"
+            >
+              Avertissements
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+            {isLoadingControls ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : reportControlsData?.controls?.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Aucun controle trouve dans ce rapport
+              </div>
+            ) : (
+              reportControlsData?.controls
+                ?.filter((control: ReportControl) => controlsFilter === "all" || control.status === controlsFilter)
+                .map((control: ReportControl) => {
+                  const effectiveStatus = control.correction?.correctedStatus || control.status;
+                  const isEditing = editingControl?.id === control.id;
+                  
+                  return (
+                    <div 
+                      key={control.id} 
+                      className={`p-3 rounded-lg border ${
+                        control.correction ? 'border-blue-300 bg-blue-50/50 dark:bg-blue-950/20' : 'bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge className={`text-xs ${
+                              effectiveStatus === 'PASS' ? 'bg-green-100 text-green-700' :
+                              effectiveStatus === 'FAIL' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {effectiveStatus}
+                            </Badge>
+                            {control.correction && (
+                              <Badge className="text-xs bg-blue-100 text-blue-700">
+                                Corrige
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">[{control.id}]</span>
+                            <span className="text-xs text-muted-foreground">{control.category}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {control.severity}
+                            </Badge>
+                          </div>
+                          <p className="font-medium mt-1">{control.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{control.description}</p>
+                          
+                          {control.remediation && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Remediation: {control.remediation}
+                            </p>
+                          )}
+                          
+                          {control.correction && (
+                            <div className="mt-2 p-2 rounded bg-blue-100/50 dark:bg-blue-900/30 text-sm">
+                              <p className="font-medium text-blue-700 dark:text-blue-300">Justification de la correction:</p>
+                              <p className="text-blue-600 dark:text-blue-400">{control.correction.justification}</p>
+                            </div>
+                          )}
+                          
+                          {isEditing && (
+                            <div className="mt-3 p-3 rounded-lg border bg-background space-y-3">
+                              <div>
+                                <Label className="text-sm">Nouveau statut</Label>
+                                <Select value={correctionStatus} onValueChange={setCorrectionStatus}>
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="PASS">PASS - Corrige</SelectItem>
+                                    <SelectItem value="WARN">WARN - Ameliore</SelectItem>
+                                    <SelectItem value="FAIL">FAIL - Non corrige</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-sm">Justification</Label>
+                                <Input
+                                  className="mt-1"
+                                  placeholder="Expliquez la correction effectuee..."
+                                  value={correctionJustification}
+                                  onChange={(e) => setCorrectionJustification(e.target.value)}
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    if (selectedReportForControls && correctionJustification.trim()) {
+                                      saveControlCorrectionMutation.mutate({
+                                        reportId: selectedReportForControls.id,
+                                        controlId: control.id,
+                                        originalStatus: control.status,
+                                        correctedStatus: correctionStatus,
+                                        justification: correctionJustification.trim()
+                                      });
+                                    }
+                                  }}
+                                  disabled={!correctionJustification.trim() || saveControlCorrectionMutation.isPending}
+                                >
+                                  {saveControlCorrectionMutation.isPending ? "..." : "Enregistrer"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingControl(null);
+                                    setCorrectionJustification("");
+                                  }}
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {!isEditing && hasFullAccess && (control.status === 'FAIL' || control.status === 'WARN') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingControl(control);
+                              setCorrectionStatus(control.correction?.correctedStatus || "PASS");
+                              setCorrectionJustification(control.correction?.justification || "");
+                            }}
+                          >
+                            {control.correction ? "Modifier" : "Corriger"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

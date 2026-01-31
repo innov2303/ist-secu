@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -3928,6 +3928,148 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching fleet stats:", error);
       res.status(500).json({ message: "Erreur lors de la recuperation des statistiques" });
+    }
+  });
+
+  // Get report details with controls and corrections
+  app.get("/api/fleet/reports/:id/controls", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) {
+        return res.status(400).json({ message: "ID de rapport invalide" });
+      }
+
+      // Get the report
+      const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
+      if (!report) {
+        return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      // Parse the JSON content to get controls
+      let controls: any[] = [];
+      try {
+        const jsonData = typeof report.jsonContent === 'string' ? JSON.parse(report.jsonContent) : report.jsonContent;
+        controls = jsonData.results || [];
+      } catch (e) {
+        console.error("Error parsing report JSON:", e);
+      }
+
+      // Get all corrections for this report
+      const corrections = await db.select().from(controlCorrections).where(eq(controlCorrections.reportId, reportId));
+
+      // Create a map of corrections by controlId
+      const correctionsMap: Record<string, any> = {};
+      for (const correction of corrections) {
+        correctionsMap[correction.controlId] = correction;
+      }
+
+      // Merge controls with corrections
+      const controlsWithCorrections = controls.map((control: any) => ({
+        ...control,
+        correction: correctionsMap[control.id] || null
+      }));
+
+      res.json({ 
+        reportId,
+        controls: controlsWithCorrections,
+        totalControls: controls.length,
+        correctedCount: corrections.length
+      });
+    } catch (error) {
+      console.error("Error fetching report controls:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des controles" });
+    }
+  });
+
+  // Save or update a control correction
+  app.post("/api/fleet/reports/:id/corrections", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const reportId = parseInt(req.params.id);
+      if (isNaN(reportId)) {
+        return res.status(400).json({ message: "ID de rapport invalide" });
+      }
+
+      const { controlId, originalStatus, correctedStatus, justification } = req.body;
+
+      if (!controlId || !originalStatus || !correctedStatus || !justification) {
+        return res.status(400).json({ message: "Tous les champs sont requis" });
+      }
+
+      // Check if report exists
+      const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
+      if (!report) {
+        return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      // Check if correction already exists
+      const [existingCorrection] = await db.select().from(controlCorrections).where(
+        and(
+          eq(controlCorrections.reportId, reportId),
+          eq(controlCorrections.controlId, controlId)
+        )
+      );
+
+      if (existingCorrection) {
+        // Update existing correction
+        const [updated] = await db.update(controlCorrections)
+          .set({
+            correctedStatus,
+            justification,
+            correctedBy: userId,
+            correctedAt: new Date()
+          })
+          .where(eq(controlCorrections.id, existingCorrection.id))
+          .returning();
+        
+        res.json({ success: true, correction: updated, updated: true });
+      } else {
+        // Create new correction
+        const [created] = await db.insert(controlCorrections).values({
+          reportId,
+          controlId,
+          originalStatus,
+          correctedStatus,
+          justification,
+          correctedBy: userId
+        }).returning();
+        
+        res.json({ success: true, correction: created, updated: false });
+      }
+    } catch (error) {
+      console.error("Error saving control correction:", error);
+      res.status(500).json({ message: "Erreur lors de la sauvegarde de la correction" });
+    }
+  });
+
+  // Delete a control correction
+  app.delete("/api/fleet/corrections/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const correctionId = parseInt(req.params.id);
+      if (isNaN(correctionId)) {
+        return res.status(400).json({ message: "ID de correction invalide" });
+      }
+
+      await db.delete(controlCorrections).where(eq(controlCorrections.id, correctionId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting control correction:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de la correction" });
     }
   });
 
