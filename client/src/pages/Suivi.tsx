@@ -224,6 +224,22 @@ interface MachineGroupPermission {
   canEdit: boolean;
 }
 
+interface UserGroup {
+  id: number;
+  teamId: number;
+  name: string;
+  description?: string;
+  memberCount: number;
+  createdAt: string;
+}
+
+interface UserGroupMember {
+  id: number;
+  userGroupId: number;
+  teamMemberId: number;
+  member: TeamMember | null;
+}
+
 type TabType = "dashboard" | "machines" | "reports" | "team";
 
 export default function Suivi() {
@@ -263,6 +279,13 @@ export default function Suivi() {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [machineToMove, setMachineToMove] = useState<Machine | null>(null);
   const [targetGroupId, setTargetGroupId] = useState<string>("");
+  const [showUserGroupDialog, setShowUserGroupDialog] = useState(false);
+  const [newUserGroupName, setNewUserGroupName] = useState("");
+  const [newUserGroupDescription, setNewUserGroupDescription] = useState("");
+  const [selectedUserGroup, setSelectedUserGroup] = useState<UserGroup | null>(null);
+  const [showUserGroupMembersDialog, setShowUserGroupMembersDialog] = useState(false);
+  const [showUserGroupPermissionsDialog, setShowUserGroupPermissionsDialog] = useState(false);
+  const [editingUserGroup, setEditingUserGroup] = useState<UserGroup | null>(null);
 
   const { data: teamData, isLoading: teamLoading } = useQuery<TeamData>({
     queryKey: ["/api/teams/my-team"],
@@ -367,6 +390,132 @@ export default function Suivi() {
     onSuccess: () => {
       toast({ title: "Permission supprimee" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+    },
+  });
+
+  // User Groups queries and mutations
+  const { data: userGroupsData } = useQuery<UserGroup[]>({
+    queryKey: ["/api/teams", team?.id, "user-groups"],
+    enabled: !!team?.id,
+  });
+
+  const { data: userGroupMembersData } = useQuery<UserGroupMember[]>({
+    queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"],
+    enabled: !!team?.id && !!selectedUserGroup?.id && showUserGroupMembersDialog,
+  });
+
+  const { data: userGroupPermissionsData } = useQuery<MachineGroupPermission[]>({
+    queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "permissions"],
+    enabled: !!team?.id && !!selectedUserGroup?.id && showUserGroupPermissionsDialog,
+  });
+
+  const createUserGroupMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const res = await apiRequest("POST", `/api/teams/${team?.id}/user-groups`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe utilisateur cree" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+      setShowUserGroupDialog(false);
+      setNewUserGroupName("");
+      setNewUserGroupDescription("");
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la creation", variant: "destructive" });
+    },
+  });
+
+  const updateUserGroupMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; description?: string }) => {
+      const res = await apiRequest("PATCH", `/api/teams/${team?.id}/user-groups/${data.id}`, {
+        name: data.name,
+        description: data.description,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe utilisateur mis a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+      setEditingUserGroup(null);
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+    },
+  });
+
+  const deleteUserGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${groupId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Groupe utilisateur supprime" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+    },
+  });
+
+  const addUserGroupMemberMutation = useMutation({
+    mutationFn: async (data: { userGroupId: number; teamMemberId: number }) => {
+      const res = await apiRequest("POST", `/api/teams/${team?.id}/user-groups/${data.userGroupId}/members`, {
+        teamMemberId: data.teamMemberId,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Membre ajoute au groupe" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de l'ajout", variant: "destructive" });
+    },
+  });
+
+  const removeUserGroupMemberMutation = useMutation({
+    mutationFn: async (data: { userGroupId: number; teamMemberId: number }) => {
+      await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${data.userGroupId}/members/${data.teamMemberId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Membre retire du groupe" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors du retrait", variant: "destructive" });
+    },
+  });
+
+  const setUserGroupPermissionMutation = useMutation({
+    mutationFn: async (data: { machineGroupId: number; canView: boolean; canEdit: boolean }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/teams/${team?.id}/user-groups/${selectedUserGroup?.id}/permissions`,
+        data
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Permission mise a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "permissions"] });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+    },
+  });
+
+  const deleteUserGroupPermissionMutation = useMutation({
+    mutationFn: async (permissionId: number) => {
+      await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${selectedUserGroup?.id}/permissions/${permissionId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Permission supprimee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "permissions"] });
     },
     onError: () => {
       toast({ title: "Erreur lors de la suppression", variant: "destructive" });
@@ -1802,6 +1951,108 @@ export default function Suivi() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* User Groups Section */}
+              <Card className="mt-6">
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Layers className="h-5 w-5" />
+                      Groupes d'utilisateurs
+                    </CardTitle>
+                    <CardDescription>
+                      Regroupez les membres pour gerer les permissions plus facilement
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowUserGroupDialog(true)}
+                    data-testid="btn-add-user-group"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Nouveau groupe
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {!userGroupsData || userGroupsData.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Layers className="h-16 w-16 mb-4 opacity-20" />
+                      <p className="text-lg font-medium mb-1">Aucun groupe d'utilisateurs</p>
+                      <p className="text-sm">Creez des groupes pour gerer les permissions en masse</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {userGroupsData.map((userGroup) => (
+                        <div
+                          key={userGroup.id}
+                          className="flex items-center justify-between p-3 rounded-lg border"
+                          data-testid={`user-group-${userGroup.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Layers className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{userGroup.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {userGroup.memberCount} membre{userGroup.memberCount > 1 ? "s" : ""}
+                                {userGroup.description && ` - ${userGroup.description}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUserGroup(userGroup);
+                                setShowUserGroupMembersDialog(true);
+                              }}
+                              data-testid={`btn-members-${userGroup.id}`}
+                            >
+                              <Users className="h-4 w-4 mr-1" />
+                              Membres
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUserGroup(userGroup);
+                                setShowUserGroupPermissionsDialog(true);
+                              }}
+                              data-testid={`btn-group-permissions-${userGroup.id}`}
+                            >
+                              <Key className="h-4 w-4 mr-1" />
+                              Permissions
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingUserGroup(userGroup)}
+                              data-testid={`btn-edit-group-${userGroup.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm(`Supprimer le groupe "${userGroup.name}" ?`)) {
+                                  deleteUserGroupMutation.mutate(userGroup.id);
+                                }
+                              }}
+                              data-testid={`btn-delete-group-${userGroup.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </motion.div>
           )}
         </div>
@@ -2536,6 +2787,303 @@ export default function Suivi() {
               data-testid="button-confirm-move"
             >
               {moveMachineMutation.isPending ? "Deplacement..." : "Deplacer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for creating user group */}
+      <Dialog open={showUserGroupDialog} onOpenChange={(open) => {
+        setShowUserGroupDialog(open);
+        if (!open) {
+          setNewUserGroupName("");
+          setNewUserGroupDescription("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              Nouveau groupe d'utilisateurs
+            </DialogTitle>
+            <DialogDescription>
+              Creez un groupe pour gerer les permissions de plusieurs membres
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="user-group-name">Nom du groupe *</Label>
+              <Input
+                id="user-group-name"
+                placeholder="ex: Administrateurs, Techniciens..."
+                value={newUserGroupName}
+                onChange={(e) => setNewUserGroupName(e.target.value)}
+                data-testid="input-user-group-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="user-group-description">Description</Label>
+              <Input
+                id="user-group-description"
+                placeholder="Description du groupe..."
+                value={newUserGroupDescription}
+                onChange={(e) => setNewUserGroupDescription(e.target.value)}
+                data-testid="input-user-group-description"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowUserGroupDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => createUserGroupMutation.mutate({ 
+                name: newUserGroupName, 
+                description: newUserGroupDescription || undefined 
+              })}
+              disabled={!newUserGroupName.trim() || createUserGroupMutation.isPending}
+              data-testid="button-confirm-create-user-group"
+            >
+              {createUserGroupMutation.isPending ? "Creation..." : "Creer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for editing user group */}
+      <Dialog open={!!editingUserGroup} onOpenChange={(open) => {
+        if (!open) setEditingUserGroup(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5" />
+              Modifier le groupe
+            </DialogTitle>
+          </DialogHeader>
+          {editingUserGroup && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-group-name">Nom du groupe *</Label>
+                <Input
+                  id="edit-group-name"
+                  value={editingUserGroup.name}
+                  onChange={(e) => setEditingUserGroup({ ...editingUserGroup, name: e.target.value })}
+                  data-testid="input-edit-user-group-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-group-description">Description</Label>
+                <Input
+                  id="edit-group-description"
+                  value={editingUserGroup.description || ""}
+                  onChange={(e) => setEditingUserGroup({ ...editingUserGroup, description: e.target.value })}
+                  data-testid="input-edit-user-group-description"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditingUserGroup(null)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingUserGroup) {
+                  updateUserGroupMutation.mutate({
+                    id: editingUserGroup.id,
+                    name: editingUserGroup.name,
+                    description: editingUserGroup.description || undefined,
+                  });
+                }
+              }}
+              disabled={!editingUserGroup?.name.trim() || updateUserGroupMutation.isPending}
+              data-testid="button-confirm-edit-user-group"
+            >
+              {updateUserGroupMutation.isPending ? "Mise a jour..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for managing user group members */}
+      <Dialog open={showUserGroupMembersDialog} onOpenChange={(open) => {
+        setShowUserGroupMembersDialog(open);
+        if (!open) setSelectedUserGroup(null);
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Membres du groupe: {selectedUserGroup?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Gerez les membres de ce groupe d'utilisateurs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Current members */}
+            <div>
+              <h4 className="text-sm font-medium mb-2">Membres actuels</h4>
+              {userGroupMembersData && userGroupMembersData.length > 0 ? (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {userGroupMembersData.map((gm) => (
+                    <div key={gm.id} className="flex items-center justify-between p-2 rounded border">
+                      <span className="text-sm">
+                        {gm.member?.firstName && gm.member?.lastName 
+                          ? `${gm.member.firstName} ${gm.member.lastName}` 
+                          : gm.member?.email || "Membre inconnu"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (selectedUserGroup) {
+                            removeUserGroupMemberMutation.mutate({
+                              userGroupId: selectedUserGroup.id,
+                              teamMemberId: gm.teamMemberId,
+                            });
+                          }
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun membre dans ce groupe</p>
+              )}
+            </div>
+            
+            {/* Add member */}
+            <div>
+              <h4 className="text-sm font-medium mb-2">Ajouter un membre</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {teamMembers
+                  .filter(m => !userGroupMembersData?.some(gm => gm.teamMemberId === m.id))
+                  .map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-2 rounded border">
+                      <span className="text-sm">
+                        {member.firstName && member.lastName 
+                          ? `${member.firstName} ${member.lastName}` 
+                          : member.email}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedUserGroup) {
+                            addUserGroupMemberMutation.mutate({
+                              userGroupId: selectedUserGroup.id,
+                              teamMemberId: member.id,
+                            });
+                          }
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  ))}
+                {teamMembers.filter(m => !userGroupMembersData?.some(gm => gm.teamMemberId === m.id)).length === 0 && (
+                  <p className="text-sm text-muted-foreground">Tous les membres sont deja dans ce groupe</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserGroupMembersDialog(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for managing user group permissions */}
+      <Dialog open={showUserGroupPermissionsDialog} onOpenChange={(open) => {
+        setShowUserGroupPermissionsDialog(open);
+        if (!open) setSelectedUserGroup(null);
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Permissions du groupe: {selectedUserGroup?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Definissez les groupes de machines accessibles pour ce groupe d'utilisateurs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {allMachineGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Aucun groupe de machines disponible. Creez d'abord une hierarchie (Organisation / Site / Groupe).
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Groupe de machines</TableHead>
+                    <TableHead className="w-24 text-center">Lecture</TableHead>
+                    <TableHead className="w-24 text-center">Edition</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allMachineGroups.map((machineGroup) => {
+                    const permission = userGroupPermissionsData?.find(p => p.groupId === machineGroup.id);
+                    return (
+                      <TableRow key={machineGroup.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{machineGroup.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {machineGroup.organizationName} / {machineGroup.siteName}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant={permission?.canView ? "default" : "outline"}
+                            size="icon"
+                            onClick={() => {
+                              const newCanView = !permission?.canView;
+                              setUserGroupPermissionMutation.mutate({
+                                machineGroupId: machineGroup.id,
+                                canView: newCanView,
+                                canEdit: newCanView ? (permission?.canEdit || false) : false,
+                              });
+                            }}
+                          >
+                            {permission?.canView ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant={permission?.canEdit ? "default" : "outline"}
+                            size="icon"
+                            disabled={!permission?.canView}
+                            onClick={() => {
+                              setUserGroupPermissionMutation.mutate({
+                                machineGroupId: machineGroup.id,
+                                canView: true,
+                                canEdit: !permission?.canEdit,
+                              });
+                            }}
+                          >
+                            {permission?.canEdit ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserGroupPermissionsDialog(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
