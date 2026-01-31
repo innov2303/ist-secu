@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -3444,6 +3444,233 @@ export async function registerRoutes(
       res.status(500).json({ message: "Erreur lors de la suppression de la machine" });
     }
   });
+
+  // ==================== FLEET HIERARCHY ENDPOINTS ====================
+
+  // Get full hierarchy (organizations -> sites -> groups -> machines)
+  app.get("/api/fleet/hierarchy", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+      
+      if (!user?.isAdmin && !teamId) {
+        return res.json({ organizations: [], unassignedMachines: [] });
+      }
+
+      // Get organizations
+      const orgsQuery = user?.isAdmin
+        ? db.select().from(organizations).orderBy(organizations.name)
+        : db.select().from(organizations).where(eq(organizations.teamId, teamId!)).orderBy(organizations.name);
+      const orgs = await orgsQuery;
+
+      // Get sites for those organizations
+      const orgIds = orgs.map(o => o.id);
+      const allSites = orgIds.length > 0 
+        ? await db.select().from(sites).where(sql`${sites.organizationId} = ANY(${orgIds})`).orderBy(sites.name)
+        : [];
+
+      // Get groups for those sites
+      const siteIds = allSites.map(s => s.id);
+      const allGroups = siteIds.length > 0
+        ? await db.select().from(machineGroups).where(sql`${machineGroups.siteId} = ANY(${siteIds})`).orderBy(machineGroups.name)
+        : [];
+
+      // Get machines with groups
+      const groupIds = allGroups.map(g => g.id);
+      const machinesQuery = user?.isAdmin
+        ? db.select().from(machines).orderBy(machines.hostname)
+        : db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(machines.hostname);
+      const allMachines = await machinesQuery;
+
+      // Build hierarchy
+      const hierarchy = orgs.map(org => ({
+        ...org,
+        sites: allSites.filter(s => s.organizationId === org.id).map(site => ({
+          ...site,
+          groups: allGroups.filter(g => g.siteId === site.id).map(group => ({
+            ...group,
+            machines: allMachines.filter(m => m.groupId === group.id)
+          }))
+        }))
+      }));
+
+      // Get unassigned machines (no groupId)
+      const unassignedMachines = allMachines.filter(m => !m.groupId);
+
+      res.json({ organizations: hierarchy, unassignedMachines });
+    } catch (error) {
+      console.error("Error fetching hierarchy:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation de la hierarchie" });
+    }
+  });
+
+  // Create organization
+  app.post("/api/fleet/organizations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      let teamId = await getTeamIdForUser(userId);
+      
+      if (!teamId && user?.isAdmin) {
+        const [adminTeam] = await db.insert(teams).values({
+          name: "Equipe Admin",
+          ownerId: userId
+        }).returning();
+        teamId = adminTeam.id;
+      }
+      
+      if (!teamId) {
+        return res.status(400).json({ message: "Vous devez appartenir a une equipe" });
+      }
+
+      const { name, description } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Nom requis" });
+      }
+
+      const [org] = await db.insert(organizations).values({
+        teamId,
+        name,
+        description
+      }).returning();
+
+      res.json({ organization: org });
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      res.status(500).json({ message: "Erreur lors de la creation de l'organisation" });
+    }
+  });
+
+  // Delete organization
+  app.delete("/api/fleet/organizations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const orgId = parseInt(req.params.id);
+      
+      // Delete all sites and groups under this organization
+      const orgSites = await db.select().from(sites).where(eq(sites.organizationId, orgId));
+      for (const site of orgSites) {
+        const siteGroups = await db.select().from(machineGroups).where(eq(machineGroups.siteId, site.id));
+        for (const group of siteGroups) {
+          // Unassign machines from this group
+          await db.update(machines).set({ groupId: null }).where(eq(machines.groupId, group.id));
+        }
+        await db.delete(machineGroups).where(eq(machineGroups.siteId, site.id));
+      }
+      await db.delete(sites).where(eq(sites.organizationId, orgId));
+      await db.delete(organizations).where(eq(organizations.id, orgId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de l'organisation" });
+    }
+  });
+
+  // Create site
+  app.post("/api/fleet/sites", isAuthenticated, async (req, res) => {
+    try {
+      const { organizationId, name, location } = req.body;
+      if (!organizationId || !name) {
+        return res.status(400).json({ message: "Organisation et nom requis" });
+      }
+
+      const [site] = await db.insert(sites).values({
+        organizationId,
+        name,
+        location
+      }).returning();
+
+      res.json({ site });
+    } catch (error) {
+      console.error("Error creating site:", error);
+      res.status(500).json({ message: "Erreur lors de la creation du site" });
+    }
+  });
+
+  // Delete site
+  app.delete("/api/fleet/sites/:id", isAuthenticated, async (req, res) => {
+    try {
+      const siteId = parseInt(req.params.id);
+      
+      // Delete all groups under this site
+      const siteGroups = await db.select().from(machineGroups).where(eq(machineGroups.siteId, siteId));
+      for (const group of siteGroups) {
+        await db.update(machines).set({ groupId: null }).where(eq(machines.groupId, group.id));
+      }
+      await db.delete(machineGroups).where(eq(machineGroups.siteId, siteId));
+      await db.delete(sites).where(eq(sites.id, siteId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting site:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du site" });
+    }
+  });
+
+  // Create machine group
+  app.post("/api/fleet/groups", isAuthenticated, async (req, res) => {
+    try {
+      const { siteId, name, description } = req.body;
+      if (!siteId || !name) {
+        return res.status(400).json({ message: "Site et nom requis" });
+      }
+
+      const [group] = await db.insert(machineGroups).values({
+        siteId,
+        name,
+        description
+      }).returning();
+
+      res.json({ group });
+    } catch (error) {
+      console.error("Error creating group:", error);
+      res.status(500).json({ message: "Erreur lors de la creation du groupe" });
+    }
+  });
+
+  // Delete machine group
+  app.delete("/api/fleet/groups/:id", isAuthenticated, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      
+      // Unassign machines from this group
+      await db.update(machines).set({ groupId: null }).where(eq(machines.groupId, groupId));
+      await db.delete(machineGroups).where(eq(machineGroups.id, groupId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du groupe" });
+    }
+  });
+
+  // Assign machine to group
+  app.put("/api/fleet/machines/:id/assign", isAuthenticated, async (req, res) => {
+    try {
+      const machineId = parseInt(req.params.id);
+      const { groupId } = req.body;
+
+      await db.update(machines)
+        .set({ groupId: groupId || null })
+        .where(eq(machines.id, machineId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error assigning machine:", error);
+      res.status(500).json({ message: "Erreur lors de l'assignation de la machine" });
+    }
+  });
+
+  // ==================== END FLEET HIERARCHY ENDPOINTS ====================
 
   // Fleet dashboard stats
   app.get("/api/fleet/stats", isAuthenticated, async (req, res) => {

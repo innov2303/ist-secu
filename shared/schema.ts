@@ -262,10 +262,74 @@ export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id:
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 
+// Organizations table - top level of hierarchy
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [organizations.teamId],
+    references: [teams.id],
+  }),
+  sites: many(sites),
+}));
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+
+// Sites table - second level of hierarchy
+export const sites = pgTable("sites", {
+  id: serial("id").primaryKey(),
+  organizationId: integer("organization_id").notNull(),
+  name: text("name").notNull(),
+  location: text("location"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sitesRelations = relations(sites, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [sites.organizationId],
+    references: [organizations.id],
+  }),
+  machineGroups: many(machineGroups),
+}));
+
+export const insertSiteSchema = createInsertSchema(sites).omit({ id: true, createdAt: true });
+export type Site = typeof sites.$inferSelect;
+export type InsertSite = z.infer<typeof insertSiteSchema>;
+
+// Machine groups table - third level of hierarchy
+export const machineGroups = pgTable("machine_groups", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const machineGroupsRelations = relations(machineGroups, ({ one, many }) => ({
+  site: one(sites, {
+    fields: [machineGroups.siteId],
+    references: [sites.id],
+  }),
+  machines: many(machines),
+}));
+
+export const insertMachineGroupSchema = createInsertSchema(machineGroups).omit({ id: true, createdAt: true });
+export type MachineGroup = typeof machineGroups.$inferSelect;
+export type InsertMachineGroup = z.infer<typeof insertMachineGroupSchema>;
+
 // Machines table - tracks registered machines for fleet management
 export const machines = pgTable("machines", {
   id: serial("id").primaryKey(),
   teamId: integer("team_id").notNull(),
+  groupId: integer("group_id"), // Optional link to machine group hierarchy
   hostname: text("hostname").notNull(),
   machineId: text("machine_id"), // Unique identifier from the machine (UUID, serial, etc.)
   os: text("os").notNull(), // windows, linux, vmware, docker, netapp, web
@@ -282,6 +346,10 @@ export const machinesRelations = relations(machines, ({ one, many }) => ({
   team: one(teams, {
     fields: [machines.teamId],
     references: [teams.id],
+  }),
+  group: one(machineGroups, {
+    fields: [machines.groupId],
+    references: [machineGroups.id],
   }),
   auditReports: many(auditReports),
 }));
