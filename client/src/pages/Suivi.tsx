@@ -83,6 +83,11 @@ interface Team {
   id: number;
   name: string;
   ownerId: string;
+  createdAt: string;
+}
+
+interface TeamData {
+  team: Team;
   members: TeamMember[];
 }
 
@@ -255,10 +260,13 @@ export default function Suivi() {
   const [showPermissionsDialog, setShowPermissionsDialog] = useState(false);
   const [selectedMemberForPermissions, setSelectedMemberForPermissions] = useState<TeamMember | null>(null);
 
-  const { data: team, isLoading: teamLoading } = useQuery<Team>({
+  const { data: teamData, isLoading: teamLoading } = useQuery<TeamData>({
     queryKey: ["/api/teams/my-team"],
     enabled: !!user,
   });
+  
+  const team = teamData?.team;
+  const teamMembers = teamData?.members || [];
 
   const { data: membership, isLoading: membershipLoading } = useQuery<TeamMembership>({
     queryKey: ["/api/teams/my-membership"],
@@ -1693,11 +1701,11 @@ export default function Suivi() {
                     Membres de l'equipe
                   </CardTitle>
                   <CardDescription>
-                    {team ? `${team.members.length} membre${team.members.length > 1 ? "s" : ""} dans l'equipe` : "Gestion des membres"}
+                    {team ? `${teamMembers.length} membre${teamMembers.length > 1 ? "s" : ""} dans l'equipe` : "Gestion des membres"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {!team || team.members.length === 0 ? (
+                  {!team || teamMembers.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Users className="h-16 w-16 mb-4 opacity-20" />
                       <p className="text-lg font-medium mb-1">Aucun membre dans l'equipe</p>
@@ -1708,7 +1716,7 @@ export default function Suivi() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {team.members.map((member) => (
+                      {teamMembers.map((member) => (
                         <div 
                           key={member.id} 
                           className="flex items-center justify-between p-3 rounded-lg border"
