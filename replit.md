@@ -74,6 +74,24 @@ Preferred communication style: Simple, everyday language.
   - `DELETE /api/fleet/machines/:id` - Delete machine and reports
   - `DELETE /api/fleet/reports/:id` - Delete single report
 
+### Granular Permissions System
+- **Machine Group Permissions**: Control team member access at the machine group level
+- **Permission Types**: View (read-only) and Edit (full access including delete/corrections)
+- **Access Levels**:
+  - Team Owner: Full access to all groups (no restrictions)
+  - Admin Role Member: Full access to all groups (no restrictions)
+  - Member Role: Restricted to specific groups via permissions
+- **Helper Function**: `getAllowedGroupIdsForMember(userId, permissionType)`
+  - Returns `null` for full access (owners, admin members)
+  - Returns `[]` for no access (members without permissions)
+  - Returns array of group IDs for filtered access
+- **Filtered Endpoints**: machines, reports, hierarchy, stats, score-history, controls, corrections
+- **Permission Management API**:
+  - `GET /api/teams/:teamId/members/:memberId/permissions` - List permissions
+  - `POST /api/teams/:teamId/members/:memberId/permissions` - Add permission
+  - `DELETE /api/teams/:teamId/members/:memberId/permissions/:groupId` - Remove permission
+- **Database Table**: `machineGroupPermissions` with teamMemberId, groupId, canView, canEdit
+
 ### Invoice Management
 - Admin-only feature for creating and managing invoices
 - Invoice workflow: draft -> sent -> paid (with cancelled/overdue states)

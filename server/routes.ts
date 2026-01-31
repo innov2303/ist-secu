@@ -3246,6 +3246,42 @@ export async function registerRoutes(
     return null;
   };
 
+  // Helper to check if user is team owner (has full access)
+  const isTeamOwner = async (userId: string): Promise<boolean> => {
+    const [ownedTeam] = await db.select().from(teams).where(eq(teams.ownerId, userId));
+    return !!ownedTeam;
+  };
+
+  // Helper to get allowed group IDs for a team member (based on permissions)
+  const getAllowedGroupIdsForMember = async (userId: string, permissionType: "view" | "edit"): Promise<number[] | null> => {
+    // Check if user owns a team - owners have full access
+    const [ownedTeam] = await db.select().from(teams).where(eq(teams.ownerId, userId));
+    if (ownedTeam) return null; // null = full access
+    
+    // Get user's team member record
+    const user = await authStorage.getUser(userId);
+    if (!user?.email) return [];
+    
+    const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.email, user.email.toLowerCase()));
+    if (!membership) return [];
+    
+    // Check if member has admin role - admins have full access
+    if (membership.role === "admin") return null;
+    
+    // Get permissions for this member
+    const permissions = await db.select().from(machineGroupPermissions).where(eq(machineGroupPermissions.teamMemberId, membership.id));
+    
+    // If no permissions defined, member sees nothing
+    if (permissions.length === 0) return [];
+    
+    // Filter by permission type
+    if (permissionType === "view") {
+      return permissions.filter(p => p.canView).map(p => p.groupId);
+    } else {
+      return permissions.filter(p => p.canEdit).map(p => p.groupId);
+    }
+  };
+
   // Get machines for user's team
   app.get("/api/fleet/machines", isAuthenticated, async (req, res) => {
     try {
@@ -3261,11 +3297,34 @@ export async function registerRoutes(
         return res.json({ machines: [] });
       }
 
-      const query = user?.isAdmin
-        ? db.select().from(machines).orderBy(desc(machines.lastAuditDate))
-        : db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(desc(machines.lastAuditDate));
+      // Admin sees all machines
+      if (user?.isAdmin) {
+        const result = await db.select().from(machines).orderBy(desc(machines.lastAuditDate));
+        return res.json({ machines: result });
+      }
+
+      // Get allowed group IDs for this user
+      const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
       
-      const result = await query;
+      // Full access (owner or admin role)
+      if (allowedGroupIds === null) {
+        const result = await db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(desc(machines.lastAuditDate));
+        return res.json({ machines: result });
+      }
+      
+      // No permissions = no machines
+      if (allowedGroupIds.length === 0) {
+        return res.json({ machines: [] });
+      }
+      
+      // Filter by allowed groups
+      const result = await db.select().from(machines)
+        .where(and(
+          eq(machines.teamId, teamId!),
+          inArray(machines.groupId!, allowedGroupIds)
+        ))
+        .orderBy(desc(machines.lastAuditDate));
+      
       res.json({ machines: result });
     } catch (error) {
       console.error("Error fetching machines:", error);
@@ -3309,13 +3368,38 @@ export async function registerRoutes(
           hostname: machines.hostname,
           os: machines.os,
           osVersion: machines.osVersion,
+          groupId: machines.groupId,
         })
         .from(auditReports)
         .innerJoin(machines, eq(auditReports.machineId, machines.id));
       
-      const reports = user?.isAdmin
-        ? await baseQuery.orderBy(desc(auditReports.auditDate))
-        : await baseQuery.where(eq(machines.teamId, teamId!)).orderBy(desc(auditReports.auditDate));
+      // Admin sees all reports
+      if (user?.isAdmin) {
+        const reports = await baseQuery.orderBy(desc(auditReports.auditDate));
+        return res.json({ reports });
+      }
+
+      // Get allowed group IDs for this user
+      const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
+      
+      // Full access (owner or admin role)
+      if (allowedGroupIds === null) {
+        const reports = await baseQuery.where(eq(machines.teamId, teamId!)).orderBy(desc(auditReports.auditDate));
+        return res.json({ reports });
+      }
+      
+      // No permissions = no reports
+      if (allowedGroupIds.length === 0) {
+        return res.json({ reports: [] });
+      }
+      
+      // Filter by allowed groups
+      const reports = await baseQuery
+        .where(and(
+          eq(machines.teamId, teamId!),
+          inArray(machines.groupId!, allowedGroupIds)
+        ))
+        .orderBy(desc(auditReports.auditDate));
       
       res.json({ reports });
     } catch (error) {
@@ -3347,6 +3431,14 @@ export async function registerRoutes(
       }
       if (!user?.isAdmin && machine.teamId !== teamId) {
         return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Check group-level permissions for team members
+      if (!user?.isAdmin) {
+        const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
+        if (allowedGroupIds !== null && (!machine.groupId || !allowedGroupIds.includes(machine.groupId))) {
+          return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+        }
       }
 
       const reports = await db
@@ -3568,6 +3660,14 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Acces non autorise" });
       }
 
+      // Check group-level permissions for team members
+      if (!user?.isAdmin) {
+        const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
+        if (allowedGroupIds !== null && (!machine?.groupId || !allowedGroupIds.includes(machine.groupId))) {
+          return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+        }
+      }
+
       res.json({ report, machine });
     } catch (error) {
       console.error("Error fetching report:", error);
@@ -3600,6 +3700,14 @@ export async function registerRoutes(
       const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
       if (!user?.isAdmin && machine?.teamId !== teamId) {
         return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Check group-level permissions for team members (require edit permission for delete)
+      if (!user?.isAdmin) {
+        const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "edit");
+        if (allowedGroupIds !== null && (!machine?.groupId || !allowedGroupIds.includes(machine.groupId))) {
+          return res.status(403).json({ message: "Vous n'avez pas les droits d'edition sur ce groupe" });
+        }
       }
 
       // Delete the report
@@ -3697,6 +3805,9 @@ export async function registerRoutes(
         return res.json({ organizations: [], unassignedMachines: [] });
       }
 
+      // Get allowed group IDs for permission filtering
+      const allowedGroupIds = user?.isAdmin ? null : await getAllowedGroupIdsForMember(userId, "view");
+
       // Get organizations
       const orgsQuery = user?.isAdmin
         ? db.select().from(organizations).orderBy(organizations.name)
@@ -3711,16 +3822,29 @@ export async function registerRoutes(
 
       // Get groups for those sites
       const siteIds = allSites.map(s => s.id);
-      const allGroups = siteIds.length > 0
+      let allGroups = siteIds.length > 0
         ? await db.select().from(machineGroups).where(inArray(machineGroups.siteId, siteIds)).orderBy(machineGroups.name)
         : [];
 
+      // Filter groups by permissions for team members (not owners/admins)
+      if (allowedGroupIds !== null && allowedGroupIds.length === 0) {
+        allGroups = [];
+      } else if (allowedGroupIds !== null) {
+        allGroups = allGroups.filter(g => allowedGroupIds.includes(g.id));
+      }
+
       // Get machines with groups
-      const groupIds = allGroups.map(g => g.id);
       const machinesQuery = user?.isAdmin
         ? db.select().from(machines).orderBy(machines.hostname)
         : db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(machines.hostname);
-      const allMachines = await machinesQuery;
+      let allMachines = await machinesQuery;
+
+      // Filter machines by allowed groups for team members
+      if (allowedGroupIds !== null && allowedGroupIds.length === 0) {
+        allMachines = [];
+      } else if (allowedGroupIds !== null) {
+        allMachines = allMachines.filter(m => m.groupId && allowedGroupIds.includes(m.groupId));
+      }
 
       // Build hierarchy
       const hierarchy = orgs.map(org => ({
@@ -3734,8 +3858,10 @@ export async function registerRoutes(
         }))
       }));
 
-      // Get unassigned machines (no groupId)
-      const unassignedMachines = allMachines.filter(m => !m.groupId);
+      // Get unassigned machines (no groupId) - only for owners/admins
+      const unassignedMachines = allowedGroupIds === null 
+        ? allMachines.filter(m => !m.groupId)
+        : [];
 
       res.json({ organizations: hierarchy, unassignedMachines });
     } catch (error) {
@@ -4072,38 +4198,63 @@ export async function registerRoutes(
         });
       }
 
+      // Get allowed group IDs for permission filtering
+      const allowedGroupIds = user?.isAdmin ? null : await getAllowedGroupIdsForMember(userId, "view");
+      
+      // If member has no permissions, return empty stats
+      if (allowedGroupIds !== null && allowedGroupIds.length === 0) {
+        return res.json({ 
+          totalMachines: 0, 
+          totalReports: 0, 
+          averageScore: null,
+          lastAuditDate: null,
+          osCounts: {}
+        });
+      }
+
+      // Build base query condition
+      const getWhereCondition = () => {
+        if (user?.isAdmin) return undefined;
+        if (allowedGroupIds === null) {
+          return eq(machines.teamId, teamId!);
+        }
+        return and(eq(machines.teamId, teamId!), inArray(machines.groupId!, allowedGroupIds));
+      };
+
+      const whereCondition = getWhereCondition();
+
       // Get machine count
-      const machineQuery = user?.isAdmin
-        ? db.select({ count: sql<number>`count(*)::int` }).from(machines)
-        : db.select({ count: sql<number>`count(*)::int` }).from(machines).where(eq(machines.teamId, teamId!));
-      const [{ count: totalMachines }] = await machineQuery;
+      const machineQueryBase = db.select({ count: sql<number>`count(*)::int` }).from(machines);
+      const [{ count: totalMachines }] = whereCondition 
+        ? await machineQueryBase.where(whereCondition)
+        : await machineQueryBase;
 
       // Get reports count
-      const reportsQuery = user?.isAdmin
-        ? db.select({ count: sql<number>`count(*)::int` }).from(auditReports)
-        : db.select({ count: sql<number>`count(*)::int` })
-            .from(auditReports)
-            .innerJoin(machines, eq(auditReports.machineId, machines.id))
-            .where(eq(machines.teamId, teamId!));
-      const [{ count: totalReports }] = await reportsQuery;
+      const reportsQueryBase = db.select({ count: sql<number>`count(*)::int` })
+        .from(auditReports)
+        .innerJoin(machines, eq(auditReports.machineId, machines.id));
+      const [{ count: totalReports }] = whereCondition
+        ? await reportsQueryBase.where(whereCondition)
+        : await reportsQueryBase;
 
       // Get average score from latest report per machine
-      const avgScoreQuery = user?.isAdmin
-        ? db.select({ avgScore: sql<number>`avg(${machines.lastScore})::int` }).from(machines).where(sql`${machines.lastScore} IS NOT NULL`)
-        : db.select({ avgScore: sql<number>`avg(${machines.lastScore})::int` }).from(machines).where(and(eq(machines.teamId, teamId!), sql`${machines.lastScore} IS NOT NULL`));
-      const [{ avgScore }] = await avgScoreQuery;
+      const avgCondition = whereCondition 
+        ? and(whereCondition, sql`${machines.lastScore} IS NOT NULL`)
+        : sql`${machines.lastScore} IS NOT NULL`;
+      const [{ avgScore }] = await db.select({ avgScore: sql<number>`avg(${machines.lastScore})::int` })
+        .from(machines)
+        .where(avgCondition);
 
       // Get last audit date
-      const lastAuditQuery = user?.isAdmin
-        ? db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines)
-        : db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines).where(eq(machines.teamId, teamId!));
-      const [{ lastDate }] = await lastAuditQuery;
+      const [{ lastDate }] = whereCondition
+        ? await db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines).where(whereCondition)
+        : await db.select({ lastDate: sql<Date>`max(${machines.lastAuditDate})` }).from(machines);
 
       // Get OS distribution
-      const osQuery = user?.isAdmin
-        ? db.select({ os: machines.os, count: sql<number>`count(*)::int` }).from(machines).groupBy(machines.os)
-        : db.select({ os: machines.os, count: sql<number>`count(*)::int` }).from(machines).where(eq(machines.teamId, teamId!)).groupBy(machines.os);
-      const osResults = await osQuery;
+      const osQueryBase = db.select({ os: machines.os, count: sql<number>`count(*)::int` }).from(machines);
+      const osResults = whereCondition
+        ? await osQueryBase.where(whereCondition).groupBy(machines.os)
+        : await osQueryBase.groupBy(machines.os);
       const osCounts: Record<string, number> = {};
       for (const row of osResults) {
         osCounts[row.os] = row.count;
@@ -4137,9 +4288,18 @@ export async function registerRoutes(
         return res.json({ history: [] });
       }
 
-      // Get average original and current score per month for the last 12 months
-      const historyQuery = user?.isAdmin
-        ? db.select({
+      // Get allowed group IDs for permission filtering
+      const allowedGroupIds = user?.isAdmin ? null : await getAllowedGroupIdsForMember(userId, "view");
+      
+      // If member has no permissions, return empty history
+      if (allowedGroupIds !== null && allowedGroupIds.length === 0) {
+        return res.json({ history: [], availableYears: [], selectedYear: new Date().getFullYear() });
+      }
+
+      // Build where condition based on access level
+      let historyQuery;
+      if (user?.isAdmin) {
+        historyQuery = db.select({
             month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
             avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
             avgCurrentScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
@@ -4148,8 +4308,10 @@ export async function registerRoutes(
           .from(auditReports)
           .where(sql`${auditReports.auditDate} >= NOW() - INTERVAL '12 months'`)
           .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
-          .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
-        : db.select({
+          .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`);
+      } else if (allowedGroupIds === null) {
+        // Full team access (owner or admin member)
+        historyQuery = db.select({
             month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
             avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
             avgCurrentScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
@@ -4163,6 +4325,24 @@ export async function registerRoutes(
           ))
           .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
           .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`);
+      } else {
+        // Filtered access by allowed groups
+        historyQuery = db.select({
+            month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
+            avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
+            avgCurrentScore: sql<number>`ROUND(AVG(${auditReports.score}))::int`,
+            reportCount: sql<number>`COUNT(*)::int`
+          })
+          .from(auditReports)
+          .innerJoin(machines, eq(auditReports.machineId, machines.id))
+          .where(and(
+            eq(machines.teamId, teamId!),
+            inArray(machines.groupId!, allowedGroupIds),
+            sql`${auditReports.auditDate} >= NOW() - INTERVAL '12 months'`
+          ))
+          .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
+          .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`);
+      }
 
       const history = await historyQuery;
 
@@ -4216,10 +4396,27 @@ export async function registerRoutes(
         return res.status(400).json({ message: "ID de rapport invalide" });
       }
 
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+
       // Get the report
       const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
       if (!report) {
         return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      // Verify access to the machine
+      const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
+      if (!user?.isAdmin && machine?.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Check group-level permissions for team members
+      if (!user?.isAdmin) {
+        const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
+        if (allowedGroupIds !== null && (!machine?.groupId || !allowedGroupIds.includes(machine.groupId))) {
+          return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+        }
       }
 
       // Parse the JSON content to get controls
@@ -4271,6 +4468,9 @@ export async function registerRoutes(
         return res.status(400).json({ message: "ID de rapport invalide" });
       }
 
+      const user = await authStorage.getUser(userId);
+      const teamId = user?.isAdmin ? null : await getTeamIdForUser(userId);
+
       const { controlId, originalStatus, correctedStatus, justification } = req.body;
 
       if (!controlId || !originalStatus || !correctedStatus || !justification) {
@@ -4281,6 +4481,20 @@ export async function registerRoutes(
       const [report] = await db.select().from(auditReports).where(eq(auditReports.id, reportId));
       if (!report) {
         return res.status(404).json({ message: "Rapport non trouve" });
+      }
+
+      // Verify access to the machine
+      const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
+      if (!user?.isAdmin && machine?.teamId !== teamId) {
+        return res.status(403).json({ message: "Acces non autorise" });
+      }
+
+      // Check group-level permissions for team members (require edit permission)
+      if (!user?.isAdmin) {
+        const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "edit");
+        if (allowedGroupIds !== null && (!machine?.groupId || !allowedGroupIds.includes(machine.groupId))) {
+          return res.status(403).json({ message: "Vous n'avez pas les droits d'edition sur ce groupe" });
+        }
       }
 
       // Save original score if not already saved (first correction)
