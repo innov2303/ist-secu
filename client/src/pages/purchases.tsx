@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe, History, Plus, Minus, Tag } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe, History, Plus, Minus, Tag, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -1410,6 +1410,17 @@ export default function Purchases() {
     enabled: !!user,
   });
 
+  // Fetch shared purchases if user is a team member
+  const { data: sharedData } = useQuery<{ 
+    purchases: PurchaseWithScript[]; 
+    isTeamMember: boolean; 
+    teamName?: string;
+    memberRole?: string;
+  }>({
+    queryKey: ["/api/teams/shared-purchases"],
+    enabled: !!user,
+  });
+
   const { annualBundlePurchases, toolkitBundles, standalone } = purchases && scripts && annualBundles
     ? groupPurchases(purchases, scripts, annualBundles) 
     : { annualBundlePurchases: [], toolkitBundles: [], standalone: [] };
@@ -1442,6 +1453,12 @@ export default function Purchases() {
   }
 
   const hasAnyPurchases = annualBundlePurchases.length > 0 || toolkitBundles.length > 0 || standalone.length > 0;
+  const hasSharedPurchases = sharedData?.isTeamMember && sharedData.purchases.length > 0;
+
+  // Group shared purchases for display
+  const sharedPurchasesGrouped = sharedData?.purchases && scripts && annualBundles
+    ? groupPurchases(sharedData.purchases, scripts, annualBundles)
+    : { annualBundlePurchases: [], toolkitBundles: [], standalone: [] };
 
   return (
     <div className="min-h-screen bg-background">
@@ -1547,6 +1564,87 @@ export default function Purchases() {
                 </h2>
                 {standalone.map((purchase) => (
                   <PurchaseCard key={purchase.id} purchase={purchase} />
+                ))}
+              </div>
+            )}
+            
+            {/* Show shared team purchases if user is a team member */}
+            {hasSharedPurchases && (
+              <>
+                <Card className="bg-primary/5 border-primary/20 mt-8">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Users className="h-5 w-5 text-primary" />
+                      Produits partages par l'equipe
+                    </CardTitle>
+                    <CardDescription>
+                      Acces aux produits de l'equipe "{sharedData?.teamName}"
+                      {sharedData?.memberRole === "admin" ? " (Admin)" : " (Membre)"}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+                
+                {sharedPurchasesGrouped.toolkitBundles.length > 0 && (
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
+                      Toolkits partages
+                    </h2>
+                    {sharedPurchasesGrouped.toolkitBundles.map((bundle) => (
+                      <ToolkitCard key={`shared-${bundle.id}`} bundle={bundle} allScripts={scripts || []} />
+                    ))}
+                  </div>
+                )}
+                
+                {sharedPurchasesGrouped.standalone.length > 0 && (
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <FileCode className="h-5 w-5 text-primary" />
+                      Scripts partages
+                    </h2>
+                    {sharedPurchasesGrouped.standalone.map((purchase) => (
+                      <PurchaseCard key={`shared-${purchase.id}`} purchase={purchase} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : hasSharedPurchases ? (
+          <div className="space-y-6">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-primary" />
+                  Produits partages par l'equipe
+                </CardTitle>
+                <CardDescription>
+                  Vous avez acces aux produits de l'equipe "{sharedData?.teamName}" 
+                  {sharedData?.memberRole === "admin" ? " (Admin)" : " (Membre)"}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            
+            {sharedPurchasesGrouped.toolkitBundles.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Toolkits partages
+                </h2>
+                {sharedPurchasesGrouped.toolkitBundles.map((bundle) => (
+                  <ToolkitCard key={`shared-${bundle.id}`} bundle={bundle} allScripts={scripts || []} />
+                ))}
+              </div>
+            )}
+            
+            {sharedPurchasesGrouped.standalone.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <FileCode className="h-5 w-5 text-primary" />
+                  Scripts partages
+                </h2>
+                {sharedPurchasesGrouped.standalone.map((purchase) => (
+                  <PurchaseCard key={`shared-${purchase.id}`} purchase={purchase} />
                 ))}
               </div>
             )}

@@ -983,6 +983,93 @@ export async function registerRoutes(
     }
   });
 
+  // Get team membership info for the current user (if they're a member of any team)
+  app.get("/api/teams/my-membership", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Get user email
+      const user = await authStorage.getUser(userId);
+      if (!user?.email) {
+        return res.json({ membership: null, team: null, owner: null });
+      }
+      
+      // Check if user is a member of any team
+      const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.email, user.email.toLowerCase()));
+      if (!membership) {
+        return res.json({ membership: null, team: null, owner: null });
+      }
+      
+      // Get team info
+      const [team] = await db.select().from(teams).where(eq(teams.id, membership.teamId));
+      if (!team) {
+        return res.json({ membership: null, team: null, owner: null });
+      }
+      
+      // Get owner info
+      const owner = await authStorage.getUser(team.ownerId);
+      
+      res.json({ 
+        membership, 
+        team, 
+        owner: owner ? { 
+          id: owner.id, 
+          firstName: owner.firstName, 
+          lastName: owner.lastName, 
+          email: owner.email,
+          companyName: (owner as any).companyName 
+        } : null 
+      });
+    } catch (error) {
+      console.error("Error fetching team membership:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation" });
+    }
+  });
+
+  // Get team owner's purchases for team members
+  app.get("/api/teams/shared-purchases", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Get user email
+      const user = await authStorage.getUser(userId);
+      if (!user?.email) {
+        return res.json({ purchases: [], isTeamMember: false });
+      }
+      
+      // Check if user is a member of any team
+      const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.email, user.email.toLowerCase()));
+      if (!membership) {
+        return res.json({ purchases: [], isTeamMember: false });
+      }
+      
+      // Get team info
+      const [team] = await db.select().from(teams).where(eq(teams.id, membership.teamId));
+      if (!team) {
+        return res.json({ purchases: [], isTeamMember: false });
+      }
+      
+      // Get owner's purchases
+      const ownerPurchases = await storage.getPurchasesByUser(team.ownerId);
+      
+      res.json({ 
+        purchases: ownerPurchases, 
+        isTeamMember: true,
+        teamName: team.name,
+        memberRole: membership.role
+      });
+    } catch (error) {
+      console.error("Error fetching shared purchases:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation" });
+    }
+  });
+
   // Get dynamic controls count for all scripts
   app.get("/api/scripts/controls-count", async (req, res) => {
     try {
