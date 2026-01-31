@@ -261,3 +261,64 @@ export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id:
 
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+
+// Machines table - tracks registered machines for fleet management
+export const machines = pgTable("machines", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  hostname: text("hostname").notNull(),
+  machineId: text("machine_id"), // Unique identifier from the machine (UUID, serial, etc.)
+  os: text("os").notNull(), // windows, linux, vmware, docker, netapp, web
+  osVersion: text("os_version"),
+  lastAuditDate: timestamp("last_audit_date"),
+  lastScore: integer("last_score"),
+  lastGrade: text("last_grade"),
+  totalAudits: integer("total_audits").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const machinesRelations = relations(machines, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [machines.teamId],
+    references: [teams.id],
+  }),
+  auditReports: many(auditReports),
+}));
+
+export const insertMachineSchema = createInsertSchema(machines).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type Machine = typeof machines.$inferSelect;
+export type InsertMachine = z.infer<typeof insertMachineSchema>;
+
+// Audit reports table - stores uploaded audit reports for each machine
+export const auditReports = pgTable("audit_reports", {
+  id: serial("id").primaryKey(),
+  machineId: integer("machine_id").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  auditDate: timestamp("audit_date").notNull(),
+  scriptName: text("script_name"),
+  scriptVersion: text("script_version"),
+  score: integer("score").notNull(),
+  grade: text("grade"),
+  totalControls: integer("total_controls").notNull().default(0),
+  passedControls: integer("passed_controls").notNull().default(0),
+  failedControls: integer("failed_controls").notNull().default(0),
+  warningControls: integer("warning_controls").notNull().default(0),
+  jsonContent: text("json_content"), // Full JSON report stored as text
+  htmlContent: text("html_content"), // Full HTML report stored as text
+  fileName: text("file_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const auditReportsRelations = relations(auditReports, ({ one }) => ({
+  machine: one(machines, {
+    fields: [auditReports.machineId],
+    references: [machines.id],
+  }),
+}));
+
+export const insertAuditReportSchema = createInsertSchema(auditReports).omit({ id: true, createdAt: true });
+
+export type AuditReport = typeof auditReports.$inferSelect;
+export type InsertAuditReport = z.infer<typeof insertAuditReportSchema>;
