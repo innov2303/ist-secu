@@ -1826,9 +1826,15 @@ export default function Suivi() {
           <div className="space-y-4 py-2">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
               <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Aucune donnee systeme n'est recuperee lors de l'import. Seuls les resultats des tests de securite sont analyses. Veuillez renseigner manuellement le nom de la machine.
-              </p>
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="mb-2">Donnees recuperees automatiquement depuis le rapport :</p>
+                <ul className="list-disc list-inside space-y-0.5 text-xs">
+                  <li>Systeme d'exploitation et sa version</li>
+                  <li>Resultats des tests de securite (score, controles)</li>
+                  <li>Date de l'audit</li>
+                </ul>
+                <p className="mt-2 text-xs opacity-80">Veuillez renseigner manuellement le nom de la machine.</p>
+              </div>
             </div>
 
             {uploadFile && (
