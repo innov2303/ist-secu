@@ -5,7 +5,7 @@ import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import featureAudit from "@assets/images/feature-audit.png";
 import featureRapport from "@assets/images/feature-rapport.png";
 import featureSecure from "@assets/images/feature-secure.png";
-import featureEvolution from "@assets/images/feature-evolution-v2.png";
+import featureEvolution from "@assets/images/feature-evolution-v3.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Hero() {
