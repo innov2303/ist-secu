@@ -1354,7 +1354,7 @@ export default function Suivi() {
                                                             {getOSIcon(machine.os)}
                                                           </div>
                                                           <span className="font-medium text-sm">{machine.hostname}</span>
-                                                          <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
+                                                          <span className="text-xs text-muted-foreground capitalize">{machine.os}{machine.osVersion ? ` ${machine.osVersion}` : ''}</span>
                                                           {machine.lastScore != null && (
                                                             <div className="flex items-center gap-1">
                                                               {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
@@ -1419,7 +1419,7 @@ export default function Suivi() {
                                   {getOSIcon(machine.os)}
                                 </div>
                                 <span className="font-medium text-sm">{machine.hostname}</span>
-                                <span className="text-xs text-muted-foreground capitalize">{machine.os}</span>
+                                <span className="text-xs text-muted-foreground capitalize">{machine.os}{machine.osVersion ? ` ${machine.osVersion}` : ''}</span>
                                 {machine.lastScore != null && (
                                   <div className="flex items-center gap-1">
                                     {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
