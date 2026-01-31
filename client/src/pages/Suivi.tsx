@@ -1032,8 +1032,8 @@ export default function Suivi() {
                   </CardHeader>
                   <CardContent>
                     {stats?.osCounts && Object.keys(stats.osCounts).length > 0 ? (
-                      <div className="flex items-center gap-4">
-                        <div className="w-40 h-40">
+                      <div className="flex flex-col items-center">
+                        <div className="w-full h-52">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -1043,8 +1043,8 @@ export default function Suivi() {
                                 }))}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={35}
-                                outerRadius={60}
+                                innerRadius={50}
+                                outerRadius={85}
                                 paddingAngle={2}
                                 dataKey="value"
                               >
@@ -1064,19 +1064,17 @@ export default function Suivi() {
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        <div className="flex-1 space-y-2">
+                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
                           {Object.entries(stats.osCounts).map(([os, count], index) => {
                             const colors = ['#374151', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
                             return (
-                              <div key={os} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-sm" 
-                                    style={{ backgroundColor: colors[index % colors.length] }}
-                                  />
-                                  <span className="capitalize">{os}</span>
-                                </div>
-                                <span className="font-medium">{count} ({Math.round((count / stats.totalMachines) * 100)}%)</span>
+                              <div key={os} className="flex items-center gap-2 text-sm">
+                                <div 
+                                  className="w-3 h-3 rounded-sm" 
+                                  style={{ backgroundColor: colors[index % colors.length] }}
+                                />
+                                <span className="capitalize">{os}</span>
+                                <span className="text-muted-foreground">({Math.round((count / stats.totalMachines) * 100)}%)</span>
                               </div>
                             );
                           })}
