@@ -3940,7 +3940,7 @@ function detectOS(reportData: any): string {
   if (reportType.includes('linux')) return 'linux';
   if (reportType.includes('windows')) return 'windows';
   if (reportType.includes('vmware') || reportType.includes('esxi')) return 'vmware';
-  if (reportType.includes('docker') || reportType.includes('container') || reportType.includes('kubernetes')) return 'docker';
+  if (reportType.includes('docker') || reportType.includes('container') || reportType.includes('kubernetes')) return 'container';
   if (reportType.includes('netapp') || reportType.includes('ontap')) return 'netapp';
   if (reportType.includes('web')) return 'web';
   
@@ -3958,7 +3958,7 @@ function detectOS(reportData: any): string {
     if (lower.includes('windows')) return 'windows';
     if (lower.includes('linux') || lower.includes('ubuntu') || lower.includes('debian') || lower.includes('centos') || lower.includes('rhel') || lower.includes('fedora') || lower.includes('suse')) return 'linux';
     if (lower.includes('vmware') || lower.includes('esxi')) return 'vmware';
-    if (lower.includes('docker') || lower.includes('container') || lower.includes('kubernetes')) return 'docker';
+    if (lower.includes('docker') || lower.includes('container') || lower.includes('kubernetes')) return 'container';
     if (lower.includes('netapp') || lower.includes('ontap')) return 'netapp';
   }
   return 'unknown';
