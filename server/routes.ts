@@ -3114,6 +3114,7 @@ export async function registerRoutes(
           scriptName: auditReports.scriptName,
           scriptVersion: auditReports.scriptVersion,
           score: auditReports.score,
+          originalScore: auditReports.originalScore,
           grade: auditReports.grade,
           totalControls: auditReports.totalControls,
           passedControls: auditReports.passedControls,
