@@ -1205,7 +1205,7 @@ function Generate-HtmlReport {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); padding: 40px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #334155; }
+        .header { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); padding: 40px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #334155; }
         .header h1 { font-size: 2rem; margin-bottom: 10px; color: #60a5fa; }
         .header .meta { color: #94a3b8; font-size: 0.9rem; }
         .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }

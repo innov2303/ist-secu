@@ -1242,7 +1242,7 @@ function New-HtmlReport {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
         .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .header { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
         .header h1 { font-size: 28px; margin-bottom: 8px; }
         .header .subtitle { opacity: 0.8; font-size: 16px; }
         .header .framework { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 15px; font-size: 14px; }
