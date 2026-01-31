@@ -44,7 +44,7 @@ export function Hero() {
               </CardHeader>
               <CardContent className="pb-2">
                 <p className="text-xs text-muted-foreground">
-                  Standards ANSSI-BP-028, CIS Benchmark, DISA STIG.
+                  Standards ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker, CIS Kubernetes, OWASP.
                 </p>
               </CardContent>
             </Card>
