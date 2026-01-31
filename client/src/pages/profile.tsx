@@ -7,15 +7,15 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin, Printer } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin, Printer, Users, UserPlus, Trash2, Edit2, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Invoice, InvoiceItem } from "@shared/schema";
+import type { Invoice, InvoiceItem, Team, TeamMember } from "@shared/schema";
 
-type ProfileSection = "personal" | "purchases";
+type ProfileSection = "personal" | "team" | "purchases";
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
@@ -35,6 +35,104 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [viewingInvoice, setViewingInvoice] = useState<{ invoice: Invoice; items: InvoiceItem[] } | null>(null);
+  const [teamName, setTeamName] = useState("");
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("member");
+
+  // Fetch team eligibility
+  const { data: canCreateTeamData, isLoading: canCreateLoading } = useQuery<{ canCreate: boolean }>({
+    queryKey: ["/api/teams/can-create"],
+    enabled: !!user,
+  });
+
+  // Fetch user's team
+  const { data: teamData, isLoading: teamLoading } = useQuery<{ team: Team | null; members: TeamMember[] }>({
+    queryKey: ["/api/teams/my-team"],
+    enabled: !!user,
+  });
+
+  // Create team mutation
+  const createTeamMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/teams", { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Equipe creee avec succes" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
+      setTeamName("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update team mutation
+  const updateTeamMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PATCH", `/api/teams/${id}`, { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Equipe mise a jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
+      setEditingTeamName(false);
+      setTeamName("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete team mutation
+  const deleteTeamMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/teams/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Equipe supprimee" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Add team member mutation
+  const addMemberMutation = useMutation({
+    mutationFn: async ({ teamId, email, name, role }: { teamId: number; email: string; name?: string; role: string }) => {
+      const res = await apiRequest("POST", `/api/teams/${teamId}/members`, { email, name, role });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Membre ajoute" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
+      setNewMemberEmail("");
+      setNewMemberName("");
+      setNewMemberRole("member");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Remove team member mutation
+  const removeMemberMutation = useMutation({
+    mutationFn: async ({ teamId, memberId }: { teamId: number; memberId: number }) => {
+      const res = await apiRequest("DELETE", `/api/teams/${teamId}/members/${memberId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Membre supprime" });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
 
   // Fetch user invoices
   const { data: invoicesData, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[] }>({
@@ -324,6 +422,7 @@ export default function Profile() {
 
   const sidebarItems = [
     { id: "personal" as ProfileSection, label: "Informations personnelles", icon: User },
+    { id: "team" as ProfileSection, label: "Mon equipe", icon: Users, count: teamData?.members?.length },
     { id: "purchases" as ProfileSection, label: "Historique des achats", icon: ShoppingBag, count: invoicesData?.invoices?.length },
   ];
 
@@ -658,6 +757,197 @@ export default function Profile() {
                     </div>
                   </CardContent>
                 </Card>
+              )}
+            </div>
+          )}
+
+          {/* Team Section */}
+          {activeSection === "team" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Users className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Mon equipe</h2>
+                  <p className="text-muted-foreground">Gerez les membres de votre equipe</p>
+                </div>
+              </div>
+
+              {teamLoading || canCreateLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : !canCreateTeamData?.canCreate ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-8">
+                      <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">Fonctionnalite reservee</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Vous devez avoir au moins un toolkit pour creer une equipe.
+                      </p>
+                      <Link href="/#toolkits">
+                        <Button data-testid="button-browse-toolkits-team">
+                          Decouvrir nos toolkits
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !teamData?.team ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="h-5 w-5" />
+                      Creer votre equipe
+                    </CardTitle>
+                    <CardDescription>
+                      Creez une equipe pour suivre les audits de securite de votre parc informatique
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={(e) => { e.preventDefault(); if (teamName.trim()) createTeamMutation.mutate(teamName); }} className="flex gap-3">
+                      <Input
+                        placeholder="Nom de l'equipe"
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                        data-testid="input-team-name"
+                        className="max-w-sm"
+                      />
+                      <Button type="submit" disabled={createTeamMutation.isPending || !teamName.trim()} data-testid="button-create-team">
+                        {createTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Creer l'equipe"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Team Info Card */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Users className="h-5 w-5 text-primary" />
+                          </div>
+                          {editingTeamName ? (
+                            <form onSubmit={(e) => { e.preventDefault(); if (teamName.trim()) updateTeamMutation.mutate({ id: teamData.team!.id, name: teamName }); }} className="flex gap-2">
+                              <Input
+                                value={teamName}
+                                onChange={(e) => setTeamName(e.target.value)}
+                                className="max-w-[200px]"
+                                data-testid="input-edit-team-name"
+                              />
+                              <Button type="submit" size="sm" disabled={updateTeamMutation.isPending} data-testid="button-save-team-name">
+                                {updateTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sauver"}
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingTeamName(false); setTeamName(""); }} data-testid="button-cancel-edit">
+                                Annuler
+                              </Button>
+                            </form>
+                          ) : (
+                            <div>
+                              <CardTitle className="flex items-center gap-2">
+                                {teamData.team.name}
+                                <Button variant="ghost" size="icon" onClick={() => { setTeamName(teamData.team!.name); setEditingTeamName(true); }} data-testid="button-edit-team-name">
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </CardTitle>
+                              <CardDescription>
+                                Creee le {new Date(teamData.team.createdAt).toLocaleDateString('fr-FR')}
+                              </CardDescription>
+                            </div>
+                          )}
+                        </div>
+                        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Supprimer cette equipe et tous ses membres ?")) deleteTeamMutation.mutate(teamData.team!.id); }} disabled={deleteTeamMutation.isPending} data-testid="button-delete-team">
+                          {deleteTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                  </Card>
+
+                  {/* Add Member Form */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <UserPlus className="h-5 w-5" />
+                        Ajouter un membre
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={(e) => { e.preventDefault(); if (newMemberEmail.trim()) addMemberMutation.mutate({ teamId: teamData.team!.id, email: newMemberEmail, name: newMemberName || undefined, role: newMemberRole }); }} className="flex flex-wrap gap-3">
+                        <Input
+                          type="email"
+                          placeholder="Email du membre"
+                          value={newMemberEmail}
+                          onChange={(e) => setNewMemberEmail(e.target.value)}
+                          className="max-w-[240px]"
+                          data-testid="input-member-email"
+                        />
+                        <Input
+                          placeholder="Nom (optionnel)"
+                          value={newMemberName}
+                          onChange={(e) => setNewMemberName(e.target.value)}
+                          className="max-w-[180px]"
+                          data-testid="input-member-name"
+                        />
+                        <select
+                          value={newMemberRole}
+                          onChange={(e) => setNewMemberRole(e.target.value)}
+                          className="px-3 py-2 border rounded-md text-sm"
+                          data-testid="select-member-role"
+                        >
+                          <option value="member">Membre</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <Button type="submit" disabled={addMemberMutation.isPending || !newMemberEmail.trim()} data-testid="button-add-member">
+                          {addMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  {/* Team Members List */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Membres ({teamData.members.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {teamData.members.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p>Aucun membre dans l'equipe</p>
+                          <p className="text-sm">Ajoutez des membres pour commencer</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {teamData.members.map((member) => (
+                            <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`member-row-${member.id}`}>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarFallback>{member.name?.[0] || member.email[0].toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium">{member.name || member.email}</p>
+                                  {member.name && <p className="text-sm text-muted-foreground">{member.email}</p>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={member.role === "admin" ? "default" : "secondary"}>
+                                  {member.role === "admin" ? "Admin" : "Membre"}
+                                </Badge>
+                                <Button variant="ghost" size="icon" onClick={() => removeMemberMutation.mutate({ teamId: teamData.team!.id, memberId: member.id })} disabled={removeMemberMutation.isPending} data-testid={`button-remove-member-${member.id}`}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
               )}
             </div>
           )}

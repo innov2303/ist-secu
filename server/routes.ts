@@ -881,6 +881,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: "L'email est requis" });
       }
       
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return res.status(400).json({ message: "Format d'email invalide" });
+      }
+      
+      // Validate role
+      const validRoles = ["member", "admin"];
+      if (role && !validRoles.includes(role)) {
+        return res.status(400).json({ message: "Role invalide" });
+      }
+      
       // Check if member already exists
       const existingMember = await db.select().from(teamMembers).where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.email, email.trim().toLowerCase()))).limit(1);
       if (existingMember.length > 0) {
