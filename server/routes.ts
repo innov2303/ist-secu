@@ -732,6 +732,12 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Non autorise" });
       }
       
+      // Admin can always create teams
+      const user = await authStorage.getUser(userId);
+      if (user?.isAdmin) {
+        return res.json({ canCreate: true });
+      }
+      
       // Check if user has at least one active purchase
       const userPurchases = await db.select().from(purchases).where(eq(purchases.userId, userId)).limit(1);
       const canCreate = userPurchases.length > 0;
@@ -773,10 +779,13 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Non autorise" });
       }
       
-      // Check if user has at least one purchase
-      const userPurchases = await db.select().from(purchases).where(eq(purchases.userId, userId)).limit(1);
-      if (userPurchases.length === 0) {
-        return res.status(403).json({ message: "Vous devez avoir au moins un toolkit pour creer une equipe" });
+      // Check if user is admin or has at least one purchase
+      const user = await authStorage.getUser(userId);
+      if (!user?.isAdmin) {
+        const userPurchases = await db.select().from(purchases).where(eq(purchases.userId, userId)).limit(1);
+        if (userPurchases.length === 0) {
+          return res.status(403).json({ message: "Vous devez avoir au moins un toolkit pour creer une equipe" });
+        }
       }
       
       // Check if user already has a team
