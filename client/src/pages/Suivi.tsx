@@ -49,7 +49,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Info } from "lucide-react";
+import { Info, Globe, HelpCircle } from "lucide-react";
+import { SiLinux, SiWindows, SiVmware, SiDocker } from "react-icons/si";
 import {
   Select,
   SelectContent,
@@ -431,13 +432,16 @@ export default function Suivi() {
   };
 
   const getOSIcon = (os: string) => {
+    const iconClass = "w-4 h-4";
     switch (os.toLowerCase()) {
-      case 'windows': return 'W';
-      case 'linux': return 'L';
-      case 'vmware': return 'V';
-      case 'docker': return 'D';
-      case 'netapp': return 'N';
-      default: return '?';
+      case 'windows': return <SiWindows className={`${iconClass} text-blue-500`} />;
+      case 'linux': return <SiLinux className={`${iconClass} text-orange-500`} />;
+      case 'vmware': return <SiVmware className={`${iconClass} text-green-600`} />;
+      case 'docker': 
+      case 'container': return <SiDocker className={`${iconClass} text-blue-400`} />;
+      case 'netapp': return <Server className={`${iconClass} text-purple-500`} />;
+      case 'web': return <Globe className={`${iconClass} text-cyan-500`} />;
+      default: return <HelpCircle className={`${iconClass} text-gray-400`} />;
     }
   };
 
