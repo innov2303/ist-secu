@@ -1031,7 +1031,30 @@ export default function Suivi() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {stats?.osCounts && Object.keys(stats.osCounts).length > 0 ? (
+                    {(() => {
+                      // Define OS colors based on toolkits
+                      const osColors: Record<string, string> = {
+                        'windows': '#0078d4',      // Windows blue
+                        'linux': '#f59e0b',        // Linux orange/yellow
+                        'vmware': '#6d9a2e',       // VMware green
+                        'esxi': '#6d9a2e',         // ESXi green (same as VMware)
+                        'docker': '#2496ed',       // Docker blue
+                        'container': '#2496ed',   // Container blue (same as Docker)
+                        'netapp': '#0067c5',       // NetApp blue
+                        'ontap': '#0067c5',        // ONTAP blue (same as NetApp)
+                        'web': '#ef4444',          // Web red
+                        'unknown': '#6b7280',      // Gray for unknown
+                      };
+                      
+                      const getOsColor = (os: string) => {
+                        const osLower = os.toLowerCase();
+                        for (const [key, color] of Object.entries(osColors)) {
+                          if (osLower.includes(key)) return color;
+                        }
+                        return osColors['unknown'];
+                      };
+
+                      return stats?.osCounts && Object.keys(stats.osCounts).length > 0 ? (
                       <div className="flex flex-col items-center">
                         <div className="w-full h-52">
                           <ResponsiveContainer width="100%" height="100%">
@@ -1048,10 +1071,9 @@ export default function Suivi() {
                                 paddingAngle={2}
                                 dataKey="value"
                               >
-                                {Object.entries(stats.osCounts).map(([os], index) => {
-                                  const colors = ['#374151', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
-                                  return <Cell key={`cell-${os}`} fill={colors[index % colors.length]} />;
-                                })}
+                                {Object.entries(stats.osCounts).map(([os]) => (
+                                  <Cell key={`cell-${os}`} fill={getOsColor(os)} />
+                                ))}
                               </Pie>
                               <Tooltip 
                                 formatter={(value: number) => [`${value} machine${value > 1 ? 's' : ''}`, '']}
@@ -1065,19 +1087,16 @@ export default function Suivi() {
                           </ResponsiveContainer>
                         </div>
                         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
-                          {Object.entries(stats.osCounts).map(([os, count], index) => {
-                            const colors = ['#374151', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
-                            return (
+                          {Object.entries(stats.osCounts).map(([os, count]) => (
                               <div key={os} className="flex items-center gap-2 text-sm">
                                 <div 
                                   className="w-3 h-3 rounded-sm" 
-                                  style={{ backgroundColor: colors[index % colors.length] }}
+                                  style={{ backgroundColor: getOsColor(os) }}
                                 />
                                 <span className="capitalize">{os}</span>
                                 <span className="text-muted-foreground">({Math.round((count / stats.totalMachines) * 100)}%)</span>
                               </div>
-                            );
-                          })}
+                          ))}
                         </div>
                       </div>
                     ) : (
@@ -1085,7 +1104,8 @@ export default function Suivi() {
                         <Monitor className="h-12 w-12 mb-3 opacity-20" />
                         <p className="text-sm">Aucune machine enregistree</p>
                       </div>
-                    )}
+                    );
+                    })()}
                   </CardContent>
                 </Card>
 
