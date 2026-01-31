@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -1164,6 +1164,421 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching team machine groups:", error);
       res.status(500).json({ message: "Erreur lors de la recuperation des groupes" });
+    }
+  });
+
+  // ==================== USER GROUPS ENDPOINTS ====================
+
+  // Get all user groups for a team
+  app.get("/api/teams/:teamId/user-groups", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Get all user groups for this team
+      const groups = await db.select().from(userGroups).where(eq(userGroups.teamId, teamId));
+      
+      // Get member counts for each group
+      const result = await Promise.all(groups.map(async (group) => {
+        const members = await db.select().from(userGroupMembers).where(eq(userGroupMembers.userGroupId, group.id));
+        return {
+          ...group,
+          memberCount: members.length,
+        };
+      }));
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des groupes utilisateurs" });
+    }
+  });
+
+  // Create a new user group
+  app.post("/api/teams/:teamId/user-groups", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      const validatedData = insertUserGroupSchema.parse({
+        ...req.body,
+        teamId,
+      });
+      
+      const [newGroup] = await db.insert(userGroups).values(validatedData).returning();
+      res.status(201).json(newGroup);
+    } catch (error) {
+      console.error("Error creating user group:", error);
+      res.status(500).json({ message: "Erreur lors de la creation du groupe utilisateur" });
+    }
+  });
+
+  // Update a user group
+  app.patch("/api/teams/:teamId/user-groups/:groupId", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      const { name, description } = req.body;
+      const updateData: Record<string, unknown> = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      
+      const [updated] = await db.update(userGroups).set(updateData).where(eq(userGroups.id, groupId)).returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating user group:", error);
+      res.status(500).json({ message: "Erreur lors de la mise a jour du groupe utilisateur" });
+    }
+  });
+
+  // Delete a user group
+  app.delete("/api/teams/:teamId/user-groups/:groupId", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Delete all group members first
+      await db.delete(userGroupMembers).where(eq(userGroupMembers.userGroupId, groupId));
+      
+      // Delete all permissions associated with this user group
+      await db.delete(machineGroupPermissions).where(eq(machineGroupPermissions.userGroupId, groupId));
+      
+      // Delete the group
+      await db.delete(userGroups).where(eq(userGroups.id, groupId));
+      
+      res.json({ message: "Groupe supprime" });
+    } catch (error) {
+      console.error("Error deleting user group:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du groupe utilisateur" });
+    }
+  });
+
+  // Get members of a user group
+  app.get("/api/teams/:teamId/user-groups/:groupId/members", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Get all members of this user group with their team member info
+      const groupMembers = await db.select().from(userGroupMembers).where(eq(userGroupMembers.userGroupId, groupId));
+      
+      if (groupMembers.length === 0) {
+        return res.json([]);
+      }
+      
+      const memberIds = groupMembers.map(m => m.teamMemberId);
+      const members = await db.select().from(teamMembers).where(inArray(teamMembers.id, memberIds));
+      
+      const result = groupMembers.map(gm => {
+        const member = members.find(m => m.id === gm.teamMemberId);
+        return {
+          id: gm.id,
+          userGroupId: gm.userGroupId,
+          teamMemberId: gm.teamMemberId,
+          createdAt: gm.createdAt,
+          member: member || null,
+        };
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching user group members:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des membres" });
+    }
+  });
+
+  // Add a member to a user group
+  app.post("/api/teams/:teamId/user-groups/:groupId/members", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      const { teamMemberId } = req.body;
+      if (!teamMemberId) {
+        return res.status(400).json({ message: "teamMemberId requis" });
+      }
+      
+      // Verify member belongs to team
+      const [member] = await db.select().from(teamMembers).where(and(eq(teamMembers.id, teamMemberId), eq(teamMembers.teamId, teamId))).limit(1);
+      if (!member) {
+        return res.status(404).json({ message: "Membre non trouve dans l'equipe" });
+      }
+      
+      // Check if already in group
+      const [existing] = await db.select().from(userGroupMembers).where(and(eq(userGroupMembers.userGroupId, groupId), eq(userGroupMembers.teamMemberId, teamMemberId))).limit(1);
+      if (existing) {
+        return res.status(400).json({ message: "Membre deja dans le groupe" });
+      }
+      
+      const [newMember] = await db.insert(userGroupMembers).values({
+        userGroupId: groupId,
+        teamMemberId,
+      }).returning();
+      
+      res.status(201).json(newMember);
+    } catch (error) {
+      console.error("Error adding user group member:", error);
+      res.status(500).json({ message: "Erreur lors de l'ajout du membre" });
+    }
+  });
+
+  // Remove a member from a user group
+  app.delete("/api/teams/:teamId/user-groups/:groupId/members/:memberId", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const memberId = parseInt(req.params.memberId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Delete the member from group
+      await db.delete(userGroupMembers).where(and(eq(userGroupMembers.userGroupId, groupId), eq(userGroupMembers.teamMemberId, memberId)));
+      
+      res.json({ message: "Membre retire du groupe" });
+    } catch (error) {
+      console.error("Error removing user group member:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du membre" });
+    }
+  });
+
+  // Get permissions for a user group
+  app.get("/api/teams/:teamId/user-groups/:groupId/permissions", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify group belongs to team
+      const [group] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Get all permissions for this user group
+      const permissions = await db.select().from(machineGroupPermissions).where(eq(machineGroupPermissions.userGroupId, groupId));
+      
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching user group permissions:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des permissions" });
+    }
+  });
+
+  // Add permission to a user group
+  app.post("/api/teams/:teamId/user-groups/:groupId/permissions", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify user group belongs to team
+      const [userGroup] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!userGroup) {
+        return res.status(404).json({ message: "Groupe utilisateur non trouve" });
+      }
+      
+      const { machineGroupId, canView, canEdit } = req.body;
+      if (!machineGroupId) {
+        return res.status(400).json({ message: "machineGroupId requis" });
+      }
+      
+      // Verify machine group exists and belongs to team's hierarchy
+      const [machineGroup] = await db.select().from(machineGroups).where(eq(machineGroups.id, machineGroupId)).limit(1);
+      if (!machineGroup) {
+        return res.status(404).json({ message: "Groupe de machines non trouve" });
+      }
+      
+      // Verify the site -> org -> team chain
+      const [site] = await db.select().from(sites).where(eq(sites.id, machineGroup.siteId)).limit(1);
+      if (!site) {
+        return res.status(404).json({ message: "Site non trouve" });
+      }
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, site.organizationId)).limit(1);
+      if (!org || org.teamId !== teamId) {
+        return res.status(403).json({ message: "Groupe de machines non accessible" });
+      }
+      
+      // Check if permission already exists
+      const [existing] = await db.select().from(machineGroupPermissions).where(and(eq(machineGroupPermissions.userGroupId, groupId), eq(machineGroupPermissions.groupId, machineGroupId))).limit(1);
+      if (existing) {
+        // Update existing permission
+        const [updated] = await db.update(machineGroupPermissions).set({
+          canView: canView !== undefined ? canView : existing.canView,
+          canEdit: canEdit !== undefined ? canEdit : existing.canEdit,
+        }).where(eq(machineGroupPermissions.id, existing.id)).returning();
+        return res.json(updated);
+      }
+      
+      // Create new permission
+      const [newPermission] = await db.insert(machineGroupPermissions).values({
+        userGroupId: groupId,
+        groupId: machineGroupId,
+        canView: canView !== undefined ? canView : true,
+        canEdit: canEdit !== undefined ? canEdit : false,
+      }).returning();
+      
+      res.status(201).json(newPermission);
+    } catch (error) {
+      console.error("Error adding user group permission:", error);
+      res.status(500).json({ message: "Erreur lors de l'ajout de la permission" });
+    }
+  });
+
+  // Delete permission from a user group
+  app.delete("/api/teams/:teamId/user-groups/:groupId/permissions/:permissionId", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const groupId = parseInt(req.params.groupId);
+      const permissionId = parseInt(req.params.permissionId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify user group belongs to team
+      const [userGroup] = await db.select().from(userGroups).where(and(eq(userGroups.id, groupId), eq(userGroups.teamId, teamId))).limit(1);
+      if (!userGroup) {
+        return res.status(404).json({ message: "Groupe utilisateur non trouve" });
+      }
+      
+      // Delete permission
+      await db.delete(machineGroupPermissions).where(and(eq(machineGroupPermissions.id, permissionId), eq(machineGroupPermissions.userGroupId, groupId)));
+      
+      res.json({ message: "Permission supprimee" });
+    } catch (error) {
+      console.error("Error deleting user group permission:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de la permission" });
     }
   });
 
