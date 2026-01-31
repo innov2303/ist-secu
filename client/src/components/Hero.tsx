@@ -50,7 +50,7 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
               <img src={featureAudit} alt="Audit Sécurité" className="w-full h-56 object-contain" />
             </div>
           </div>
@@ -71,7 +71,7 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
               <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-56 object-contain" />
             </div>
           </div>
@@ -92,7 +92,7 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
               <img src={featureSecure} alt="Secure" className="w-full h-56 object-contain" />
             </div>
           </div>
@@ -113,7 +113,7 @@ export function Hero() {
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
               <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-56 object-contain" />
             </div>
           </div>
