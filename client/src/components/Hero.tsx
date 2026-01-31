@@ -37,13 +37,13 @@ export function Hero() {
           <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl w-full" data-testid="card-audit-conformite">
               <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <FileCode className="w-4 h-4 text-primary" />
                   Audit Sécurité & Conformité
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center">
                   Standards ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker, CIS Kubernetes, OWASP.
                 </p>
               </CardContent>
@@ -56,13 +56,13 @@ export function Hero() {
           <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl w-full" data-testid="card-rapport">
               <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <FileText className="w-4 h-4 text-primary" />
                   Rapport & Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center">
                   Synthèse HTML/PDF avec scores et remédiations.
                 </p>
               </CardContent>
@@ -75,13 +75,13 @@ export function Hero() {
           <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl w-full" data-testid="card-secure">
               <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <Lock className="w-4 h-4 text-primary" />
                   Secure
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center">
                   Durcissement des configurations sensibles.
                 </p>
               </CardContent>
@@ -94,13 +94,13 @@ export function Hero() {
           <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl w-full" data-testid="card-evolution">
               <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <Activity className="w-4 h-4 text-primary" />
                   Suivez l'évolution
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground text-center">
                   Mesurez la sécurité au fil des audits.
                 </p>
               </CardContent>
