@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { 
   Users, 
@@ -297,10 +297,26 @@ export default function Suivi() {
     enabled: !!user,
   });
 
-  const { data: allMachineGroups } = useQuery<MachineGroupWithHierarchy[]>({
-    queryKey: ["/api/teams", team?.id, "machine-groups"],
-    enabled: !!team?.id,
-  });
+  // Derive all machine groups from hierarchy data instead of separate API call
+  const allMachineGroups = useMemo(() => {
+    if (!hierarchyData?.organizations) return [];
+    const groups: MachineGroupWithHierarchy[] = [];
+    for (const org of hierarchyData.organizations) {
+      for (const site of org.sites) {
+        for (const group of site.groups) {
+          groups.push({
+            id: group.id,
+            siteId: group.siteId,
+            name: group.name,
+            description: group.description,
+            siteName: site.name,
+            organizationName: org.name,
+          });
+        }
+      }
+    }
+    return groups;
+  }, [hierarchyData]);
 
   const { data: memberPermissions } = useQuery<MachineGroupPermission[]>({
     queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"],
