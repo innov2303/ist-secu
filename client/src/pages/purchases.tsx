@@ -1181,6 +1181,8 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
 
 function AdminScriptCard({ script }: { script: Script }) {
   const Icon = iconMap[script.icon] || Monitor;
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const currentVersion = script.version || "1.0.0";
   
   return (
     <Card data-testid={`card-admin-script-${script.id}`}>
@@ -1190,8 +1192,11 @@ function AdminScriptCard({ script }: { script: Script }) {
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
               {script.name}
+              <Badge variant="outline" className="text-xs font-mono">
+                v{currentVersion}
+              </Badge>
               <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
                 Admin
               </Badge>
@@ -1201,7 +1206,7 @@ function AdminScriptCard({ script }: { script: Script }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="default"
@@ -1213,8 +1218,25 @@ function AdminScriptCard({ script }: { script: Script }) {
               Telecharger
             </a>
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setVersionHistoryOpen(true)}
+            data-testid={`button-admin-version-history-${script.id}`}
+          >
+            <History className="h-4 w-4 mr-2" />
+            Mises a jour
+          </Button>
         </div>
       </CardContent>
+      
+      <VersionHistoryDialog
+        scriptId={script.id}
+        scriptName={script.name}
+        currentVersion={currentVersion}
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+      />
     </Card>
   );
 }
