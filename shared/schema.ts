@@ -20,7 +20,33 @@ export const scripts = pgTable("scripts", {
   bundledScriptIds: integer("bundled_script_ids").array(),
   isHidden: integer("is_hidden").default(0),
   status: text("status").notNull().default("active"),
+  version: text("version").notNull().default("1.0.0"),
 });
+
+// Script versions table - tracks version history and update changelogs
+export const scriptVersions = pgTable("script_versions", {
+  id: serial("id").primaryKey(),
+  scriptId: integer("script_id").notNull(),
+  version: text("version").notNull(),
+  previousVersion: text("previous_version"),
+  changeType: text("change_type").notNull(), // "controls_added", "controls_removed", "major_update", "minor_update", "patch"
+  changesSummary: text("changes_summary").notNull(),
+  controlsAdded: integer("controls_added").default(0),
+  controlsRemoved: integer("controls_removed").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const scriptVersionsRelations = relations(scriptVersions, ({ one }) => ({
+  script: one(scripts, {
+    fields: [scriptVersions.scriptId],
+    references: [scripts.id],
+  }),
+}));
+
+export const insertScriptVersionSchema = createInsertSchema(scriptVersions).omit({ id: true, createdAt: true });
+
+export type ScriptVersion = typeof scriptVersions.$inferSelect;
+export type InsertScriptVersion = z.infer<typeof insertScriptVersionSchema>;
 
 export const updateScriptSchema = z.object({
   name: z.string().min(1).optional(),
