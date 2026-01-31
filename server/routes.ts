@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -980,6 +980,190 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error removing team member:", error);
       res.status(500).json({ message: "Erreur lors de la suppression du membre" });
+    }
+  });
+
+  // Get permissions for a team member
+  app.get("/api/teams/:teamId/members/:memberId/permissions", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const memberId = parseInt(req.params.memberId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify member belongs to team
+      const [member] = await db.select().from(teamMembers).where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId))).limit(1);
+      if (!member) {
+        return res.status(404).json({ message: "Membre non trouve" });
+      }
+      
+      // Get all permissions for this member
+      const permissions = await db.select().from(machineGroupPermissions).where(eq(machineGroupPermissions.teamMemberId, memberId));
+      
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching member permissions:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des permissions" });
+    }
+  });
+
+  // Set permission for a team member on a machine group
+  app.post("/api/teams/:teamId/members/:memberId/permissions", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const memberId = parseInt(req.params.memberId);
+      const userId = req.user?.claims?.sub;
+      const { groupId, canView, canEdit } = req.body;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify member belongs to team
+      const [member] = await db.select().from(teamMembers).where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId))).limit(1);
+      if (!member) {
+        return res.status(404).json({ message: "Membre non trouve" });
+      }
+      
+      // Verify group belongs to the team's hierarchy
+      const [group] = await db.select().from(machineGroups).where(eq(machineGroups.id, groupId)).limit(1);
+      if (!group) {
+        return res.status(404).json({ message: "Groupe non trouve" });
+      }
+      
+      // Verify group belongs to team via site -> organization chain
+      const [site] = await db.select().from(sites).where(eq(sites.id, group.siteId)).limit(1);
+      if (!site) {
+        return res.status(404).json({ message: "Site non trouve" });
+      }
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, site.organizationId)).limit(1);
+      if (!org || org.teamId !== teamId) {
+        return res.status(403).json({ message: "Groupe non autorise" });
+      }
+      
+      // Check if permission already exists
+      const [existing] = await db.select().from(machineGroupPermissions).where(and(eq(machineGroupPermissions.teamMemberId, memberId), eq(machineGroupPermissions.groupId, groupId))).limit(1);
+      
+      if (existing) {
+        // Update existing permission
+        const [updated] = await db.update(machineGroupPermissions).set({
+          canView: canView !== undefined ? canView : existing.canView,
+          canEdit: canEdit !== undefined ? canEdit : existing.canEdit,
+        }).where(eq(machineGroupPermissions.id, existing.id)).returning();
+        return res.json(updated);
+      } else {
+        // Create new permission
+        const [newPerm] = await db.insert(machineGroupPermissions).values({
+          teamMemberId: memberId,
+          groupId,
+          canView: canView !== undefined ? canView : true,
+          canEdit: canEdit !== undefined ? canEdit : false,
+        }).returning();
+        return res.json(newPerm);
+      }
+    } catch (error) {
+      console.error("Error setting member permission:", error);
+      res.status(500).json({ message: "Erreur lors de la modification des permissions" });
+    }
+  });
+
+  // Delete permission for a team member on a machine group
+  app.delete("/api/teams/:teamId/members/:memberId/permissions/:permissionId", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const memberId = parseInt(req.params.memberId);
+      const permissionId = parseInt(req.params.permissionId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Verify member belongs to team
+      const [member] = await db.select().from(teamMembers).where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId))).limit(1);
+      if (!member) {
+        return res.status(404).json({ message: "Membre non trouve" });
+      }
+      
+      // Delete permission
+      await db.delete(machineGroupPermissions).where(and(eq(machineGroupPermissions.id, permissionId), eq(machineGroupPermissions.teamMemberId, memberId)));
+      
+      res.json({ message: "Permission supprimee" });
+    } catch (error) {
+      console.error("Error deleting member permission:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression de la permission" });
+    }
+  });
+
+  // Get all machine groups for a team (for permission selection)
+  app.get("/api/teams/:teamId/machine-groups", isAuthenticated, async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Non autorise" });
+      }
+      
+      // Verify user owns the team
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      if (!team || team.ownerId !== userId) {
+        return res.status(403).json({ message: "Acces refuse" });
+      }
+      
+      // Get all organizations for team
+      const orgs = await db.select().from(organizations).where(eq(organizations.teamId, teamId));
+      if (orgs.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all sites for these organizations
+      const orgIds = orgs.map(o => o.id);
+      const allSites = await db.select().from(sites).where(inArray(sites.organizationId, orgIds));
+      if (allSites.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all machine groups for these sites
+      const siteIds = allSites.map(s => s.id);
+      const allGroups = await db.select().from(machineGroups).where(inArray(machineGroups.siteId, siteIds));
+      
+      // Return groups with hierarchy info
+      const result = allGroups.map(group => {
+        const site = allSites.find(s => s.id === group.siteId);
+        const org = orgs.find(o => o.id === site?.organizationId);
+        return {
+          ...group,
+          siteName: site?.name,
+          organizationName: org?.name,
+        };
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching team machine groups:", error);
+      res.status(500).json({ message: "Erreur lors de la recuperation des groupes" });
     }
   });
 
