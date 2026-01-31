@@ -219,3 +219,45 @@ export const updateAnnualBundleSchema = z.object({
 export type AnnualBundle = typeof annualBundles.$inferSelect;
 export type InsertAnnualBundle = z.infer<typeof insertAnnualBundleSchema>;
 export type UpdateAnnualBundle = z.infer<typeof updateAnnualBundleSchema>;
+
+// Teams table - for users to create and manage their security audit teams
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const teamsRelations = relations(teams, ({ many }) => ({
+  members: many(teamMembers),
+}));
+
+export const insertTeamSchema = createInsertSchema(teams).omit({ id: true, createdAt: true });
+export const updateTeamSchema = z.object({
+  name: z.string().min(1).optional(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+
+// Team members table - users belonging to a team
+export const teamMembers = pgTable("team_members", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull(),
+  email: text("email").notNull(),
+  name: text("name"),
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+}));
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, joinedAt: true });
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
