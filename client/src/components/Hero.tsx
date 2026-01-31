@@ -34,7 +34,7 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl" data-testid="card-audit-conformite">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -53,7 +53,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl" data-testid="card-rapport">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -72,7 +72,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl" data-testid="card-secure">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -91,7 +91,7 @@ export function Hero() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col items-center">
             <Card className="border-transparent py-2 max-w-xl" data-testid="card-evolution">
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center gap-2 text-base">
