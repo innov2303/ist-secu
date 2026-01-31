@@ -229,7 +229,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-mono">
             <div>
-              &copy; {new Date().getFullYear()} Security Verification Sys.
+              &copy; 2026 Innov Studio.
             </div>
             <div className="flex gap-6">
               <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Politique de Confidentialité</Link>
