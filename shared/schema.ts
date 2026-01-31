@@ -25,7 +25,7 @@ export const scripts = pgTable("scripts", {
 export const updateScriptSchema = z.object({
   name: z.string().min(1).optional(),
   monthlyPriceCents: z.number().int().min(0).optional(),
-  status: z.enum(["active", "offline", "maintenance"]).optional(),
+  status: z.enum(["active", "offline", "maintenance", "development"]).optional(),
 });
 
 export const insertScriptSchema = createInsertSchema(scripts).omit({ id: true });

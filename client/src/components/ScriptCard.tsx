@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Calendar } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Calendar, Clock } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -66,7 +66,7 @@ function updateControlCountInDescription(description: string, totalCount: number
   return description.replace(maxMatch.full, updatedPattern);
 }
 
-type ScriptStatus = "active" | "offline" | "maintenance";
+type ScriptStatus = "active" | "offline" | "maintenance" | "development";
 
 interface ScriptCardProps {
   script: Script;
@@ -148,8 +148,8 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
   const hasPurchased = purchaseStatus?.hasPurchased || false;
   const purchaseType = purchaseStatus?.purchaseType;
   const isAdmin = user?.isAdmin || false;
-  const isInDevelopment = script.description.includes("En développement");
   const status = (script.status as ScriptStatus) || "active";
+  const isInDevelopment = status === "development";
   const isOffline = status === "offline";
   const isMaintenance = status === "maintenance";
   const canPurchase = !isOffline; // Allow subscriptions during maintenance, only block when offline
@@ -195,8 +195,11 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
         </p>
 
         {isInDevelopment && (
-          <div className="text-xs text-muted-foreground mb-4">
-            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">En développement</Badge>
+          <div className="mb-4">
+            <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
+              <Clock className="w-3 h-3 mr-1.5" />
+              Prochainement disponible
+            </Badge>
           </div>
         )}
 
