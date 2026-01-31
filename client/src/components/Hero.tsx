@@ -32,8 +32,10 @@ export function Hero() {
         >
           <Card className="border-transparent" data-testid="card-audit-conformite">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <FileCode className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <FileCode className="w-5 h-5 text-primary" />
+                </div>
                 Audit Sécurité & Conformité
               </CardTitle>
             </CardHeader>
@@ -46,8 +48,10 @@ export function Hero() {
 
           <Card className="border-transparent" data-testid="card-rapport">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
                 Rapport & Recommendations
               </CardTitle>
             </CardHeader>
@@ -60,8 +64,10 @@ export function Hero() {
 
           <Card className="border-transparent" data-testid="card-secure">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <Lock className="w-5 h-5 text-primary" />
+                </div>
                 Secure
               </CardTitle>
             </CardHeader>
@@ -74,8 +80,10 @@ export function Hero() {
 
           <Card className="border-transparent" data-testid="card-evolution">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                  <Activity className="w-5 h-5 text-primary" />
+                </div>
                 Suivez l'évolution
               </CardTitle>
             </CardHeader>
