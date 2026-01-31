@@ -3732,11 +3732,23 @@ export async function registerRoutes(
       userGroupPermissions = await db.select().from(machineGroupPermissions).where(inArray(machineGroupPermissions.userGroupId, userGroupIds));
     }
     
+    // Get groups from hierarchy ownership (organization owner gets edit access to all groups under it)
+    const ownedGroupIds: number[] = [];
+    
+    // Check organizations owned by this user - owner gets edit access to all groups under the organization
+    const ownedOrgs = await db.select().from(organizations).where(eq(organizations.ownerId, userId));
+    if (ownedOrgs.length > 0) {
+      for (const org of ownedOrgs) {
+        const orgSites = await db.select().from(sites).where(eq(sites.organizationId, org.id));
+        for (const site of orgSites) {
+          const siteGroups = await db.select().from(machineGroups).where(eq(machineGroups.siteId, site.id));
+          ownedGroupIds.push(...siteGroups.map(g => g.id));
+        }
+      }
+    }
+    
     // Combine all permissions
     const allPermissions = [...directPermissions, ...userGroupPermissions];
-    
-    // If no permissions defined, member sees nothing
-    if (allPermissions.length === 0) return [];
     
     // Filter by permission type and get unique group IDs
     let groupIds: number[];
@@ -3745,6 +3757,12 @@ export async function registerRoutes(
     } else {
       groupIds = allPermissions.filter(p => p.canEdit).map(p => p.groupId);
     }
+    
+    // Add owned group IDs (owners have full edit access to their hierarchy)
+    groupIds.push(...ownedGroupIds);
+    
+    // If no permissions and no owned groups, member sees nothing
+    if (groupIds.length === 0) return [];
     
     // Return unique group IDs
     return [...new Set(groupIds)];
