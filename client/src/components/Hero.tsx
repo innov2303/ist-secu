@@ -34,87 +34,79 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
-          <div className="space-y-3">
-            <Card className="border-transparent" data-testid="card-audit-conformite">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                    <FileCode className="w-5 h-5 text-primary" />
-                  </div>
+          <div className="space-y-2">
+            <Card className="border-transparent py-2" data-testid="card-audit-conformite">
+              <CardHeader className="pb-1 pt-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileCode className="w-4 h-4 text-primary" />
                   Audit Sécurité & Conformité
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Audit de sécurité complet selon les standards ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker et CIS Kubernetes.
+              <CardContent className="pb-2">
+                <p className="text-xs text-muted-foreground">
+                  Standards ANSSI-BP-028, CIS Benchmark, DISA STIG.
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
-              <img src={featureAudit} alt="Audit Sécurité" className="w-full h-56 object-contain" />
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+              <img src={featureAudit} alt="Audit Sécurité" className="w-full h-64 object-cover" />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Card className="border-transparent" data-testid="card-rapport">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                    <FileText className="w-5 h-5 text-primary" />
-                  </div>
+          <div className="space-y-2">
+            <Card className="border-transparent py-2" data-testid="card-rapport">
+              <CardHeader className="pb-1 pt-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="w-4 h-4 text-primary" />
                   Rapport & Recommendations
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Synthèse HTML/PDF avec scores de conformité détaillés et remédiations proposées par niveau de gravité.
+              <CardContent className="pb-2">
+                <p className="text-xs text-muted-foreground">
+                  Synthèse HTML/PDF avec scores et remédiations.
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
-              <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-56 object-contain" />
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+              <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-64 object-cover" />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Card className="border-transparent" data-testid="card-secure">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                    <Lock className="w-5 h-5 text-primary" />
-                  </div>
+          <div className="space-y-2">
+            <Card className="border-transparent py-2" data-testid="card-secure">
+              <CardHeader className="pb-1 pt-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Lock className="w-4 h-4 text-primary" />
                   Secure
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Durcissement par vos soins des configurations sensibles selon les recommendations.
+              <CardContent className="pb-2">
+                <p className="text-xs text-muted-foreground">
+                  Durcissement des configurations sensibles.
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
-              <img src={featureSecure} alt="Secure" className="w-full h-56 object-contain" />
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+              <img src={featureSecure} alt="Secure" className="w-full h-64 object-cover" />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Card className="border-transparent" data-testid="card-evolution">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                    <Activity className="w-5 h-5 text-primary" />
-                  </div>
+          <div className="space-y-2">
+            <Card className="border-transparent py-2" data-testid="card-evolution">
+              <CardHeader className="pb-1 pt-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Activity className="w-4 h-4 text-primary" />
                   Suivez l'évolution
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Mesurez et suivez l'évolution du niveau de sécurité de vos machines au fil des audits.
+              <CardContent className="pb-2">
+                <p className="text-xs text-muted-foreground">
+                  Mesurez la sécurité au fil des audits.
                 </p>
               </CardContent>
             </Card>
-            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all bg-slate-800">
-              <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-56 object-contain" />
+            <div className="rounded-lg overflow-hidden border border-border/40 hover-elevate transition-all">
+              <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-64 object-cover" />
             </div>
           </div>
         </motion.div>
