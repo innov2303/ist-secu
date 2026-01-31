@@ -1218,10 +1218,20 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
   );
 }
 
-function AdminScriptCard({ script }: { script: Script }) {
+function AdminScriptCard({ script, allScripts }: { script: Script; allScripts: Script[] }) {
   const Icon = iconMap[script.icon] || Monitor;
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [selectedBundledScript, setSelectedBundledScript] = useState<Script | null>(null);
+  const [bundledVersionHistoryOpen, setBundledVersionHistoryOpen] = useState(false);
   const currentVersion = script.version || "1.0.0";
+  const [expanded, setExpanded] = useState(false);
+  
+  const bundledScripts = script.bundledScriptIds?.map(id => allScripts.find(s => s.id === id)).filter(Boolean) as Script[] || [];
+  
+  const openBundledVersionHistory = (bundledScript: Script) => {
+    setSelectedBundledScript(bundledScript);
+    setBundledVersionHistoryOpen(true);
+  };
   
   return (
     <Card data-testid={`card-admin-script-${script.id}`}>
@@ -1239,12 +1249,17 @@ function AdminScriptCard({ script }: { script: Script }) {
               <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
                 Admin
               </Badge>
+              {bundledScripts.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {bundledScripts.length} script(s)
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>{script.compliance}</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
@@ -1266,7 +1281,73 @@ function AdminScriptCard({ script }: { script: Script }) {
             <History className="h-4 w-4 mr-2" />
             Mises a jour
           </Button>
+          {bundledScripts.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setExpanded(!expanded)}
+              data-testid={`button-toggle-bundled-${script.id}`}
+            >
+              <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+              {expanded ? 'Masquer les scripts' : 'Voir les scripts'}
+            </Button>
+          )}
         </div>
+        
+        {expanded && bundledScripts.length > 0 && (
+          <div className="border-t pt-4 space-y-3">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <FileCode className="h-4 w-4" />
+              Scripts inclus dans ce toolkit
+            </h4>
+            {bundledScripts.map((bundledScript) => {
+              const BundledIcon = iconMap[bundledScript.icon] || FileCode;
+              const bundledVersion = bundledScript.version || "1.0.0";
+              return (
+                <div
+                  key={bundledScript.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border"
+                  data-testid={`row-admin-bundled-script-${bundledScript.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <BundledIcon className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        {bundledScript.name}
+                        <Badge variant="outline" className="text-xs font-mono">
+                          v{bundledVersion}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {bundledScript.filename}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      asChild
+                      data-testid={`button-download-bundled-${bundledScript.id}`}
+                    >
+                      <a href={`/api/scripts/${bundledScript.id}/download`} download>
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openBundledVersionHistory(bundledScript)}
+                      data-testid={`button-bundled-version-history-${bundledScript.id}`}
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
       
       <VersionHistoryDialog
@@ -1276,6 +1357,16 @@ function AdminScriptCard({ script }: { script: Script }) {
         open={versionHistoryOpen}
         onOpenChange={setVersionHistoryOpen}
       />
+      
+      {selectedBundledScript && (
+        <VersionHistoryDialog
+          scriptId={selectedBundledScript.id}
+          scriptName={selectedBundledScript.name}
+          currentVersion={selectedBundledScript.version || "1.0.0"}
+          open={bundledVersionHistoryOpen}
+          onOpenChange={setBundledVersionHistoryOpen}
+        />
+      )}
     </Card>
   );
 }
@@ -1418,7 +1509,7 @@ export default function Purchases() {
             </div>
             <div className="space-y-4">
               {scripts?.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0).map((script) => (
-                <AdminScriptCard key={script.id} script={script} />
+                <AdminScriptCard key={script.id} script={script} allScripts={scripts || []} />
               ))}
             </div>
           </div>
