@@ -3317,12 +3317,9 @@ export async function registerRoutes(
         return res.json({ machines: [] });
       }
       
-      // Filter by allowed groups
+      // Filter by allowed groups (no teamId filter since group membership implies access)
       const result = await db.select().from(machines)
-        .where(and(
-          eq(machines.teamId, teamId!),
-          inArray(machines.groupId!, allowedGroupIds)
-        ))
+        .where(inArray(machines.groupId!, allowedGroupIds))
         .orderBy(desc(machines.lastAuditDate));
       
       res.json({ machines: result });
@@ -3393,12 +3390,9 @@ export async function registerRoutes(
         return res.json({ reports: [] });
       }
       
-      // Filter by allowed groups
+      // Filter by allowed groups (no teamId filter since group membership implies access)
       const reports = await baseQuery
-        .where(and(
-          eq(machines.teamId, teamId!),
-          inArray(machines.groupId!, allowedGroupIds)
-        ))
+        .where(inArray(machines.groupId!, allowedGroupIds))
         .orderBy(desc(auditReports.auditDate));
       
       res.json({ reports });
@@ -3834,16 +3828,20 @@ export async function registerRoutes(
       }
 
       // Get machines with groups
-      const machinesQuery = user?.isAdmin
-        ? db.select().from(machines).orderBy(machines.hostname)
-        : db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(machines.hostname);
-      let allMachines = await machinesQuery;
-
-      // Filter machines by allowed groups for team members
-      if (allowedGroupIds !== null && allowedGroupIds.length === 0) {
+      let allMachines: typeof machines.$inferSelect[] = [];
+      
+      if (user?.isAdmin) {
+        // Admin sees all machines
+        allMachines = await db.select().from(machines).orderBy(machines.hostname);
+      } else if (allowedGroupIds === null) {
+        // Team owner/admin member - sees all machines from the team
+        allMachines = await db.select().from(machines).where(eq(machines.teamId, teamId!)).orderBy(machines.hostname);
+      } else if (allowedGroupIds.length === 0) {
+        // Member with no permissions - sees nothing
         allMachines = [];
-      } else if (allowedGroupIds !== null) {
-        allMachines = allMachines.filter(m => m.groupId && allowedGroupIds.includes(m.groupId));
+      } else {
+        // Member with specific group permissions - get machines in those groups
+        allMachines = await db.select().from(machines).where(inArray(machines.groupId, allowedGroupIds)).orderBy(machines.hostname);
       }
 
       // Build hierarchy
@@ -4218,7 +4216,8 @@ export async function registerRoutes(
         if (allowedGroupIds === null) {
           return eq(machines.teamId, teamId!);
         }
-        return and(eq(machines.teamId, teamId!), inArray(machines.groupId!, allowedGroupIds));
+        // Member with specific group permissions - filter by groupId only
+        return inArray(machines.groupId!, allowedGroupIds);
       };
 
       const whereCondition = getWhereCondition();
@@ -4326,7 +4325,7 @@ export async function registerRoutes(
           .groupBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`)
           .orderBy(sql`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`);
       } else {
-        // Filtered access by allowed groups
+        // Filtered access by allowed groups (no teamId filter - group membership implies access)
         historyQuery = db.select({
             month: sql<string>`TO_CHAR(${auditReports.auditDate}, 'YYYY-MM')`,
             avgOriginalScore: sql<number>`ROUND(AVG(COALESCE(${auditReports.originalScore}, ${auditReports.score})))::int`,
@@ -4336,7 +4335,6 @@ export async function registerRoutes(
           .from(auditReports)
           .innerJoin(machines, eq(auditReports.machineId, machines.id))
           .where(and(
-            eq(machines.teamId, teamId!),
             inArray(machines.groupId!, allowedGroupIds),
             sql`${auditReports.auditDate} >= NOW() - INTERVAL '12 months'`
           ))
@@ -4407,15 +4405,26 @@ export async function registerRoutes(
 
       // Verify access to the machine
       const [machine] = await db.select().from(machines).where(eq(machines.id, report.machineId));
-      if (!user?.isAdmin && machine?.teamId !== teamId) {
-        return res.status(403).json({ message: "Acces non autorise" });
+      if (!machine) {
+        return res.status(404).json({ message: "Machine non trouvee" });
       }
 
-      // Check group-level permissions for team members
+      // Check access permissions
       if (!user?.isAdmin) {
         const allowedGroupIds = await getAllowedGroupIdsForMember(userId, "view");
-        if (allowedGroupIds !== null && (!machine?.groupId || !allowedGroupIds.includes(machine.groupId))) {
-          return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+        if (allowedGroupIds === null) {
+          // Team owner/admin - check team access
+          if (machine.teamId !== teamId) {
+            return res.status(403).json({ message: "Acces non autorise" });
+          }
+        } else if (allowedGroupIds.length === 0) {
+          // No permissions
+          return res.status(403).json({ message: "Acces non autorise" });
+        } else {
+          // Member with specific group permissions - check group access
+          if (!machine.groupId || !allowedGroupIds.includes(machine.groupId)) {
+            return res.status(403).json({ message: "Acces non autorise a ce groupe" });
+          }
         }
       }
 
