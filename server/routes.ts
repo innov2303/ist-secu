@@ -13,7 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
-import { sendInvoiceEmail } from "./email";
+import { sendInvoiceEmail, sendPasswordResetEmail } from "./email";
 
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -237,6 +237,142 @@ export async function registerRoutes(
       res.clearCookie('connect.sid');
       res.json({ success: true, isLocalAuth });
     });
+  });
+
+  // Forgot password - request reset email
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ message: "Email requis" });
+      }
+
+      // Find user by email
+      const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+      
+      // Always return success to prevent email enumeration
+      if (!user || !user.password) {
+        // User doesn't exist or is OAuth user, but we don't reveal this
+        return res.json({ success: true, message: "Si cette adresse email est associee a un compte, vous recevrez un email de reinitialisation." });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Save token to database
+      await db.update(users)
+        .set({ 
+          passwordResetToken: resetToken,
+          passwordResetExpires: resetExpires
+        })
+        .where(eq(users.id, user.id));
+
+      // Build reset URL
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPLIT_DEPLOYMENT_URL || 'http://localhost:5000';
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+      // Send email
+      const emailResult = await sendPasswordResetEmail({
+        email: user.email!,
+        firstName: user.firstName || 'Utilisateur',
+        resetUrl
+      });
+
+      if (!emailResult.success) {
+        console.error("Failed to send password reset email:", emailResult.error);
+        // Still return success to prevent information disclosure
+      }
+
+      res.json({ success: true, message: "Si cette adresse email est associee a un compte, vous recevrez un email de reinitialisation." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Erreur lors de la demande de reinitialisation" });
+    }
+  });
+
+  // Reset password - set new password with token
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Token invalide" });
+      }
+
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({ message: "Mot de passe requis" });
+      }
+
+      // Validate password strength
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+      if (!passwordRegex.test(password)) {
+        return res.status(400).json({ 
+          message: "Le mot de passe doit contenir au moins 8 caracteres, une majuscule, une minuscule, un chiffre et un caractere special" 
+        });
+      }
+
+      // Find user by reset token
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.passwordResetToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Token invalide ou expire" });
+      }
+
+      // Check if token is expired
+      if (!user.passwordResetExpires || new Date() > user.passwordResetExpires) {
+        return res.status(400).json({ message: "Token expire. Veuillez faire une nouvelle demande de reinitialisation." });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Update password and clear reset token
+      await db.update(users)
+        .set({ 
+          password: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, message: "Mot de passe reinitialise avec succes" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Erreur lors de la reinitialisation du mot de passe" });
+    }
+  });
+
+  // Verify reset token is valid
+  app.get("/api/auth/verify-reset-token", async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ valid: false, message: "Token invalide" });
+      }
+
+      const [user] = await db.select({ id: users.id, passwordResetExpires: users.passwordResetExpires })
+        .from(users)
+        .where(eq(users.passwordResetToken, token))
+        .limit(1);
+
+      if (!user || !user.passwordResetExpires || new Date() > user.passwordResetExpires) {
+        return res.status(400).json({ valid: false, message: "Token invalide ou expire" });
+      }
+
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Verify reset token error:", error);
+      res.status(500).json({ valid: false, message: "Erreur de verification" });
+    }
   });
 
   app.get("/api/auth/me", async (req, res) => {

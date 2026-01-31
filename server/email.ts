@@ -273,3 +273,73 @@ export async function sendSubscriptionInvoiceEmail(data: SubscriptionInvoiceData
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+interface PasswordResetEmailData {
+  email: string;
+  firstName: string;
+  resetUrl: string;
+}
+
+export async function sendPasswordResetEmail(data: PasswordResetEmailData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reinitialisation de mot de passe - Infra Shield Tools</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #4b5563 0%, #374151 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Infra Shield Tools</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Solutions de securite informatique</p>
+  </div>
+  
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+    <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 20px;">Reinitialisation de votre mot de passe</h2>
+    
+    <p style="margin: 0 0 20px 0;">Bonjour ${data.firstName},</p>
+    
+    <p style="margin: 0 0 20px 0;">Vous avez demande la reinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour definir un nouveau mot de passe :</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${data.resetUrl}" style="display: inline-block; background: #4b5563; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reinitialiser mon mot de passe</a>
+    </div>
+    
+    <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">Ce lien est valable pendant 1 heure. Si vous n'avez pas demande cette reinitialisation, vous pouvez ignorer cet email.</p>
+    
+    <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+    <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 12px; word-break: break-all;">${data.resetUrl}</p>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+      <p style="margin: 0; color: #6b7280; font-size: 12px;">
+        Infra Shield Tools - ist-security.fr
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const result = await client.emails.send({
+      from: fromEmail || 'Infra Shield Tools <noreply@ist-security.fr>',
+      to: data.email,
+      subject: 'Reinitialisation de votre mot de passe - Infra Shield Tools',
+      html,
+    });
+
+    if (result.error) {
+      console.error('Resend error:', result.error);
+      return { success: false, error: result.error.message };
+    }
+
+    console.log('Password reset email sent successfully:', result.data?.id);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
