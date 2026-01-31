@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe } from "lucide-react";
+import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe, History, Plus, Minus, Tag } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
-import type { Purchase, Script, AnnualBundle } from "@shared/schema";
+import type { Purchase, Script, AnnualBundle, ScriptVersion } from "@shared/schema";
+import { useState } from "react";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -88,6 +90,134 @@ interface SubscriptionStatus {
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
   status?: string;
+}
+
+interface VersionHistoryResponse {
+  currentVersion: string;
+  scriptName: string;
+  versions: ScriptVersion[];
+}
+
+function VersionHistoryDialog({ 
+  scriptId, 
+  scriptName,
+  currentVersion,
+  open, 
+  onOpenChange 
+}: { 
+  scriptId: number; 
+  scriptName: string;
+  currentVersion: string;
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { data, isLoading, error } = useQuery<VersionHistoryResponse>({
+    queryKey: ["/api/scripts", scriptId, "versions"],
+    queryFn: async () => {
+      const res = await fetch(`/api/scripts/${scriptId}/versions`, { credentials: "include" });
+      if (!res.ok) {
+        throw new Error("Failed to fetch version history");
+      }
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const changeTypeLabels: Record<string, { label: string; icon: any; color: string }> = {
+    controls_added: { label: "Controles ajoutes", icon: Plus, color: "text-green-600 dark:text-green-400" },
+    controls_removed: { label: "Controles supprimes", icon: Minus, color: "text-red-600 dark:text-red-400" },
+    major_update: { label: "Mise a jour majeure", icon: Tag, color: "text-blue-600 dark:text-blue-400" },
+    minor_update: { label: "Mise a jour mineure", icon: Tag, color: "text-yellow-600 dark:text-yellow-400" },
+    patch: { label: "Correctif", icon: Tag, color: "text-gray-600 dark:text-gray-400" },
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="dialog-version-history">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Historique des versions
+          </DialogTitle>
+          <DialogDescription>
+            {scriptName} - Version actuelle: {currentVersion}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <XCircle className="h-10 w-10 mx-auto mb-2 text-destructive opacity-50" />
+              <p>Impossible de charger l'historique des versions.</p>
+              <p className="text-sm">Veuillez reessayer plus tard.</p>
+            </div>
+          ) : data?.versions && data.versions.length > 0 ? (
+            <div className="space-y-3">
+              {data.versions.map((version) => {
+                const changeInfo = changeTypeLabels[version.changeType] || changeTypeLabels.patch;
+                const ChangeIcon = changeInfo.icon;
+                return (
+                  <div 
+                    key={version.id} 
+                    className="border rounded-lg p-3 space-y-2"
+                    data-testid={`version-entry-${version.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono">
+                          v{version.version}
+                        </Badge>
+                        <span className={`flex items-center gap-1 text-sm ${changeInfo.color}`}>
+                          <ChangeIcon className="h-3 w-3" />
+                          {changeInfo.label}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(version.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {version.changesSummary}
+                    </p>
+                    {(version.controlsAdded !== null && version.controlsAdded > 0) || 
+                     (version.controlsRemoved !== null && version.controlsRemoved > 0) ? (
+                      <div className="flex gap-3 text-xs">
+                        {version.controlsAdded !== null && version.controlsAdded > 0 && (
+                          <span className="text-green-600 dark:text-green-400">
+                            +{version.controlsAdded} controle(s)
+                          </span>
+                        )}
+                        {version.controlsRemoved !== null && version.controlsRemoved > 0 && (
+                          <span className="text-red-600 dark:text-red-400">
+                            -{version.controlsRemoved} controle(s)
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                    {version.previousVersion && (
+                      <div className="text-xs text-muted-foreground">
+                        Depuis v{version.previousVersion}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p>Aucun historique de mise a jour disponible.</p>
+              <p className="text-sm">Ce toolkit n'a pas encore recu de mises a jour.</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function groupPurchases(
@@ -504,11 +634,14 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
 function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts: Script[] }) {
   const Icon = iconMap[bundle.icon] || Monitor;
   const { toast } = useToast();
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   
   const toolkitScript = allScripts.find(s => s.id === bundle.id);
   const bundledScripts = toolkitScript?.bundledScriptIds 
     ? allScripts.filter(s => toolkitScript.bundledScriptIds!.includes(s.id))
     : [];
+  
+  const currentVersion = toolkitScript?.version || "1.0.0";
 
   const { data: subscriptionStatus } = useQuery<SubscriptionStatus>({
     queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"],
@@ -582,7 +715,12 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                       </Badge>
                     )}
                   </CardTitle>
-                  <CardDescription>{bundle.compliance}</CardDescription>
+                  <CardDescription className="flex items-center gap-2 flex-wrap">
+                    {bundle.compliance}
+                    <Badge variant="outline" className="font-mono text-xs">
+                      v{currentVersion}
+                    </Badge>
+                  </CardDescription>
                 </div>
               </div>
               <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-toolkit-${bundle.id}`}>
@@ -606,7 +744,7 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
               </span>
             </div>
             
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
               <Button
                 size="sm"
                 variant={canDownload ? "default" : "secondary"}
@@ -625,6 +763,15 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                     {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
                   </>
                 )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setVersionHistoryOpen(true)}
+                data-testid={`button-version-history-${bundle.id}`}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Mises a jour
               </Button>
             </div>
             
@@ -749,6 +896,14 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
           </CardContent>
         </AccordionItem>
       </Accordion>
+      
+      <VersionHistoryDialog
+        scriptId={bundle.id}
+        scriptName={bundle.name}
+        currentVersion={currentVersion}
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+      />
     </Card>
   );
 }
