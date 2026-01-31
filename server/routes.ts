@@ -3194,8 +3194,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Nom de la machine requis" });
       }
 
-      // Get user info for admin check
+      // Get user info and team ID first
       const uploadUser = await authStorage.getUser(userId);
+      let teamId = await getTeamIdForUser(userId);
+      
+      // If admin without team, create a default "admin" team
+      if (!teamId && uploadUser?.isAdmin) {
+        const [adminTeam] = await db.insert(teams).values({
+          name: "Equipe Admin",
+          ownerId: userId
+        }).returning();
+        teamId = adminTeam.id;
+      }
+      
+      if (!teamId) {
+        return res.status(400).json({ message: "Vous devez appartenir a une equipe pour uploader des rapports" });
+      }
       
       // Validate groupId if provided - verify it belongs to user's team
       let parsedGroupId: number | null | undefined = undefined;
@@ -3236,41 +3250,30 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Format JSON invalide" });
       }
 
-      // Get team ID
-      const user = await authStorage.getUser(userId);
-      let teamId = await getTeamIdForUser(userId);
-      
-      // If admin without team, create a default "admin" team
-      if (!teamId && user?.isAdmin) {
-        const [adminTeam] = await db.insert(teams).values({
-          name: "Equipe Admin",
-          ownerId: userId
-        }).returning();
-        teamId = adminTeam.id;
-      }
-      
-      if (!teamId) {
-        return res.status(400).json({ message: "Vous devez appartenir a une equipe pour uploader des rapports" });
-      }
-
       // Use manually provided machine name (required)
       const hostname = machineName.trim();
       const machineIdFromReport = reportData.machine_id || reportData.systemInfo?.uuid || null;
       const os = detectOS(reportData);
       const osVersion = reportData.os_version || reportData.systemInfo?.osVersion || null;
       
-      // Extract audit info
-      const auditDate = reportData.audit_date || reportData.date || reportData.timestamp 
-        ? new Date(reportData.audit_date || reportData.date || reportData.timestamp) 
+      // Extract audit info - support multiple JSON formats (summary, results, root level)
+      const auditDate = reportData.system_info?.audit_date || reportData.audit_date || reportData.date || reportData.timestamp 
+        ? new Date(reportData.system_info?.audit_date || reportData.audit_date || reportData.date || reportData.timestamp) 
         : new Date();
-      const score = reportData.score ?? reportData.compliance_score ?? reportData.results?.score ?? 0;
-      const grade = reportData.grade || calculateGrade(score);
-      const totalControls = reportData.total_controls ?? reportData.results?.total ?? 0;
-      const passedControls = reportData.passed_controls ?? reportData.results?.passed ?? 0;
-      const failedControls = reportData.failed_controls ?? reportData.results?.failed ?? 0;
-      const warningControls = reportData.warning_controls ?? reportData.results?.warnings ?? 0;
-      const scriptName = reportData.script_name || reportData.toolkit_name || null;
-      const scriptVersion = reportData.script_version || reportData.version || null;
+      
+      // Score and grade - check summary first (IST format), then results, then root
+      const score = reportData.summary?.score ?? reportData.score ?? reportData.compliance_score ?? reportData.results?.score ?? 0;
+      const grade = reportData.summary?.grade || reportData.grade || calculateGrade(score);
+      
+      // Control counts - check summary (IST format with total_checks), then results, then root
+      const totalControls = reportData.summary?.total_checks ?? reportData.summary?.total ?? reportData.total_controls ?? reportData.results?.total ?? 0;
+      const passedControls = reportData.summary?.passed ?? reportData.passed_controls ?? reportData.results?.passed ?? 0;
+      const failedControls = reportData.summary?.failed ?? reportData.failed_controls ?? reportData.results?.failed ?? 0;
+      const warningControls = reportData.summary?.warnings ?? reportData.warning_controls ?? reportData.results?.warnings ?? 0;
+      
+      // Script info - check system_info first (IST format), then root
+      const scriptName = reportData.report_type || reportData.script_name || reportData.toolkit_name || null;
+      const scriptVersion = reportData.system_info?.script_version || reportData.script_version || reportData.version || null;
 
       // Find or create machine
       let machine;
@@ -3935,8 +3938,10 @@ function detectOS(reportData: any): string {
   const osHints = [
     reportData.os,
     reportData.operating_system,
+    reportData.system_info?.os,
     reportData.systemInfo?.os,
-    reportData.platform
+    reportData.platform,
+    reportData.report_type
   ].filter(Boolean);
 
   for (const hint of osHints) {
