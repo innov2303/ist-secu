@@ -3981,15 +3981,16 @@ export async function registerRoutes(
 
       const history = await historyQuery;
 
-      // Generate all 12 months (from 11 months ago to current month)
+      // Get requested year from query params (default to current year)
+      const requestedYear = parseInt(req.query.year as string) || new Date().getFullYear();
+      
+      // Generate all 12 months for the selected year (January to December)
       const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const now = new Date();
       const allMonths: { month: string; originalScore: number; currentScore: number; reports: number }[] = [];
       
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        const monthLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      for (let m = 0; m < 12; m++) {
+        const yearMonth = `${requestedYear}-${String(m + 1).padStart(2, '0')}`;
+        const monthLabel = monthNames[m];
         
         // Find matching data from query
         const existingData = history.find(h => h.month === yearMonth);
@@ -4002,7 +4003,15 @@ export async function registerRoutes(
         });
       }
 
-      res.json({ history: allMonths });
+      // Get available years (years with data)
+      const availableYears = [...new Set(history.map(h => parseInt(h.month.split('-')[0])))].sort((a, b) => b - a);
+      // Always include current year
+      const currentYear = new Date().getFullYear();
+      if (!availableYears.includes(currentYear)) {
+        availableYears.unshift(currentYear);
+      }
+
+      res.json({ history: allMonths, availableYears, selectedYear: requestedYear });
     } catch (error) {
       console.error("Error fetching score history:", error);
       res.status(500).json({ message: "Erreur lors de la recuperation de l'historique" });

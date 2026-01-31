@@ -142,6 +142,12 @@ interface ScoreHistoryItem {
   reports: number;
 }
 
+interface ScoreHistoryResponse {
+  history: ScoreHistoryItem[];
+  availableYears: number[];
+  selectedYear: number;
+}
+
 interface ControlCorrection {
   id: number;
   controlId: string;
@@ -242,8 +248,15 @@ export default function Suivi() {
     enabled: !!user,
   });
 
-  const { data: scoreHistoryData } = useQuery<{ history: ScoreHistoryItem[] }>({
-    queryKey: ["/api/fleet/score-history"],
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  
+  const { data: scoreHistoryData } = useQuery<ScoreHistoryResponse>({
+    queryKey: ["/api/fleet/score-history", selectedYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/fleet/score-history?year=${selectedYear}`);
+      if (!res.ok) throw new Error("Failed to fetch score history");
+      return res.json();
+    },
     enabled: !!user,
   });
 
@@ -902,23 +915,42 @@ export default function Suivi() {
               {/* Score Evolution Chart */}
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <TrendingUp className="h-4 w-4" />
-                    Evolution du score du parc
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-4">
-                    <span>Score moyen par mois (derniers 12 mois)</span>
-                    <div className="flex items-center gap-4 ml-auto">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-gray-700 dark:bg-gray-500" />
-                        <span className="text-xs">Score initial</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded-sm bg-emerald-500" />
-                        <span className="text-xs">Score actuel</span>
-                      </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <TrendingUp className="h-4 w-4" />
+                        Evolution du score du parc
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-4 mt-1">
+                        <span>Score moyen par mois</span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-sm bg-gray-700 dark:bg-gray-500" />
+                            <span className="text-xs">Score initial</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-sm bg-emerald-500" />
+                            <span className="text-xs">Score actuel</span>
+                          </div>
+                        </div>
+                      </CardDescription>
                     </div>
-                  </CardDescription>
+                    <Select 
+                      value={selectedYear.toString()} 
+                      onValueChange={(value) => setSelectedYear(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-28" data-testid="select-year">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(scoreHistoryData?.availableYears || [new Date().getFullYear()]).map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {scoreHistoryData?.history && scoreHistoryData.history.length > 0 ? (
