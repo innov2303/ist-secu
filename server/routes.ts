@@ -6,7 +6,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import { authStorage } from "./replit_integrations/auth/storage";
 import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, and, desc } from "drizzle-orm";
+import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -3511,13 +3511,13 @@ export async function registerRoutes(
       // Get sites for those organizations
       const orgIds = orgs.map(o => o.id);
       const allSites = orgIds.length > 0 
-        ? await db.select().from(sites).where(sql`${sites.organizationId} = ANY(${orgIds})`).orderBy(sites.name)
+        ? await db.select().from(sites).where(inArray(sites.organizationId, orgIds)).orderBy(sites.name)
         : [];
 
       // Get groups for those sites
       const siteIds = allSites.map(s => s.id);
       const allGroups = siteIds.length > 0
-        ? await db.select().from(machineGroups).where(sql`${machineGroups.siteId} = ANY(${siteIds})`).orderBy(machineGroups.name)
+        ? await db.select().from(machineGroups).where(inArray(machineGroups.siteId, siteIds)).orderBy(machineGroups.name)
         : [];
 
       // Get machines with groups
