@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Monitor, Terminal, Server, Container, Download, ShoppingBag, ArrowLeft, Calendar, CheckCircle, RefreshCw, Infinity, LogOut, Settings, ChevronDown, FileCode, Shield, XCircle, Loader2, RotateCcw, Package, ShieldCheck, Globe, History, Plus, Minus, Tag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -111,6 +112,8 @@ function VersionHistoryDialog({
   open: boolean; 
   onOpenChange: (open: boolean) => void;
 }) {
+  const [selectedVersion, setSelectedVersion] = useState<string>(currentVersion);
+  
   const { data, isLoading, error } = useQuery<VersionHistoryResponse>({
     queryKey: ["/api/scripts", scriptId, "versions"],
     queryFn: async () => {
@@ -131,6 +134,11 @@ function VersionHistoryDialog({
     patch: { label: "Correctif", icon: Tag, color: "text-gray-600 dark:text-gray-400" },
   };
 
+  const allVersions = [
+    currentVersion,
+    ...(data?.versions?.map(v => v.version) || [])
+  ].filter((v, i, arr) => arr.indexOf(v) === i);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="dialog-version-history">
@@ -143,6 +151,37 @@ function VersionHistoryDialog({
             {scriptName} - Version actuelle: {currentVersion}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+          <div className="flex-1">
+            <label className="text-sm font-medium mb-1 block">Telecharger une version</label>
+            <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+              <SelectTrigger className="w-full" data-testid="select-version">
+                <SelectValue placeholder="Selectionner une version" />
+              </SelectTrigger>
+              <SelectContent>
+                {allVersions.map((version) => (
+                  <SelectItem key={version} value={version}>
+                    v{version} {version === currentVersion && "(actuelle)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="pt-5">
+            <Button
+              size="sm"
+              variant="default"
+              data-testid="button-download-version"
+              asChild
+            >
+              <a href={`/api/scripts/${scriptId}/download?version=${selectedVersion}`} download>
+                <Download className="h-4 w-4 mr-2" />
+                Telecharger
+              </a>
+            </Button>
+          </div>
+        </div>
 
         <div className="space-y-4 mt-4">
           {isLoading ? (
