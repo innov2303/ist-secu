@@ -146,6 +146,11 @@ export default function AuthPage() {
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}
+                  <div className="flex justify-end">
+                    <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-forgot-password">
+                      Mot de passe oublie ?
+                    </Link>
+                  </div>
                   <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-login-submit">
                     {isLoggingIn ? (
                       <>

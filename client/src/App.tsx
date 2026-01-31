@@ -10,6 +10,8 @@ import Purchases from "@/pages/purchases";
 import CheckoutSuccess from "@/pages/checkout-success";
 import CheckoutCancel from "@/pages/checkout-cancel";
 import AuthPage from "@/pages/auth";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Profile from "@/pages/profile";
 import Privacy from "@/pages/Privacy";
 import Documentation from "@/pages/Documentation";
@@ -19,6 +21,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/purchases" component={Purchases} />
       <Route path="/profile" component={Profile} />
