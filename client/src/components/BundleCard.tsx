@@ -1,5 +1,5 @@
 import { AnnualBundle, Script } from "@shared/schema";
-import { Shield, ShieldCheck, Check, Loader2, Package } from "lucide-react";
+import { Shield, ShieldCheck, Check, Loader2, Package, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -38,6 +38,9 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
 
   // Get included scripts
   const includedScripts = scripts.filter(s => bundle.includedScriptIds.includes(s.id));
+  
+  // Check if any script is in development
+  const isInDevelopment = includedScripts.some(s => s.developmentStatus === "in_development");
   
   // Calculate prices (prices are already HT)
   const totalMonthlyPrice = includedScripts.reduce((sum, s) => sum + s.monthlyPriceCents, 0);
@@ -159,7 +162,14 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
         </CardContent>
 
         <CardFooter className="pt-4 border-t">
-          {hasAllScripts ? (
+          {isInDevelopment ? (
+            <div className="w-full flex items-center justify-center">
+              <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
+                <Clock className="w-3 h-3 mr-1.5" />
+                Prochainement disponible
+              </Badge>
+            </div>
+          ) : hasAllScripts ? (
             <div className="w-full flex items-center justify-center gap-2 py-2 text-green-600">
               <Check className="w-5 h-5" />
               <span className="font-medium">{isCompletePack ? "Pack Complet actif" : "Deja achete"}</span>
