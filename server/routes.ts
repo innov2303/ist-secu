@@ -4526,8 +4526,8 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "HH24:00";
-          interval = "24 hours";
+          dateFormat = "HH24\"h\"";
+          interval = "12 hours";
           break;
         case "week":
           dateFormat = "Dy DD/MM";
@@ -4597,8 +4597,8 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "HH24:00";
-          interval = "24 hours";
+          dateFormat = "HH24\"h\"";
+          interval = "12 hours";
           break;
         case "week":
           dateFormat = "Dy DD/MM";
@@ -4648,8 +4648,8 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "HH24:00";
-          interval = "24 hours";
+          dateFormat = "HH24\"h\"";
+          interval = "12 hours";
           break;
         case "week":
           dateFormat = "Dy DD/MM";
