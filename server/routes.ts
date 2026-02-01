@@ -4548,8 +4548,8 @@ export async function registerRoutes(
           TO_CHAR(created_at, ${dateFormat}) as date,
           COUNT(*) as count
         FROM users
-        WHERE created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
-        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        WHERE created_at >= NOW() - INTERVAL '${sql.raw(interval)}'
+        GROUP BY date
         ORDER BY date ASC
       `);
       
@@ -4619,8 +4619,8 @@ export async function registerRoutes(
           TO_CHAR(paid_at, ${dateFormat}) as date,
           SUM(total_cents) as revenue
         FROM invoices
-        WHERE status = 'paid' AND paid_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
-        GROUP BY TO_CHAR(paid_at, ${dateFormat})
+        WHERE status = 'paid' AND paid_at >= NOW() - INTERVAL '${sql.raw(interval)}'
+        GROUP BY date
         ORDER BY date ASC
       `);
       
@@ -4670,8 +4670,8 @@ export async function registerRoutes(
           TO_CHAR(created_at, ${dateFormat}) as date,
           COUNT(*) as count
         FROM contact_requests
-        WHERE created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
-        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        WHERE created_at >= NOW() - INTERVAL '${sql.raw(interval)}'
+        GROUP BY date
         ORDER BY date ASC
       `);
       
@@ -4680,8 +4680,8 @@ export async function registerRoutes(
           TO_CHAR(created_at, ${dateFormat}) as date,
           COUNT(*) as count
         FROM contact_requests
-        WHERE status = 'resolved' AND created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
-        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        WHERE status = 'resolved' AND created_at >= NOW() - INTERVAL '${sql.raw(interval)}'
+        GROUP BY date
         ORDER BY date ASC
       `);
       
