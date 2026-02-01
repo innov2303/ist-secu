@@ -101,6 +101,20 @@ Preferred communication style: Simple, everyday language.
 - Associated with scripts/toolkits for tracking purchases
 - **Automatic email sending**: Invoices are sent via email when status changes to "sent"
 
+### Toolkit Management
+- **Price Editing**: Admin can modify monthly subscription price for each toolkit
+- **Soft Delete (Trash System)**: Toolkits can be moved to trash instead of permanent deletion
+- **Restore**: Deleted toolkits can be restored from the trash
+- **Permanent Delete**: Toolkits in trash can be permanently deleted (irreversible)
+- **Database Column**: `deletedAt` timestamp on scripts table for soft delete tracking
+- **API Endpoints**:
+  - `PATCH /api/admin/scripts/:id` - Update toolkit name, price, status
+  - `DELETE /api/admin/scripts/:id` - Soft delete (move to trash)
+  - `POST /api/admin/scripts/:id/restore` - Restore from trash
+  - `GET /api/admin/scripts/trash` - List deleted toolkits
+  - `DELETE /api/admin/scripts/:id/permanent` - Permanent deletion
+- **Activity Logging**: delete_toolkit, restore_toolkit, permanent_delete_toolkit actions logged
+
 ### Email Integration (Resend)
 - **Provider**: Resend (via Replit Connector)
 - **Automatic Subscription Invoices**: Email sent automatically on Stripe subscription renewal (invoice.paid webhook)

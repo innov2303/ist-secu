@@ -63,7 +63,10 @@ export default function AdminPage() {
   // Script editing state
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [editName, setEditName] = useState("");
-    const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
+  const [editMonthlyPrice, setEditMonthlyPrice] = useState("");
+  const [editStatus, setEditStatus] = useState<ScriptStatus>("active");
+  const [deletingScript, setDeletingScript] = useState<Script | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   
   // Update checker state
   const [checkingUpdatesFor, setCheckingUpdatesFor] = useState<number | null>(null);
@@ -819,18 +822,99 @@ export default function AdminPage() {
   const openEditDialog = (script: Script) => {
     setEditingScript(script);
     setEditName(script.name);
+    setEditMonthlyPrice((script.monthlyPriceCents / 100).toFixed(2));
     setEditStatus((script.status as ScriptStatus) || "active");
   };
 
   const handleSaveScript = () => {
     if (!editingScript) return;
     
+    const monthlyPriceCents = Math.round(parseFloat(editMonthlyPrice) * 100);
+    
     updateScriptMutation.mutate({
       id: editingScript.id,
       name: editName,
+      monthlyPriceCents: isNaN(monthlyPriceCents) ? editingScript.monthlyPriceCents : monthlyPriceCents,
       status: editStatus,
     });
   };
+
+  // Query for trash toolkits
+  const { data: trashData, refetch: refetchTrash } = useQuery<{ scripts: Script[] }>({
+    queryKey: ["/api/admin/scripts/trash"],
+    enabled: showTrash,
+  });
+
+  // Delete (soft delete) mutation
+  const deleteScriptMutation = useMutation({
+    mutationFn: async (scriptId: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/scripts/${scriptId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts"] });
+      refetchTrash();
+      setDeletingScript(null);
+      toast({
+        title: "Toolkit supprime",
+        description: "Le toolkit a ete deplace dans la corbeille.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le toolkit",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Restore mutation
+  const restoreScriptMutation = useMutation({
+    mutationFn: async (scriptId: number) => {
+      const res = await apiRequest("POST", `/api/admin/scripts/${scriptId}/restore`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/scripts"] });
+      refetchTrash();
+      toast({
+        title: "Toolkit restaure",
+        description: "Le toolkit a ete restaure depuis la corbeille.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de restaurer le toolkit",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Permanent delete mutation
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (scriptId: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/scripts/${scriptId}/permanent`);
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTrash();
+      toast({
+        title: "Toolkit supprime definitivement",
+        description: "Le toolkit a ete supprime de facon permanente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le toolkit",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (authLoading) {
     return (
@@ -1281,6 +1365,15 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
+                        variant={showTrash ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowTrash(!showTrash)}
+                        data-testid="button-toggle-trash"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Corbeille {trashData?.scripts?.length ? `(${trashData.scripts.length})` : ""}
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => syncStripeMutation.mutate()}
@@ -1308,13 +1401,92 @@ export default function AdminPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {scriptsLoading ? (
+                  {showTrash ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-medium flex items-center gap-2">
+                          <Trash2 className="h-5 w-5" />
+                          Corbeille
+                        </h3>
+                        <Button variant="ghost" size="sm" onClick={() => setShowTrash(false)}>
+                          <X className="h-4 w-4 mr-1" />
+                          Fermer
+                        </Button>
+                      </div>
+                      {!trashData?.scripts?.length ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          La corbeille est vide
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {trashData.scripts.map((script) => (
+                            <div key={script.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                              <div className="flex items-center gap-3">
+                                <Package className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                  <p className="font-medium">{script.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {script.os} - {(script.monthlyPriceCents / 100).toFixed(2)} EUR/mois
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Supprime le {script.deletedAt ? new Date(script.deletedAt).toLocaleDateString('fr-FR') : ""}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => restoreScriptMutation.mutate(script.id)}
+                                  disabled={restoreScriptMutation.isPending}
+                                  data-testid={`button-restore-script-${script.id}`}
+                                >
+                                  <RefreshCw className="h-4 w-4 mr-1" />
+                                  Restaurer
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      disabled={permanentDeleteMutation.isPending}
+                                      data-testid={`button-permanent-delete-${script.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-1" />
+                                      Supprimer
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Supprimer definitivement</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Cette action est irreversible. Le toolkit "{script.name}" sera supprime de facon permanente.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => permanentDeleteMutation.mutate(script.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Supprimer definitivement
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : scriptsLoading ? (
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                   ) : paginatedScripts.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
-                      {scriptSearch ? "Aucun toolkit trouvé" : "Aucun toolkit configuré"}
+                      {scriptSearch ? "Aucun toolkit trouve" : "Aucun toolkit configure"}
                     </p>
                   ) : (
                     <Accordion type="multiple" className="space-y-3">
@@ -1394,6 +1566,15 @@ export default function AdminPage() {
                                   data-testid={`button-edit-script-${script.id}`}
                                 >
                                   <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => setDeletingScript(script)}
+                                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                  data-testid={`button-delete-script-${script.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                                 <AccordionTrigger className="p-0 hover:no-underline" />
                               </div>
@@ -2511,10 +2692,30 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="edit-price">Prix mensuel (EUR)</Label>
+              <div className="relative">
+                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editMonthlyPrice}
+                  onChange={(e) => setEditMonthlyPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="pl-9"
+                  data-testid="input-edit-price"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Prix actuel: {editingScript ? (editingScript.monthlyPriceCents / 100).toFixed(2) : "0.00"} EUR/mois
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="edit-status">Statut</Label>
               <Select value={editStatus} onValueChange={(value) => setEditStatus(value as ScriptStatus)}>
                 <SelectTrigger data-testid="select-edit-status">
-                  <SelectValue placeholder="Sélectionner un statut" />
+                  <SelectValue placeholder="Selectionner un statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">
@@ -2562,6 +2763,35 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Script Confirmation Dialog */}
+      <AlertDialog open={!!deletingScript} onOpenChange={(open) => !open && setDeletingScript(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce toolkit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Etes-vous sur de vouloir supprimer "{deletingScript?.name}" ? Ce toolkit sera deplace dans la corbeille et pourra etre restaure ulterieurement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingScript && deleteScriptMutation.mutate(deletingScript.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteScriptMutation.isPending}
+            >
+              {deleteScriptMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Update Suggestions Dialog */}
       <Dialog open={!!updateSuggestions} onOpenChange={(open) => !open && setUpdateSuggestions(null)}>

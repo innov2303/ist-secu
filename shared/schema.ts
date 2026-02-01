@@ -21,6 +21,7 @@ export const scripts = pgTable("scripts", {
   isHidden: integer("is_hidden").default(0),
   status: text("status").notNull().default("active"),
   version: text("version").notNull().default("1.0.0"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 // Script versions table - tracks version history and update changelogs

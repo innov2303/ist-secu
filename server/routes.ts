@@ -3595,6 +3595,109 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Soft delete a toolkit (move to trash)
+  app.delete("/api/admin/scripts/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+      
+      const [deleted] = await db
+        .update(scripts)
+        .set({ deletedAt: new Date() })
+        .where(eq(scripts.id, scriptId))
+        .returning();
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      await logAdmin("delete_toolkit", `Toolkit "${deleted.name}" deplace dans la corbeille`, Number(req.user!.id), req.user!.email || undefined, req);
+      
+      res.json({ success: true, message: "Toolkit moved to trash" });
+    } catch (error) {
+      console.error("Error deleting script:", error);
+      res.status(500).json({ message: "Error deleting script" });
+    }
+  });
+
+  // Admin: Restore a toolkit from trash
+  app.post("/api/admin/scripts/:id/restore", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+      
+      const [restored] = await db
+        .update(scripts)
+        .set({ deletedAt: null })
+        .where(eq(scripts.id, scriptId))
+        .returning();
+      
+      if (!restored) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      
+      await logAdmin("restore_toolkit", `Toolkit "${restored.name}" restaure depuis la corbeille`, Number(req.user!.id), req.user!.email || undefined, req);
+      
+      res.json(restored);
+    } catch (error) {
+      console.error("Error restoring script:", error);
+      res.status(500).json({ message: "Error restoring script" });
+    }
+  });
+
+  // Admin: Get deleted toolkits (trash)
+  app.get("/api/admin/scripts/trash", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const deletedScripts = await db.select()
+        .from(scripts)
+        .where(sql`${scripts.deletedAt} IS NOT NULL`)
+        .orderBy(desc(scripts.deletedAt));
+      
+      res.json({ scripts: deletedScripts });
+    } catch (error) {
+      console.error("Error fetching deleted scripts:", error);
+      res.status(500).json({ message: "Error fetching deleted scripts" });
+    }
+  });
+
+  // Admin: Permanently delete a toolkit
+  app.delete("/api/admin/scripts/:id/permanent", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const scriptId = parseInt(id);
+      
+      if (isNaN(scriptId) || scriptId <= 0) {
+        return res.status(400).json({ message: "Invalid script ID" });
+      }
+      
+      // Only allow permanent deletion of already soft-deleted scripts
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, scriptId));
+      if (!script) {
+        return res.status(404).json({ message: "Script not found" });
+      }
+      if (!script.deletedAt) {
+        return res.status(400).json({ message: "Script must be in trash before permanent deletion" });
+      }
+      
+      await db.delete(scripts).where(eq(scripts.id, scriptId));
+      
+      await logAdmin("permanent_delete_toolkit", `Toolkit "${script.name}" supprime definitivement`, Number(req.user!.id), req.user!.email || undefined, req);
+      
+      res.json({ success: true, message: "Toolkit permanently deleted" });
+    } catch (error) {
+      console.error("Error permanently deleting script:", error);
+      res.status(500).json({ message: "Error permanently deleting script" });
+    }
+  });
+
   // Admin: Sync all visible toolkits with Stripe (create missing products)
   app.post("/api/admin/scripts/sync-stripe", isAuthenticated, isAdmin, async (req, res) => {
     try {

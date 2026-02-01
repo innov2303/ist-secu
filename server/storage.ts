@@ -8,7 +8,7 @@ import { getUncachableStripeClient } from "./stripeClient";
 export interface IStorage {
   getScripts(): Promise<Script[]>;
   getVisibleScripts(): Promise<Script[]>;
-  getScript(id: number): Promise<Script | undefined>;
+  getScript(id: number, includeDeleted?: boolean): Promise<Script | undefined>;
   getBundledScripts(bundleId: number): Promise<Script[]>;
   createScript(script: InsertScript): Promise<Script>;
   updateScriptContent(id: number, content: string): Promise<void>;
@@ -32,14 +32,17 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getScripts(): Promise<Script[]> {
-    return await db.select().from(scripts);
+    return await db.select().from(scripts).where(
+      sql`${scripts.deletedAt} IS NULL`
+    );
   }
 
   async getVisibleScripts(): Promise<Script[]> {
     return await db.select().from(scripts).where(
       and(
         eq(scripts.isHidden, 0),
-        ne(scripts.status, "offline")
+        ne(scripts.status, "offline"),
+        sql`${scripts.deletedAt} IS NULL`
       )
     );
   }
@@ -52,8 +55,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(scripts).where(inArray(scripts.id, bundle.bundledScriptIds));
   }
 
-  async getScript(id: number): Promise<Script | undefined> {
-    const [script] = await db.select().from(scripts).where(eq(scripts.id, id));
+  async getScript(id: number, includeDeleted: boolean = false): Promise<Script | undefined> {
+    if (includeDeleted) {
+      const [script] = await db.select().from(scripts).where(eq(scripts.id, id));
+      return script;
+    }
+    const [script] = await db.select().from(scripts).where(
+      and(eq(scripts.id, id), sql`${scripts.deletedAt} IS NULL`)
+    );
     return script;
   }
 
