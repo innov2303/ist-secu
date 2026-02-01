@@ -1406,8 +1406,6 @@ export default function Suivi() {
                         'esxi': '#6d9a2e',         // ESXi green (same as VMware)
                         'docker': '#06b6d4',       // Container cyan
                         'container': '#06b6d4',   // Container cyan
-                        'netapp': '#374151',       // NetApp dark gray
-                        'ontap': '#374151',        // ONTAP dark gray (same as NetApp)
                         'web': '#ef4444',          // Web red
                         'unknown': '#6b7280',      // Gray for unknown
                       };
@@ -1458,7 +1456,6 @@ export default function Suivi() {
                             { key: 'linux', label: 'Linux', color: '#f59e0b' },
                             { key: 'vmware', label: 'VMware', color: '#6d9a2e' },
                             { key: 'container', label: 'Container', color: '#06b6d4' },
-                            { key: 'netapp', label: 'NetApp', color: '#374151' },
                             { key: 'web', label: 'Web', color: '#ef4444' },
                           ].map(({ key, label, color }) => {
                             const count = Object.entries(stats.osCounts).find(([os]) => 
