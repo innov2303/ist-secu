@@ -2341,8 +2341,10 @@ export async function registerRoutes(
       
       if (!activePurchase) {
         // Check if this script is part of a bundle the user has purchased
-        const allScripts = await storage.getAllScripts();
-        const bundlesContainingScript = allScripts.filter(s => 
+        const allBundles = await db.select().from(scripts).where(
+          sql`${scripts.bundledScriptIds} IS NOT NULL`
+        );
+        const bundlesContainingScript = allBundles.filter(s => 
           s.bundledScriptIds && s.bundledScriptIds.includes(id)
         );
         
