@@ -45,6 +45,12 @@ export default function Profile() {
     enabled: !!user,
   });
 
+  // Fetch active purchases to check if deletion is allowed
+  const { data: activePurchasesData } = useQuery<{ hasActivePurchases: boolean }>({
+    queryKey: ["/api/purchases/has-active"],
+    enabled: !!user,
+  });
+
   // Fetch user's team
   const { data: teamData, isLoading: teamLoading } = useQuery<{ team: Team | null; members: TeamMember[] }>({
     queryKey: ["/api/teams/my-team"],
@@ -765,14 +771,33 @@ export default function Profile() {
                     <p className="text-sm text-muted-foreground">
                       La suppression de votre compte est definitive. Toutes vos donnees, achats et informations seront perdus.
                     </p>
-                    <Button 
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowDeleteConfirmation(true)}
-                      data-testid="button-delete-account"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
-                    </Button>
+                    {activePurchasesData?.hasActivePurchases ? (
+                      <div className="space-y-2">
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            Vous ne pouvez pas supprimer votre compte tant que vous avez un abonnement actif. Veuillez d'abord annuler votre abonnement dans la section "Mes abonnements".
+                          </AlertDescription>
+                        </Alert>
+                        <Button 
+                          variant="destructive"
+                          size="sm"
+                          disabled
+                          data-testid="button-delete-account"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setShowDeleteConfirmation(true)}
+                        data-testid="button-delete-account"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

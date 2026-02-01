@@ -958,6 +958,18 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Les comptes administrateurs ne peuvent pas etre supprimes" });
       }
 
+      // Check if user has active subscriptions (with stripeSubscriptionId and not expired)
+      const now = new Date();
+      const activePurchases = await db.select({ id: purchases.id }).from(purchases)
+        .where(and(
+          eq(purchases.userId, userId),
+          sql`${purchases.stripeSubscriptionId} IS NOT NULL`,
+          sql`(${purchases.expiresAt} IS NULL OR ${purchases.expiresAt} > ${now})`
+        ));
+      if (activePurchases.length > 0) {
+        return res.status(403).json({ message: "Vous ne pouvez pas supprimer votre compte tant que vous avez un abonnement actif. Veuillez d'abord annuler votre abonnement." });
+      }
+
       // Delete teams owned by the user and all related data
       const ownedTeams = await db.select({ id: teams.id }).from(teams).where(eq(teams.ownerId, userId));
       for (const team of ownedTeams) {
@@ -2557,6 +2569,19 @@ export async function registerRoutes(
     const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
     const userPurchases = await storage.getPurchasesByUser(userId);
     res.json(userPurchases);
+  });
+
+  // Check if user has active purchases (subscriptions with stripeSubscriptionId and not expired)
+  app.get("/api/purchases/has-active", isAuthenticated, async (req, res) => {
+    const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+    const now = new Date();
+    const activePurchases = await db.select({ id: purchases.id }).from(purchases)
+      .where(and(
+        eq(purchases.userId, userId),
+        sql`${purchases.stripeSubscriptionId} IS NOT NULL`,
+        sql`(${purchases.expiresAt} IS NULL OR ${purchases.expiresAt} > ${now})`
+      ));
+    res.json({ hasActivePurchases: activePurchases.length > 0 });
   });
 
   app.post("/api/purchases", isAuthenticated, async (req, res) => {
