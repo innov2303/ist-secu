@@ -9,7 +9,7 @@ interface LogOptions {
   category: LogCategory;
   action: string;
   description: string;
-  userId?: number;
+  userId?: number | string;
   userEmail?: string;
   metadata?: Record<string, any>;
   severity?: LogSeverity;
@@ -20,11 +20,17 @@ export async function logActivity(options: LogOptions): Promise<void> {
   try {
     const { category, action, description, userId, userEmail, metadata, severity = "info", req } = options;
     
+    // Convert userId to number if it's a string, or null if not valid
+    let numericUserId: number | null = null;
+    if (userId !== undefined) {
+      numericUserId = typeof userId === 'number' ? userId : (parseInt(userId, 10) || null);
+    }
+    
     await db.insert(activityLogs).values({
       category,
       action,
       description,
-      userId: userId || null,
+      userId: numericUserId,
       userEmail: userEmail || null,
       ipAddress: req ? (req.headers["x-forwarded-for"] as string || req.ip || null) : null,
       userAgent: req ? (req.headers["user-agent"] || null) : null,
@@ -36,7 +42,7 @@ export async function logActivity(options: LogOptions): Promise<void> {
   }
 }
 
-export async function logAuth(action: string, description: string, userId?: number, userEmail?: string, req?: Request, metadata?: Record<string, any>) {
+export async function logAuth(action: string, description: string, userId?: number | string, userEmail?: string, req?: Request, metadata?: Record<string, any>) {
   return logActivity({ category: "auth", action, description, userId, userEmail, req, metadata });
 }
 
