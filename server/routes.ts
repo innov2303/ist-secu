@@ -13,7 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
-import { sendInvoiceEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from "./email";
+import { sendInvoiceEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendEmailChangeConfirmationEmail } from "./email";
 import { injectLicense } from "./license";
 
 // Server-side CAPTCHA challenge storage
@@ -781,14 +781,13 @@ export async function registerRoutes(
 
   const requestEmailChangeSchema = z.object({
     newEmail: z.string().email("Email invalide"),
-    password: z.string().min(1, "Mot de passe requis pour changer l'email"),
   });
 
   app.post("/api/profile/request-email-change", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
-        return res.status(401).json({ message: "Non authentifié" });
+        return res.status(401).json({ message: "Non authentifie" });
       }
 
       const result = requestEmailChangeSchema.safeParse(req.body);
@@ -796,12 +795,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { newEmail, password } = result.data;
+      const { newEmail } = result.data;
 
       // Get current user
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       if (!user) {
-        return res.status(404).json({ message: "Utilisateur non trouvé" });
+        return res.status(404).json({ message: "Utilisateur non trouve" });
       }
 
       // Check if user has a password (local auth only)
@@ -809,20 +808,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Le changement d'email n'est pas disponible pour les comptes Replit" });
       }
 
-      // Verify current password
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) {
-        return res.status(401).json({ message: "Mot de passe incorrect" });
-      }
-
       // Check if new email is already in use
       const [existingUser] = await db.select().from(users).where(eq(users.email, newEmail)).limit(1);
       if (existingUser && existingUser.id !== userId) {
-        return res.status(400).json({ message: "Cet email est déjà utilisé" });
+        return res.status(400).json({ message: "Cet email est deja utilise" });
       }
 
       // Generate verification token
-      const token = crypto.randomUUID();
+      const token = crypto.randomBytes(32).toString('hex');
       const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       // Save pending email change
@@ -836,16 +829,122 @@ export async function registerRoutes(
         })
         .where(eq(users.id, userId));
 
-      // TODO: Send verification email when email service is configured
-      // For now, just return success with a note
+      // Send confirmation email to the new email address
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'https://ist-security.fr';
+      const confirmationUrl = `${baseUrl}/confirm-email-change?token=${token}`;
+      
+      await sendEmailChangeConfirmationEmail({
+        email: user.email!,
+        firstName: user.firstName || 'Utilisateur',
+        newEmail,
+        confirmationUrl,
+      });
+
       res.json({ 
-        message: "Demande de changement d'email enregistrée. La vérification par email sera disponible prochainement.",
-        pendingEmail: newEmail,
-        emailServiceConfigured: false
+        message: "Un lien de confirmation a ete envoye a votre nouvelle adresse email.",
       });
     } catch (error) {
       console.error("Email change request error:", error);
       res.status(500).json({ message: "Erreur lors de la demande de changement d'email" });
+    }
+  });
+
+  // Request password change via email link
+  app.post("/api/profile/request-password-change", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifie" });
+      }
+
+      // Get current user
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Utilisateur non trouve" });
+      }
+
+      // Check if user has a password (local auth only)
+      if (!user.password) {
+        return res.status(400).json({ message: "Le changement de mot de passe n'est pas disponible pour les comptes Replit" });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db.update(users)
+        .set({
+          passwordResetToken: resetToken,
+          passwordResetExpires: resetExpires,
+        })
+        .where(eq(users.id, user.id));
+
+      // Send password reset email
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'https://ist-security.fr';
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+      
+      await sendPasswordResetEmail({
+        email: user.email!,
+        firstName: user.firstName || 'Utilisateur',
+        resetUrl,
+      });
+
+      res.json({ 
+        message: "Un lien de reinitialisation a ete envoye a votre adresse email.",
+      });
+    } catch (error) {
+      console.error("Password change request error:", error);
+      res.status(500).json({ message: "Erreur lors de la demande de changement de mot de passe" });
+    }
+  });
+
+  // Confirm email change via token
+  app.get("/api/profile/confirm-email-change", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Token manquant" });
+      }
+
+      // Find user with this pending email token
+      const [user] = await db.select().from(users)
+        .where(eq(users.pendingEmailToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Token invalide ou expire" });
+      }
+
+      // Check if token is expired
+      if (user.pendingEmailExpires && new Date() > new Date(user.pendingEmailExpires)) {
+        return res.status(400).json({ message: "Le lien a expire. Veuillez demander un nouveau changement d'email." });
+      }
+
+      if (!user.pendingEmail) {
+        return res.status(400).json({ message: "Aucun changement d'email en attente" });
+      }
+
+      // Update the email
+      await db.update(users)
+        .set({
+          email: user.pendingEmail,
+          pendingEmail: null,
+          pendingEmailToken: null,
+          pendingEmailExpires: null,
+          isEmailVerified: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, message: "Votre adresse email a ete modifiee avec succes" });
+    } catch (error) {
+      console.error("Email change confirmation error:", error);
+      res.status(500).json({ message: "Erreur lors de la confirmation du changement d'email" });
     }
   });
 

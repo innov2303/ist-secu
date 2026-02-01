@@ -415,3 +415,78 @@ export async function sendEmailVerificationEmail(data: EmailVerificationData): P
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+interface EmailChangeConfirmationData {
+  email: string;
+  firstName: string;
+  newEmail: string;
+  confirmationUrl: string;
+}
+
+export async function sendEmailChangeConfirmationEmail(data: EmailChangeConfirmationData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation de changement d'email - Infra Shield Tools</title>
+</head>
+<body style="margin: 0; padding: 20px; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <div style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%); padding: 30px; border-radius: 12px 12px 0 0;">
+      <h1 style="color: white; margin: 0; text-align: center; font-size: 24px;">Infra Shield Tools</h1>
+      <p style="color: #9ca3af; margin: 10px 0 0 0; text-align: center; font-size: 14px;">Securisez votre infrastructure</p>
+    </div>
+    
+    <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+      <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 20px;">Confirmation de changement d'email</h2>
+      
+      <p style="margin: 0 0 20px 0;">Bonjour ${data.firstName},</p>
+      
+      <p style="margin: 0 0 20px 0;">Vous avez demande a changer votre adresse email vers : <strong>${data.newEmail}</strong></p>
+      
+      <p style="margin: 0 0 20px 0;">Pour confirmer ce changement, veuillez cliquer sur le bouton ci-dessous :</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${data.confirmationUrl}" style="display: inline-block; background: #4b5563; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Confirmer le changement</a>
+      </div>
+      
+      <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">Ce lien est valable pendant 24 heures. Si vous n'avez pas demande ce changement, vous pouvez ignorer cet email.</p>
+      
+      <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+      <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 12px; word-break: break-all;">${data.confirmationUrl}</p>
+      
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+        <p style="margin: 0; color: #6b7280; font-size: 12px;">
+          Infra Shield Tools - ist-security.fr
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const result = await client.emails.send({
+      from: fromEmail || 'Infra Shield Tools <noreply@ist-security.fr>',
+      to: data.newEmail,
+      subject: 'Confirmez votre nouvelle adresse email - Infra Shield Tools',
+      html,
+    });
+
+    if (result.error) {
+      console.error('Resend error:', result.error);
+      return { success: false, error: result.error.message };
+    }
+
+    console.log('Email change confirmation sent successfully:', result.data?.id);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending email change confirmation:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}

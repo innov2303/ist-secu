@@ -30,10 +30,6 @@ export default function Profile() {
   const [billingPostalCode, setBillingPostalCode] = useState("");
   const [billingCity, setBillingCity] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [emailPassword, setEmailPassword] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [viewingInvoice, setViewingInvoice] = useState<{ invoice: Invoice; items: InvoiceItem[] } | null>(null);
   const [teamName, setTeamName] = useState("");
   const [editingTeamName, setEditingTeamName] = useState(false);
@@ -163,33 +159,32 @@ export default function Profile() {
   });
 
   const requestEmailChangeMutation = useMutation({
-    mutationFn: async (data: { newEmail: string; password: string }) => {
+    mutationFn: async (data: { newEmail: string }) => {
       const res = await apiRequest("POST", "/api/profile/request-email-change", data);
       return res.json();
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Demande enregistree", 
+        title: "Email envoye", 
         description: data.message 
       });
       setNewEmail("");
-      setEmailPassword("");
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
 
-  const changePasswordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      const res = await apiRequest("POST", "/api/profile/change-password", data);
+  const requestPasswordChangeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/profile/request-password-change", {});
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Mot de passe modifie avec succes" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+    onSuccess: (data) => {
+      toast({ 
+        title: "Email envoye", 
+        description: data.message 
+      });
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -228,28 +223,15 @@ export default function Profile() {
 
   const handleRequestEmailChange = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail.trim() || !emailPassword) {
-      toast({ title: "Erreur", description: "Veuillez remplir tous les champs", variant: "destructive" });
+    if (!newEmail.trim()) {
+      toast({ title: "Erreur", description: "Veuillez entrer le nouvel email", variant: "destructive" });
       return;
     }
-    requestEmailChangeMutation.mutate({ newEmail: newEmail.trim(), password: emailPassword });
+    requestEmailChangeMutation.mutate({ newEmail: newEmail.trim() });
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast({ title: "Erreur", description: "Veuillez remplir tous les champs", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas", variant: "destructive" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 6 caracteres", variant: "destructive" });
-      return;
-    }
-    changePasswordMutation.mutate({ currentPassword, newPassword });
+  const handleRequestPasswordChange = () => {
+    requestPasswordChangeMutation.mutate();
   };
 
   const handleViewInvoice = async (invoiceId: number) => {
@@ -711,30 +693,20 @@ export default function Profile() {
                         <h4 className="text-sm font-medium flex items-center gap-2">
                           <Mail className="h-3.5 w-3.5" /> Changer l'email
                         </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Un lien de confirmation sera envoye a votre nouvelle adresse email.
+                        </p>
                         <form onSubmit={handleRequestEmailChange} className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label htmlFor="newEmail" className="text-xs">Nouvel email</Label>
-                              <Input
-                                id="newEmail"
-                                type="email"
-                                value={newEmail}
-                                onChange={(e) => setNewEmail(e.target.value)}
-                                placeholder="nouvelle@email.com"
-                                data-testid="input-new-email"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label htmlFor="emailPassword" className="text-xs">Mot de passe</Label>
-                              <Input
-                                id="emailPassword"
-                                type="password"
-                                value={emailPassword}
-                                onChange={(e) => setEmailPassword(e.target.value)}
-                                placeholder="Pour confirmer"
-                                data-testid="input-email-password"
-                              />
-                            </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="newEmail" className="text-xs">Nouvel email</Label>
+                            <Input
+                              id="newEmail"
+                              type="email"
+                              value={newEmail}
+                              onChange={(e) => setNewEmail(e.target.value)}
+                              placeholder="nouvelle@email.com"
+                              data-testid="input-new-email"
+                            />
                           </div>
                           <Button 
                             type="submit" 
@@ -742,7 +714,11 @@ export default function Profile() {
                             disabled={requestEmailChangeMutation.isPending}
                             data-testid="button-request-email-change"
                           >
-                            {requestEmailChangeMutation.isPending ? "Envoi..." : "Changer l'email"}
+                            {requestEmailChangeMutation.isPending ? (
+                              <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
+                            ) : (
+                              <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
+                            )}
                           </Button>
                         </form>
                       </div>
@@ -752,51 +728,21 @@ export default function Profile() {
                         <h4 className="text-sm font-medium flex items-center gap-2">
                           <Lock className="h-3.5 w-3.5" /> Changer le mot de passe
                         </h4>
-                        <form onSubmit={handleChangePassword} className="space-y-3">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label htmlFor="currentPassword" className="text-xs">Actuel</Label>
-                              <Input
-                                id="currentPassword"
-                                type="password"
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                placeholder="Actuel"
-                                data-testid="input-current-password"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label htmlFor="newPassword" className="text-xs">Nouveau</Label>
-                              <Input
-                                id="newPassword"
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Nouveau"
-                                data-testid="input-new-password"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label htmlFor="confirmPassword" className="text-xs">Confirmer</Label>
-                              <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Confirmer"
-                                data-testid="input-confirm-password"
-                              />
-                            </div>
-                          </div>
-                          <Button 
-                            type="submit" 
-                            size="sm"
-                            disabled={changePasswordMutation.isPending}
-                            data-testid="button-change-password"
-                          >
-                            {changePasswordMutation.isPending ? "Modification..." : "Changer le mot de passe"}
-                          </Button>
-                        </form>
+                        <p className="text-xs text-muted-foreground">
+                          Un lien de reinitialisation sera envoye a votre adresse email.
+                        </p>
+                        <Button 
+                          size="sm"
+                          onClick={handleRequestPasswordChange}
+                          disabled={requestPasswordChangeMutation.isPending}
+                          data-testid="button-request-password-change"
+                        >
+                          {requestPasswordChangeMutation.isPending ? (
+                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
+                          ) : (
+                            <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
