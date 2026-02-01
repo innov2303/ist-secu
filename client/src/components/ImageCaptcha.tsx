@@ -180,7 +180,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
                   }`}
                   data-testid={`captcha-image-${index}`}
                 >
-                  <IconComponent className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                  <IconComponent className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                 </button>
               );
             })}
