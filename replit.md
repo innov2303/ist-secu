@@ -115,6 +115,30 @@ Preferred communication style: Simple, everyday language.
   - `DELETE /api/admin/scripts/:id/permanent` - Permanent deletion
 - **Activity Logging**: delete_toolkit, restore_toolkit, permanent_delete_toolkit actions logged
 
+### Support Ticket System
+- **Location**: /support page for users, admin panel "Support" section for administrators
+- **User Features**:
+  - Create new support tickets with subject, message, category, and priority
+  - View own ticket history and conversation threads
+  - Reply to tickets in a chat-like interface
+- **Admin Features**:
+  - View all tickets across all users
+  - Reply to tickets (marked as admin reply)
+  - Change ticket status (open, in_progress, resolved, closed)
+  - Change ticket priority (low, normal, high, urgent)
+- **Categories**: general, technical, billing, feature_request
+- **Status Workflow**: open → in_progress (auto when admin replies) → resolved/closed
+- **Database Tables**:
+  - `supportTickets`: id, userId, subject, status, priority, category, createdAt, updatedAt, closedAt
+  - `ticketMessages`: id, ticketId, userId, content, isAdminReply, createdAt
+- **API Endpoints**:
+  - `GET /api/tickets` - List tickets (user sees own, admin sees all)
+  - `GET /api/tickets/:id` - Get ticket with messages
+  - `POST /api/tickets` - Create new ticket
+  - `POST /api/tickets/:id/messages` - Add reply to ticket
+  - `PATCH /api/tickets/:id` - Update status/priority (admin only)
+  - `GET /api/admin/tickets/stats` - Ticket statistics (admin only)
+
 ### Email Integration (Resend)
 - **Provider**: Resend (via Replit Connector)
 - **Automatic Subscription Invoices**: Email sent automatically on Stripe subscription renewal (invoice.paid webhook)
