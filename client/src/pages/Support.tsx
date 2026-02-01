@@ -53,8 +53,8 @@ interface Ticket {
   messages?: TicketMessage[];
 }
 
-const navItems = [
-  { id: "tickets", label: "My Tickets", icon: Inbox },
+const getUserNavItems = (isAdmin: boolean) => [
+  { id: "tickets", label: isAdmin ? "All Tickets" : "My Tickets", icon: Inbox },
   { id: "new", label: "New Ticket", icon: Plus },
 ];
 
@@ -116,6 +116,24 @@ export default function Support() {
       toast({ title: "Error", description: error.message || "Failed to send reply", variant: "destructive" });
     },
   });
+
+  const updateTicketMutation = useMutation({
+    mutationFn: async (data: { ticketId: number; status?: string; priority?: string }) => {
+      const res = await apiRequest("PATCH", `/api/tickets/${data.ticketId}`, { status: data.status, priority: data.priority });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Ticket updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets", selectedTicket?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update ticket", variant: "destructive" });
+    },
+  });
+
+  const isAdmin = user?.isAdmin ?? false;
+  const navItems = getUserNavItems(isAdmin);
 
   if (authLoading) {
     return (
@@ -280,11 +298,11 @@ export default function Support() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold">
-                  {activeTab === "tickets" && (selectedTicket ? `Ticket #${selectedTicket.id}` : "My Tickets")}
+                  {activeTab === "tickets" && (selectedTicket ? `Ticket #${selectedTicket.id}` : (isAdmin ? "All Tickets" : "My Tickets"))}
                   {activeTab === "new" && "New Ticket"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {activeTab === "tickets" && (selectedTicket ? selectedTicket.subject : "View and manage your support tickets")}
+                  {activeTab === "tickets" && (selectedTicket ? selectedTicket.subject : (isAdmin ? "Manage all support tickets" : "View and manage your support tickets"))}
                   {activeTab === "new" && "Create a new support request"}
                 </p>
               </div>
@@ -337,16 +355,29 @@ export default function Support() {
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="text-sm font-medium text-muted-foreground">#{ticket.id}</span>
                                 {getStatusBadge(ticket.status)}
                                 {getPriorityBadge(ticket.priority)}
+                                {isAdmin && ticket.user && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <User className="h-3 w-3 mr-1" />
+                                    {ticket.user.firstName || ticket.user.email}
+                                  </Badge>
+                                )}
                               </div>
                               <h3 className="font-medium truncate">{ticket.subject}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                <Calendar className="h-3 w-3 inline mr-1" />
-                                {formatDate(ticket.createdAt)}
-                              </p>
+                              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                <p className="text-sm text-muted-foreground">
+                                  <Calendar className="h-3 w-3 inline mr-1" />
+                                  {formatDate(ticket.createdAt)}
+                                </p>
+                                {isAdmin && ticket.user?.email && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {ticket.user.email}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                           </div>
@@ -361,14 +392,55 @@ export default function Support() {
             {activeTab === "tickets" && selectedTicket && (
               <Card>
                 <CardHeader>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {getStatusBadge(selectedTicket.status)}
-                    {getPriorityBadge(selectedTicket.priority)}
-                    <Badge variant="outline">{selectedTicket.category}</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3 inline mr-1" />
-                      {formatDate(selectedTicket.createdAt)}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getStatusBadge(selectedTicket.status)}
+                      {getPriorityBadge(selectedTicket.priority)}
+                      <Badge variant="outline">{selectedTicket.category}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3 inline mr-1" />
+                        {formatDate(selectedTicket.createdAt)}
+                      </span>
+                      {isAdmin && selectedTicket.user && (
+                        <Badge variant="secondary" className="text-xs">
+                          <User className="h-3 w-3 mr-1" />
+                          {selectedTicket.user.firstName || selectedTicket.user.email}
+                          {selectedTicket.user.email && ` (${selectedTicket.user.email})`}
+                        </Badge>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select
+                          value={ticketDetails?.status || selectedTicket.status}
+                          onValueChange={(value) => updateTicketMutation.mutate({ ticketId: selectedTicket.id, status: value })}
+                        >
+                          <SelectTrigger className="w-[140px]" data-testid="select-status">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={ticketDetails?.priority || selectedTicket.priority}
+                          onValueChange={(value) => updateTicketMutation.mutate({ ticketId: selectedTicket.id, priority: value })}
+                        >
+                          <SelectTrigger className="w-[120px]" data-testid="select-priority">
+                            <SelectValue placeholder="Priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
