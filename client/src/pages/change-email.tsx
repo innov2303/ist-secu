@@ -44,6 +44,7 @@ export default function ChangeEmailPage() {
       const response = await fetch("/api/profile/submit-new-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ token, newEmail }),
       });
 
