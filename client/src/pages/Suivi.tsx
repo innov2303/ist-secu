@@ -32,7 +32,8 @@ import {
   Layers,
   Key,
   Pencil,
-  MoveHorizontal
+  MoveHorizontal,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -251,7 +252,7 @@ interface UserGroupMember {
   member: TeamMember | null;
 }
 
-type TabType = "dashboard" | "machines" | "reports" | "team";
+type TabType = "dashboard" | "machines" | "reports" | "vulnerabilities" | "team";
 
 export default function Suivi() {
   const { user, isLoading: authLoading } = useAuth();
@@ -949,6 +950,7 @@ export default function Suivi() {
     { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
     { id: "machines" as TabType, label: "Machines", icon: Server },
     { id: "reports" as TabType, label: "Reports", icon: FileText },
+    { id: "vulnerabilities" as TabType, label: "Vulnerabilities", icon: ShieldAlert },
   ];
 
   const adminNavItems = [
@@ -1129,12 +1131,14 @@ export default function Suivi() {
                 {activeTab === "dashboard" && "Dashboard"}
                 {activeTab === "machines" && "Machines"}
                 {activeTab === "reports" && "Reports"}
+                {activeTab === "vulnerabilities" && "Vulnerabilities"}
                 {activeTab === "team" && "Team"}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {activeTab === "dashboard" && "Overview of your IT fleet"}
                 {activeTab === "machines" && "Manage registered machines"}
                 {activeTab === "reports" && "Audit report history"}
+                {activeTab === "vulnerabilities" && "Security vulnerabilities tracking"}
                 {activeTab === "team" && "Manage team members"}
               </p>
             </div>
@@ -2058,6 +2062,58 @@ export default function Suivi() {
                       </TableBody>
                     </Table>
                   )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {activeTab === "vulnerabilities" && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
+                    <ShieldAlert className="h-10 w-10 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Under Development</h2>
+                  <p className="text-muted-foreground text-center max-w-md mb-6">
+                    This feature is currently under development. It will allow you to track security vulnerabilities reported by vendors and organizations for the operating systems in your fleet.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                    <Card className="bg-muted/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Monitor className="h-4 w-4" />
+                          Fleet OS Inventory
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                          View the complete list of operating systems deployed in your fleet with version details.
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-muted/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          Vulnerability Alerts
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                          Automatic detection of new security vulnerabilities reported by ANSSI, CIS, and vendors.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <Badge variant="secondary" className="mt-6">
+                    Coming Soon
+                  </Badge>
                 </CardContent>
               </Card>
             </motion.div>
