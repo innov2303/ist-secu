@@ -194,14 +194,6 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           {displayDescription}
         </p>
 
-        {isInDevelopment && (
-          <div className="mb-4">
-            <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
-              <Clock className="w-3 h-3 mr-1.5" />
-              Prochainement disponible
-            </Badge>
-          </div>
-        )}
 
         {isMaintenance && !isInDevelopment && !hideMaintenanceBadge && (
           <div className="text-xs text-muted-foreground mb-4">
@@ -303,8 +295,11 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
 
 
           {isInDevelopment && (
-            <div className="text-center py-3 text-sm text-muted-foreground">
-              Disponible prochainement
+            <div className="flex justify-center">
+              <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
+                <Clock className="w-3 h-3 mr-1.5" />
+                Prochainement disponible
+              </Badge>
             </div>
           )}
 
