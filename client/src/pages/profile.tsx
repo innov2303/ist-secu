@@ -759,49 +759,51 @@ export default function Profile() {
                 </Card>
               )}
 
-              {/* Danger Zone - Delete Account */}
-              <Card className="border-destructive/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> Zone de danger
-                  </CardTitle>
-                  <CardDescription>Actions irreversibles sur votre compte</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      La suppression de votre compte est definitive. Toutes vos donnees, achats et informations seront perdus.
-                    </p>
-                    {activePurchasesData?.hasActivePurchases ? (
-                      <div className="space-y-2">
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            Vous ne pouvez pas supprimer votre compte tant que vous avez un abonnement actif. Veuillez d'abord annuler votre abonnement dans la section "Mes abonnements".
-                          </AlertDescription>
-                        </Alert>
+              {/* Danger Zone - Delete Account (hidden for admins) */}
+              {!user?.isAdmin && (
+                <Card className="border-destructive/30">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="h-4 w-4" /> Zone de danger
+                    </CardTitle>
+                    <CardDescription>Actions irreversibles sur votre compte</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        La suppression de votre compte est definitive. Toutes vos donnees, achats et informations seront perdus.
+                      </p>
+                      {activePurchasesData?.hasActivePurchases ? (
+                        <div className="space-y-2">
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              Vous ne pouvez pas supprimer votre compte tant que vous avez un abonnement actif. Veuillez d'abord annuler votre abonnement dans la section "Mes abonnements".
+                            </AlertDescription>
+                          </Alert>
+                          <Button 
+                            variant="destructive"
+                            size="sm"
+                            disabled
+                            data-testid="button-delete-account"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                          </Button>
+                        </div>
+                      ) : (
                         <Button 
                           variant="destructive"
                           size="sm"
-                          disabled
+                          onClick={() => setShowDeleteConfirmation(true)}
                           data-testid="button-delete-account"
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
                         </Button>
-                      </div>
-                    ) : (
-                      <Button 
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirmation(true)}
-                        data-testid="button-delete-account"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
