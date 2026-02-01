@@ -60,6 +60,26 @@ export function generateLicenseHeader(
 # WM: ${watermark}
 # Sig: ${signature}
 #================================================================
+#
+# AVERTISSEMENT LEGAL / LEGAL NOTICE
+# -----------------------------------
+# Ce script est protege par le droit d'auteur et les lois sur la
+# propriete intellectuelle. Toute copie, modification, redistribution
+# ou utilisation non autorisee est strictement interdite.
+#
+# L'acces a ce script est accorde exclusivement au client identifie
+# ci-dessus dans le cadre de son abonnement actif.
+#
+# En cas de violation:
+# - Resiliation immediate de la licence sans remboursement
+# - Poursuites judiciaires pour contrefacon (Art. L335-2 CPI)
+# - Dommages et interets pouvant atteindre 300 000 EUR
+#
+# Ce script contient un filigrane numerique permettant d'identifier
+# sa source en cas de redistribution non autorisee.
+#
+# Contact: legal@ist-secu.com
+#================================================================
 
 # Verification de licence - Ne pas modifier
 _ist_verify_license() {
@@ -91,6 +111,26 @@ _ist_verify_license
 # Genere: ${generatedAtStr}
 # WM: ${watermark}
 # Sig: ${signature}
+#================================================================
+#
+# AVERTISSEMENT LEGAL / LEGAL NOTICE
+# -----------------------------------
+# Ce script est protege par le droit d'auteur et les lois sur la
+# propriete intellectuelle. Toute copie, modification, redistribution
+# ou utilisation non autorisee est strictement interdite.
+#
+# L'acces a ce script est accorde exclusivement au client identifie
+# ci-dessus dans le cadre de son abonnement actif.
+#
+# En cas de violation:
+# - Resiliation immediate de la licence sans remboursement
+# - Poursuites judiciaires pour contrefacon (Art. L335-2 CPI)
+# - Dommages et interets pouvant atteindre 300 000 EUR
+#
+# Ce script contient un filigrane numerique permettant d'identifier
+# sa source en cas de redistribution non autorisee.
+#
+# Contact: legal@ist-secu.com
 #================================================================
 
 # Verification de licence - Ne pas modifier
@@ -136,6 +176,26 @@ function generatePythonLicenseHeader(
 # Genere: ${generatedAtStr}
 # WM: ${watermark}
 # Sig: ${signature}
+#================================================================
+#
+# AVERTISSEMENT LEGAL / LEGAL NOTICE
+# -----------------------------------
+# Ce script est protege par le droit d'auteur et les lois sur la
+# propriete intellectuelle. Toute copie, modification, redistribution
+# ou utilisation non autorisee est strictement interdite.
+#
+# L'acces a ce script est accorde exclusivement au client identifie
+# ci-dessus dans le cadre de son abonnement actif.
+#
+# En cas de violation:
+# - Resiliation immediate de la licence sans remboursement
+# - Poursuites judiciaires pour contrefacon (Art. L335-2 CPI)
+# - Dommages et interets pouvant atteindre 300 000 EUR
+#
+# Ce script contient un filigrane numerique permettant d'identifier
+# sa source en cas de redistribution non autorisee.
+#
+# Contact: legal@ist-secu.com
 #================================================================
 
 # Verification de licence - Ne pas modifier
