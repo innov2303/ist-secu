@@ -2464,7 +2464,7 @@ export default function AdminPage() {
                 <CardContent>
                   {userStats?.data && userStats.data.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={userStats.data}>
+                      <BarChart data={userStats.data}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis 
                           dataKey="date" 
@@ -2476,20 +2476,18 @@ export default function AdminPage() {
                             return value.slice(5);
                           }}
                         />
-                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} allowDecimals={false} />
                         <Tooltip 
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                           labelStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Line 
-                          type="monotone" 
+                        <Bar 
                           dataKey="count" 
                           name="Inscriptions"
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
-                          dot={{ fill: 'hsl(var(--primary))' }}
+                          fill="hsl(var(--primary))" 
+                          radius={[4, 4, 0, 0]}
                         />
-                      </LineChart>
+                      </BarChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground">
