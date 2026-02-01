@@ -11,14 +11,14 @@ interface SEOProps {
 }
 
 const SITE_NAME = 'Infra Shield Tools';
-const DEFAULT_DESCRIPTION = 'Scripts d\'audit de securite pour Windows, Linux, VMware ESXi, Containers et Web. Conformite ANSSI, CIS Benchmark. Rapports HTML/JSON detailles.';
+const DEFAULT_DESCRIPTION = 'Security audit scripts for Windows, Linux, VMware ESXi, Containers and Web. ANSSI, CIS Benchmark compliance. Detailed HTML/JSON reports.';
 const DEFAULT_IMAGE = '/og-image.png';
 const BASE_URL = 'https://ist-secu.com';
 
 export function SEO({
   title,
   description = DEFAULT_DESCRIPTION,
-  keywords = 'securite informatique, audit securite, ANSSI, CIS Benchmark, Windows, Linux, VMware, Docker, compliance, conformite',
+  keywords = 'cybersecurity, security audit, ANSSI, CIS Benchmark, Windows, Linux, VMware, Docker, compliance, hardening',
   image = DEFAULT_IMAGE,
   url,
   type = 'website',
@@ -44,7 +44,7 @@ export function SEO({
       <meta property="og:description" content={description} />
       <meta property="og:image" content={fullImage} />
       <meta property="og:url" content={fullUrl} />
-      <meta property="og:locale" content="fr_FR" />
+      <meta property="og:locale" content="en_US" />
       
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

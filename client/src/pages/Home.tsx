@@ -17,10 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 
 const CONTACT_SUBJECTS = [
-  { value: "question", label: "Question générale", description: "Renseignements sur nos produits ou services" },
-  { value: "technical", label: "Support technique", description: "Aide à l'installation ou utilisation des scripts" },
-  { value: "billing", label: "Facturation", description: "Questions sur les paiements, factures ou abonnements" },
-  { value: "feedback", label: "Suggestion", description: "Idées d'amélioration ou nouvelles fonctionnalités" },
+  { value: "question", label: "General Question", description: "Inquiries about our products or services" },
+  { value: "technical", label: "Technical Support", description: "Help with script installation or usage" },
+  { value: "billing", label: "Billing", description: "Questions about payments, invoices or subscriptions" },
+  { value: "feedback", label: "Feedback", description: "Ideas for improvements or new features" },
 ];
 import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle, BarChart3 } from "lucide-react";
 import { Link } from "wouter";
@@ -71,8 +71,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <SEO 
-        title="Accueil"
-        description="Scripts d'audit de securite professionnels pour Windows, Linux, VMware ESXi, Containers et Web. Conformite ANSSI et CIS Benchmark avec rapports detailles."
+        title="Home"
+        description="Professional security audit scripts for Windows, Linux, VMware ESXi, Containers and Web. ANSSI and CIS Benchmark compliance with detailed reports."
         url="/"
       />
       <OrganizationSchema />
@@ -85,13 +85,13 @@ export default function Home() {
             <Button variant="default" size="sm" asChild data-testid="link-suivi">
               <Link href="/suivi">
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Suivi de votre parc
+                Fleet Tracking
               </Link>
             </Button>
             <Button variant="default" size="sm" asChild data-testid="link-purchases">
               <Link href="/purchases">
                 <ShoppingBag className="h-4 w-4 mr-2" />
-                Mes produits
+                My Products
               </Link>
             </Button>
             {user.isAdmin && (
@@ -120,7 +120,7 @@ export default function Home() {
             <Button asChild data-testid="button-login">
               <Link href="/auth">
                 <LogIn className="h-4 w-4 mr-2" />
-                Connexion
+                Login
               </Link>
             </Button>
           </>
@@ -183,13 +183,13 @@ export default function Home() {
         {!user && bundles && bundles.length > 0 && (
           <div className="mt-16 text-center">
             <div className="bg-card border border-border/40 rounded-md p-8 max-w-2xl mx-auto">
-              <h3 className="text-xl font-bold font-mono mb-3">Packs Annuels Disponibles</h3>
+              <h3 className="text-xl font-bold font-mono mb-3">Annual Packs Available</h3>
               <p className="text-muted-foreground mb-6">
-                Connectez-vous pour decouvrir nos offres groupees et economiser jusqu'a 20% sur vos abonnements.
+                Log in to discover our bundle offers and save up to 20% on your subscriptions.
               </p>
               <Button asChild data-testid="button-discover-packs">
                 <Link href="/auth">
-                  Decouvrez nos packs
+                  Discover our packs
                 </Link>
               </Button>
             </div>
@@ -202,14 +202,14 @@ export default function Home() {
             <div className="mb-12 text-center md:text-left border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold font-mono mb-2">
-                  Packs Annuels
+                  Annual Packs
                 </h2>
                 <p className="text-muted-foreground">
-                  Economisez avec nos packs multi-toolkits en abonnement annuel.
+                  Save with our multi-toolkit annual subscription packs.
                 </p>
               </div>
               <div className="text-xs font-mono text-primary/80 bg-primary/5 px-3 py-1 rounded border border-primary/20">
-                Offres Groupees
+                Bundle Offers
               </div>
             </div>
 
@@ -246,7 +246,7 @@ export default function Home() {
               &copy; 2026 Innov Studio.
             </div>
             <div className="flex gap-6">
-              <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Politique de Confidentialité</Link>
+              <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Privacy Policy</Link>
               <Link href="/documentation" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-documentation">Documentation</Link>
               <span 
                 className="hover:text-primary cursor-pointer transition-colors" 
@@ -272,21 +272,21 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-primary" />
-              Nous contacter
+              Contact Us
             </DialogTitle>
             <DialogDescription>
-              Envoyez-nous un message et nous vous répondrons rapidement.
+              Send us a message and we'll get back to you shortly.
             </DialogDescription>
           </DialogHeader>
           {sent ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Message envoyé</h3>
+              <h3 className="text-lg font-semibold mb-2">Message Sent</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.
+                We have received your message and will respond as soon as possible.
               </p>
               <div className="bg-muted px-4 py-2 rounded-md">
-                <p className="text-xs text-muted-foreground mb-1">Numéro de ticket</p>
+                <p className="text-xs text-muted-foreground mb-1">Ticket Number</p>
                 <p className="font-mono font-semibold text-primary">{ticketNumber}</p>
               </div>
             </div>
@@ -306,20 +306,20 @@ export default function Home() {
                 const data = await response.json();
                 setTicketNumber(data.ticketNumber);
                 setSent(true);
-                toast({ title: "Message envoyé", description: `Ticket: ${data.ticketNumber}` });
+                toast({ title: "Message Sent", description: `Ticket: ${data.ticketNumber}` });
               } catch (error) {
-                toast({ title: "Erreur", description: "Impossible d'envoyer le message.", variant: "destructive" });
+                toast({ title: "Error", description: "Unable to send the message.", variant: "destructive" });
               } finally {
                 setSending(false);
               }
             }} className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="contact-name">Nom</Label>
+                <Label htmlFor="contact-name">Name</Label>
                 <Input
                   id="contact-name"
                   value={contactForm.name || user?.firstName || ""}
                   onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                  placeholder="Votre nom"
+                  placeholder="Your name"
                   required
                   data-testid="input-contact-name"
                 />
@@ -331,19 +331,19 @@ export default function Home() {
                   type="email"
                   value={contactForm.email || user?.email || ""}
                   onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                  placeholder="votre@email.com"
+                  placeholder="your@email.com"
                   required
                   data-testid="input-contact-email"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact-subject">Motif de contact</Label>
+                <Label htmlFor="contact-subject">Subject</Label>
                 <Select
                   value={contactForm.subject}
                   onValueChange={(value) => setContactForm({ ...contactForm, subject: value })}
                 >
                   <SelectTrigger data-testid="select-contact-subject">
-                    <SelectValue placeholder="Sélectionnez un motif" />
+                    <SelectValue placeholder="Select a subject" />
                   </SelectTrigger>
                   <SelectContent>
                     {CONTACT_SUBJECTS.map((subject) => (
@@ -363,7 +363,7 @@ export default function Home() {
                   id="contact-description"
                   value={contactForm.description}
                   onChange={(e) => setContactForm({ ...contactForm, description: e.target.value })}
-                  placeholder="Décrivez votre demande..."
+                  placeholder="Describe your request..."
                   rows={4}
                   required
                   data-testid="input-contact-description"
@@ -373,12 +373,12 @@ export default function Home() {
                 {sending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Envoi en cours...
+                    Sending...
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
-                    Envoyer
+                    Send
                   </>
                 )}
               </Button>

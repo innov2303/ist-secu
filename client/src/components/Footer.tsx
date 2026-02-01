@@ -9,7 +9,7 @@ export function Footer() {
             &copy; 2026 Innov Studio.
           </div>
           <div className="flex gap-6">
-            <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-footer-privacy">Politique de Confidentialité</Link>
+            <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-footer-privacy">Privacy Policy</Link>
             <Link href="/documentation" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-footer-documentation">Documentation</Link>
             <Link href="/" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-footer-support">Support</Link>
           </div>

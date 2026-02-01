@@ -39,7 +39,7 @@ export function Hero() {
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <FileCode className="w-4 h-4 text-primary" />
-                  Audit Sécurité & Conformité
+                  Security Audit & Compliance
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
@@ -49,7 +49,7 @@ export function Hero() {
               </CardContent>
             </Card>
             <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureAudit} alt="Audit Sécurité" className="w-full h-72 object-cover" />
+              <img src={featureAudit} alt="Security Audit" className="w-full h-72 object-cover" />
             </div>
           </div>
 
@@ -58,12 +58,12 @@ export function Hero() {
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <FileText className="w-4 h-4 text-primary" />
-                  Rapport & Recommendations
+                  Reports & Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
                 <p className="text-xs text-muted-foreground text-center">
-                  Synthèse HTML/PDF avec scores et remédiations.
+                  HTML/PDF summary with scores and remediations.
                 </p>
               </CardContent>
             </Card>
@@ -82,7 +82,7 @@ export function Hero() {
               </CardHeader>
               <CardContent className="pb-2">
                 <p className="text-xs text-muted-foreground text-center">
-                  Durcissement des configurations sensibles.
+                  Hardening of sensitive configurations.
                 </p>
               </CardContent>
             </Card>
@@ -96,17 +96,17 @@ export function Hero() {
               <CardHeader className="pb-1 pt-2">
                 <CardTitle className="flex items-center justify-center gap-2 text-base">
                   <Activity className="w-4 h-4 text-primary" />
-                  Suivez l'évolution
+                  Track Progress
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-2">
                 <p className="text-xs text-muted-foreground text-center">
-                  Mesurez la sécurité au fil des audits.
+                  Measure security across your audits.
                 </p>
               </CardContent>
             </Card>
             <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureEvolution} alt="Suivez l'évolution" className="w-full h-72 object-cover" />
+              <img src={featureEvolution} alt="Track Progress" className="w-full h-72 object-cover" />
             </div>
           </div>
         </motion.div>
