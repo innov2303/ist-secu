@@ -2338,8 +2338,26 @@ export async function registerRoutes(
     if (!user?.isAdmin) {
       // Check if user has purchased this script/toolkit directly
       const activePurchase = await storage.getActivePurchase(userId, id);
+      
       if (!activePurchase) {
-        return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
+        // Check if this script is part of a bundle the user has purchased
+        const allScripts = await storage.getAllScripts();
+        const bundlesContainingScript = allScripts.filter(s => 
+          s.bundledScriptIds && s.bundledScriptIds.includes(id)
+        );
+        
+        let hasAccessViaBundle = false;
+        for (const bundle of bundlesContainingScript) {
+          const bundlePurchase = await storage.getActivePurchase(userId, bundle.id);
+          if (bundlePurchase) {
+            hasAccessViaBundle = true;
+            break;
+          }
+        }
+        
+        if (!hasAccessViaBundle) {
+          return res.status(403).json({ message: "Vous devez acheter ce script pour le télécharger" });
+        }
       }
     }
 
