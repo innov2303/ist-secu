@@ -173,14 +173,14 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
                   key={index}
                   type="button"
                   onClick={() => toggleSelection(index)}
-                  className={`w-8 h-8 flex items-center justify-center rounded border transition-all ${
+                  className={`w-10 h-10 flex items-center justify-center rounded border transition-all ${
                     isSelected
                       ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                       : "border-border bg-background hover:border-muted-foreground/50"
                   }`}
                   data-testid={`captcha-image-${index}`}
                 >
-                  <IconComponent className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                  <IconComponent className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                 </button>
               );
             })}
