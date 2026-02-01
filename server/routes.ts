@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema, activityLogs } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema, activityLogs, supportTickets, ticketMessages, insertSupportTicketSchema, insertTicketMessageSchema } from "@shared/schema";
 import { logAuth, logPayment, logAdmin, logFleet, logSystem, logUser } from "./activityLog";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
@@ -6389,6 +6389,305 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting control correction:", error);
       res.status(500).json({ message: "Erreur lors de la suppression de la correction" });
+    }
+  });
+
+  // ============================================
+  // Support Ticket Routes
+  // ============================================
+
+  // Get user's tickets
+  app.get("/api/tickets", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      let userTickets;
+      if (user.isAdmin) {
+        // Admin sees all tickets
+        userTickets = await db.select().from(supportTickets).orderBy(desc(supportTickets.updatedAt));
+      } else {
+        // User sees only their tickets
+        userTickets = await db.select().from(supportTickets)
+          .where(eq(supportTickets.userId, userId))
+          .orderBy(desc(supportTickets.updatedAt));
+      }
+
+      // Get user info for each ticket
+      const ticketsWithUser = await Promise.all(userTickets.map(async (ticket) => {
+        const ticketUser = await authStorage.getUser(ticket.userId);
+        return {
+          ...ticket,
+          user: ticketUser ? {
+            id: ticketUser.id,
+            email: ticketUser.email,
+            firstName: ticketUser.firstName,
+            lastName: ticketUser.lastName,
+          } : null,
+        };
+      }));
+
+      res.json(ticketsWithUser);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      res.status(500).json({ message: "Error fetching tickets" });
+    }
+  });
+
+  // Get single ticket with messages
+  app.get("/api/tickets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check permission: admin can see all, user can only see their own
+      if (!user.isAdmin && ticket.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get ticket messages
+      const messages = await db.select().from(ticketMessages)
+        .where(eq(ticketMessages.ticketId, ticketId))
+        .orderBy(ticketMessages.createdAt);
+
+      // Get user info for each message
+      const messagesWithUser = await Promise.all(messages.map(async (msg) => {
+        const msgUser = await authStorage.getUser(msg.userId);
+        return {
+          ...msg,
+          user: msgUser ? {
+            id: msgUser.id,
+            email: msgUser.email,
+            firstName: msgUser.firstName,
+            lastName: msgUser.lastName,
+            isAdmin: msgUser.isAdmin,
+          } : null,
+        };
+      }));
+
+      // Get ticket user info
+      const ticketUser = await authStorage.getUser(ticket.userId);
+
+      res.json({
+        ...ticket,
+        user: ticketUser ? {
+          id: ticketUser.id,
+          email: ticketUser.email,
+          firstName: ticketUser.firstName,
+          lastName: ticketUser.lastName,
+        } : null,
+        messages: messagesWithUser,
+      });
+    } catch (error) {
+      console.error("Error fetching ticket:", error);
+      res.status(500).json({ message: "Error fetching ticket" });
+    }
+  });
+
+  // Create new ticket
+  app.post("/api/tickets", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const { subject, message, category, priority } = req.body;
+
+      if (!subject || !message) {
+        return res.status(400).json({ message: "Subject and message are required" });
+      }
+
+      // Create ticket
+      const [newTicket] = await db.insert(supportTickets).values({
+        userId,
+        subject,
+        category: category || "general",
+        priority: priority || "normal",
+        status: "open",
+      }).returning();
+
+      // Create initial message
+      await db.insert(ticketMessages).values({
+        ticketId: newTicket.id,
+        userId,
+        content: message,
+        isAdminReply: 0,
+      });
+
+      await logUser(userId, "create_ticket", `Created support ticket #${newTicket.id}: ${subject}`);
+
+      res.status(201).json(newTicket);
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      res.status(500).json({ message: "Error creating ticket" });
+    }
+  });
+
+  // Add message to ticket
+  app.post("/api/tickets/:id/messages", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check permission: admin can reply to all, user can only reply to their own
+      if (!user.isAdmin && ticket.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Create message
+      const [newMessage] = await db.insert(ticketMessages).values({
+        ticketId,
+        userId,
+        content,
+        isAdminReply: user.isAdmin ? 1 : 0,
+      }).returning();
+
+      // Update ticket updatedAt and status if admin replies
+      const updateData: any = { updatedAt: new Date() };
+      if (user.isAdmin && ticket.status === "open") {
+        updateData.status = "in_progress";
+      }
+      await db.update(supportTickets).set(updateData).where(eq(supportTickets.id, ticketId));
+
+      res.status(201).json({
+        ...newMessage,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isAdmin: user.isAdmin,
+        },
+      });
+    } catch (error) {
+      console.error("Error adding message:", error);
+      res.status(500).json({ message: "Error adding message" });
+    }
+  });
+
+  // Update ticket status (admin only)
+  app.patch("/api/tickets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ message: "Invalid ticket ID" });
+      }
+
+      const { status, priority } = req.body;
+
+      const updateData: any = { updatedAt: new Date() };
+      if (status) {
+        updateData.status = status;
+        if (status === "closed" || status === "resolved") {
+          updateData.closedAt = new Date();
+        }
+      }
+      if (priority) {
+        updateData.priority = priority;
+      }
+
+      const [updatedTicket] = await db.update(supportTickets)
+        .set(updateData)
+        .where(eq(supportTickets.id, ticketId))
+        .returning();
+
+      if (!updatedTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      await logAdmin(userId, "update_ticket", `Updated ticket #${ticketId} status to ${status || 'unchanged'}`);
+
+      res.json(updatedTicket);
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+      res.status(500).json({ message: "Error updating ticket" });
+    }
+  });
+
+  // Get ticket stats (admin only)
+  app.get("/api/admin/tickets/stats", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authorized" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const allTickets = await db.select().from(supportTickets);
+      
+      const stats = {
+        total: allTickets.length,
+        open: allTickets.filter(t => t.status === "open").length,
+        inProgress: allTickets.filter(t => t.status === "in_progress").length,
+        resolved: allTickets.filter(t => t.status === "resolved").length,
+        closed: allTickets.filter(t => t.status === "closed").length,
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching ticket stats:", error);
+      res.status(500).json({ message: "Error fetching stats" });
     }
   });
 
