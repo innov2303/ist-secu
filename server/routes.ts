@@ -323,8 +323,8 @@ export async function registerRoutes(
       }).returning();
 
       // Send verification email
-      const baseUrl = process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER?.toLowerCase()}.repl.co`
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : 'https://ist-security.fr';
       const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
       
@@ -443,8 +443,8 @@ export async function registerRoutes(
         .where(eq(users.id, user.id));
 
       // Send verification email
-      const baseUrl = process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER?.toLowerCase()}.repl.co`
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : 'https://ist-security.fr';
       const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
       
