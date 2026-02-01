@@ -164,7 +164,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
             Selectionnez tous les <span className="text-primary font-semibold">{challenge.targetLabel}</span>
           </p>
           
-          <div className="grid grid-cols-3 gap-2" data-testid="captcha-image-grid">
+          <div className="grid grid-cols-3 gap-1 max-w-[180px] mx-auto" data-testid="captcha-image-grid">
             {challenge.grid.map((iconName, index) => {
               const IconComponent = ICON_MAP[iconName] || Shield;
               const isSelected = selectedIndices.has(index);
@@ -173,14 +173,14 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
                   key={index}
                   type="button"
                   onClick={() => toggleSelection(index)}
-                  className={`aspect-square flex items-center justify-center rounded-md border-2 transition-all ${
+                  className={`w-12 h-12 flex items-center justify-center rounded border transition-all ${
                     isSelected
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                       : "border-border bg-background hover:border-muted-foreground/50"
                   }`}
                   data-testid={`captcha-image-${index}`}
                 >
-                  <IconComponent className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                  <IconComponent className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
                 </button>
               );
             })}
