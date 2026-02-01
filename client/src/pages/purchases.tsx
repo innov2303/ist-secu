@@ -1418,6 +1418,8 @@ export default function Purchases() {
     enabled: !!user,
   });
 
+  const [activeTab] = useState("products");
+
   const { annualBundlePurchases, toolkitBundles, standalone } = purchases && scripts && annualBundles
     ? groupPurchases(purchases, scripts, annualBundles) 
     : { annualBundlePurchases: [], toolkitBundles: [], standalone: [] };
@@ -1471,7 +1473,6 @@ export default function Purchases() {
   const navItems = [
     { id: "products" as const, label: "My Products", icon: ShoppingBag },
   ];
-  const [activeTab] = useState("products");
 
   const activePurchasesCount = toolkitBundles.filter(b => !b.expired).length + 
     annualBundlePurchases.filter(b => !b.expired).length +
