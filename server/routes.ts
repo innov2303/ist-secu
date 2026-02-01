@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema, activityLogs } from "@shared/schema";
+import { logAuth, logPayment, logAdmin, logFleet, logSystem, logUser } from "./activityLog";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey, isStripeAvailable } from "./stripeClient";
@@ -322,6 +323,13 @@ export async function registerRoutes(
         isLocalAuth: true,
       }).returning();
 
+      // Log new registration
+      await logAuth("register", `Nouvel utilisateur inscrit: ${email}`, newUser.id, email, req, {
+        firstName,
+        lastName,
+        isAdmin: isFirstUser
+      });
+
       // Send verification email
       const baseUrl = process.env.REPLIT_DEV_DOMAIN 
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -508,6 +516,9 @@ export async function registerRoutes(
       // Successful login - clear rate limiting
       recordLoginAttempt(clientIp, true);
 
+      // Log successful login
+      await logAuth("login", `Connexion reussie pour ${email}`, user.id, email, req);
+
       // Regenerate session to prevent session fixation attacks
       const session = req.session as any;
       session.regenerate((err: any) => {
@@ -543,8 +554,15 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", async (req, res) => {
     const isLocalAuth = (req as any).session?.isLocalAuth;
+    const userId = (req as any).session?.userId;
+    
+    // Log logout before destroying session
+    if (userId) {
+      await logAuth("logout", `Deconnexion utilisateur ID ${userId}`, userId, undefined, req);
+    }
+    
     (req as any).session.destroy((err: any) => {
       if (err) {
         return res.status(500).json({ message: "Erreur lors de la déconnexion" });
@@ -4288,6 +4306,106 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching users list:", error);
       res.status(500).json({ message: "Error fetching users" });
+    }
+  });
+
+  // ============================================
+  // Activity Logs Routes (Admin)
+  // ============================================
+
+  // Get activity logs with filtering and pagination
+  app.get("/api/admin/logs", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { category, severity, page = "1", limit = "50" } = req.query;
+      const pageNum = parseInt(page as string);
+      const limitNum = Math.min(parseInt(limit as string), 100);
+      const offset = (pageNum - 1) * limitNum;
+
+      let query = db.select().from(activityLogs);
+      
+      // Build conditions
+      const conditions: any[] = [];
+      if (category && category !== "all") {
+        conditions.push(eq(activityLogs.category, category as string));
+      }
+      if (severity && severity !== "all") {
+        conditions.push(eq(activityLogs.severity, severity as string));
+      }
+
+      // Get total count
+      const countResult = await db.select({ count: sql<number>`count(*)` })
+        .from(activityLogs)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+      const total = Number(countResult[0]?.count || 0);
+
+      // Get logs with pagination
+      const logs = await db.select()
+        .from(activityLogs)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(activityLogs.createdAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      res.json({
+        logs,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching activity logs:", error);
+      res.status(500).json({ message: "Error fetching activity logs" });
+    }
+  });
+
+  // Get log statistics
+  app.get("/api/admin/logs/stats", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const categoryStats = await db.select({
+        category: activityLogs.category,
+        count: sql<number>`count(*)`
+      })
+        .from(activityLogs)
+        .groupBy(activityLogs.category);
+
+      const severityStats = await db.select({
+        severity: activityLogs.severity,
+        count: sql<number>`count(*)`
+      })
+        .from(activityLogs)
+        .groupBy(activityLogs.severity);
+
+      const recentCount = await db.select({ count: sql<number>`count(*)` })
+        .from(activityLogs)
+        .where(sql`${activityLogs.createdAt} > NOW() - INTERVAL '24 hours'`);
+
+      res.json({
+        byCategory: categoryStats,
+        bySeverity: severityStats,
+        last24h: Number(recentCount[0]?.count || 0)
+      });
+    } catch (error) {
+      console.error("Error fetching log stats:", error);
+      res.status(500).json({ message: "Error fetching log stats" });
+    }
+  });
+
+  // Clear old logs (admin action)
+  app.delete("/api/admin/logs/clear", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { olderThanDays = 30 } = req.body;
+      const result = await db.delete(activityLogs)
+        .where(sql`${activityLogs.createdAt} < NOW() - INTERVAL '${olderThanDays} days'`);
+      
+      await logAdmin("clear_logs", `Logs plus anciens que ${olderThanDays} jours supprimes`, Number(req.user!.id), req.user!.email || undefined, req);
+      
+      res.json({ success: true, message: `Logs older than ${olderThanDays} days cleared` });
+    } catch (error) {
+      console.error("Error clearing logs:", error);
+      res.status(500).json({ message: "Error clearing logs" });
     }
   });
 

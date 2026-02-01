@@ -18,7 +18,8 @@ import {
   Trash2, Users, ArrowLeft, MessageSquare, CheckCircle, Clock, Mail, Search, 
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
-  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode
+  FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode,
+  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
@@ -37,7 +38,7 @@ const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "defa
 
 const ITEMS_PER_PAGE = 10;
 
-type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles";
+type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles" | "logs";
 type ScriptStatus = "active" | "offline" | "maintenance" | "development";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
@@ -124,6 +125,52 @@ export default function AdminPage() {
   });
   
   const [editingBundle, setEditingBundle] = useState<AnnualBundle | null>(null);
+
+  // Activity logs state
+  const [logCategory, setLogCategory] = useState("all");
+  const [logSeverity, setLogSeverity] = useState("all");
+  const [logPage, setLogPage] = useState(1);
+
+  type ActivityLog = {
+    id: number;
+    category: string;
+    action: string;
+    description: string;
+    userId: number | null;
+    userEmail: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    metadata: string | null;
+    severity: string;
+    createdAt: string;
+  };
+
+  const { data: logsData, isLoading: logsLoading } = useQuery<{
+    logs: ActivityLog[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }>({
+    queryKey: ["/api/admin/logs", logCategory, logSeverity, logPage],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("category", logCategory);
+      params.set("severity", logSeverity);
+      params.set("page", logPage.toString());
+      params.set("limit", "30");
+      const res = await fetch(`/api/admin/logs?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      return res.json();
+    },
+    enabled: !!user?.isAdmin && activeSection === "logs",
+  });
+
+  const { data: logStats } = useQuery<{
+    byCategory: { category: string; count: number }[];
+    bySeverity: { severity: string; count: number }[];
+    last24h: number;
+  }>({
+    queryKey: ["/api/admin/logs/stats"],
+    enabled: !!user?.isAdmin && activeSection === "logs",
+  });
   const [showCreateBundleDialog, setShowCreateBundleDialog] = useState(false);
   const [newBundleName, setNewBundleName] = useState("");
   const [newBundleDescription, setNewBundleDescription] = useState("");
@@ -759,6 +806,7 @@ export default function AdminPage() {
     { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: toolkitCount },
     { id: "bundles" as AdminSection, label: "Packs Annuels", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Facturation", icon: FileText, count: allInvoices.length },
+    { id: "logs" as AdminSection, label: "Evenements", icon: Activity, count: logStats?.last24h },
   ];
 
   const formatPrice = (cents: number) => {
@@ -1854,6 +1902,225 @@ export default function AdminPage() {
                   {invoicesByUser.length > 10 && (
                     <div className="flex items-center justify-center mt-6 pt-4 border-t">
                       <p className="text-sm text-muted-foreground">{invoicesByUser.length} utilisateur(s) - {filteredInvoices.length} facture(s) au total</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Logs Section */}
+          {activeSection === "logs" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Activity className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Evenements</h2>
+                  <p className="text-muted-foreground">Journal des activites du site</p>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10">
+                        <Clock className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{logStats?.last24h || 0}</p>
+                        <p className="text-xs text-muted-foreground">Derniers 24h</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                {logStats?.byCategory.map((cat) => (
+                  <Card key={cat.category}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          cat.category === "auth" ? "bg-green-500/10" :
+                          cat.category === "payment" ? "bg-yellow-500/10" :
+                          cat.category === "admin" ? "bg-purple-500/10" :
+                          cat.category === "fleet" ? "bg-cyan-500/10" :
+                          "bg-gray-500/10"
+                        }`}>
+                          {cat.category === "auth" ? <LogIn className={`h-5 w-5 text-green-500`} /> :
+                           cat.category === "payment" ? <ShoppingCart className={`h-5 w-5 text-yellow-500`} /> :
+                           cat.category === "admin" ? <UserCog className={`h-5 w-5 text-purple-500`} /> :
+                           cat.category === "fleet" ? <Server className={`h-5 w-5 text-cyan-500`} /> :
+                           <Database className={`h-5 w-5 text-gray-500`} />}
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{Number(cat.count)}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{cat.category}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Filters */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Filtres</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Categorie:</Label>
+                      <Select value={logCategory} onValueChange={(v) => { setLogCategory(v); setLogPage(1); }}>
+                        <SelectTrigger className="w-[150px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes</SelectItem>
+                          <SelectItem value="auth">Authentification</SelectItem>
+                          <SelectItem value="payment">Paiements</SelectItem>
+                          <SelectItem value="admin">Administration</SelectItem>
+                          <SelectItem value="fleet">Suivi du parc</SelectItem>
+                          <SelectItem value="system">Systeme</SelectItem>
+                          <SelectItem value="user">Utilisateur</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Severite:</Label>
+                      <Select value={logSeverity} onValueChange={(v) => { setLogSeverity(v); setLogPage(1); }}>
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes</SelectItem>
+                          <SelectItem value="info">Info</SelectItem>
+                          <SelectItem value="warning">Warning</SelectItem>
+                          <SelectItem value="error">Erreur</SelectItem>
+                          <SelectItem value="critical">Critique</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Logs List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="h-5 w-5" />
+                    Journal des evenements
+                  </CardTitle>
+                  <CardDescription>
+                    {logsData?.pagination.total || 0} evenement(s) au total
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {logsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : !logsData?.logs.length ? (
+                    <p className="text-center text-muted-foreground py-8">Aucun evenement</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {logsData.logs.map((log) => (
+                        <div
+                          key={log.id}
+                          className={`p-3 rounded-lg border ${
+                            log.severity === "error" ? "border-red-500/30 bg-red-500/5" :
+                            log.severity === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                            log.severity === "critical" ? "border-red-700/50 bg-red-700/10" :
+                            "bg-muted/30"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className={`p-1.5 rounded mt-0.5 ${
+                                log.category === "auth" ? "bg-green-500/20" :
+                                log.category === "payment" ? "bg-yellow-500/20" :
+                                log.category === "admin" ? "bg-purple-500/20" :
+                                log.category === "fleet" ? "bg-cyan-500/20" :
+                                log.category === "system" ? "bg-gray-500/20" :
+                                "bg-blue-500/20"
+                              }`}>
+                                {log.category === "auth" ? <LogIn className="h-4 w-4 text-green-600" /> :
+                                 log.category === "payment" ? <ShoppingCart className="h-4 w-4 text-yellow-600" /> :
+                                 log.category === "admin" ? <UserCog className="h-4 w-4 text-purple-600" /> :
+                                 log.category === "fleet" ? <Server className="h-4 w-4 text-cyan-600" /> :
+                                 log.category === "system" ? <Database className="h-4 w-4 text-gray-600" /> :
+                                 <UserIcon className="h-4 w-4 text-blue-600" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {log.category}
+                                  </Badge>
+                                  <span className="font-medium text-sm">{log.action}</span>
+                                  <Badge
+                                    variant={
+                                      log.severity === "error" || log.severity === "critical" ? "destructive" :
+                                      log.severity === "warning" ? "secondary" : "outline"
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {log.severity}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1 break-words">
+                                  {log.description}
+                                </p>
+                                {log.userEmail && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    <Mail className="h-3 w-3 inline mr-1" />
+                                    {log.userEmail}
+                                  </p>
+                                )}
+                                {log.ipAddress && (
+                                  <p className="text-xs text-muted-foreground">
+                                    IP: {log.ipAddress}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(log.createdAt).toLocaleString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {logsData && logsData.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                        disabled={logPage <= 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Precedent
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {logPage} sur {logsData.pagination.totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLogPage(p => Math.min(logsData.pagination.totalPages, p + 1))}
+                        disabled={logPage >= logsData.pagination.totalPages}
+                      >
+                        Suivant <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
                     </div>
                   )}
                 </CardContent>

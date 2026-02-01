@@ -490,3 +490,23 @@ export const insertControlCorrectionSchema = createInsertSchema(controlCorrectio
 
 export type ControlCorrection = typeof controlCorrections.$inferSelect;
 export type InsertControlCorrection = z.infer<typeof insertControlCorrectionSchema>;
+
+// Activity logs table for tracking site events
+export const activityLogs = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(), // auth, payment, admin, fleet, system, user
+  action: text("action").notNull(), // login, logout, purchase, delete, create, update, etc.
+  description: text("description").notNull(),
+  userId: integer("user_id"),
+  userEmail: text("user_email"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  metadata: text("metadata"), // JSON string for additional data
+  severity: text("severity").notNull().default("info"), // info, warning, error, critical
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
