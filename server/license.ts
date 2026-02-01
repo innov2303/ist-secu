@@ -51,7 +51,7 @@ export function generateLicenseHeader(
     return `#!/bin/bash
 #================================================================
 # INFRA SHIELD TOOLS - Script sous licence
-# https://ist-security.fr
+# https://ist-secu.com
 #================================================================
 # Licence: ${licenseId}
 # Client: ${clientEmail}
@@ -70,7 +70,7 @@ _ist_verify_license() {
     echo "================================================================"
     echo " LICENCE EXPIREE"
     echo " Votre licence a expire le \$exp_date"
-    echo " Renouvelez votre abonnement sur https://ist-security.fr"
+    echo " Renouvelez votre abonnement sur https://ist-secu.com"
     echo "================================================================"
     echo ""
     exit 1
@@ -83,7 +83,7 @@ _ist_verify_license
     // PowerShell script
     return `#================================================================
 # INFRA SHIELD TOOLS - Script sous licence
-# https://ist-security.fr
+# https://ist-secu.com
 #================================================================
 # Licence: ${licenseId}
 # Client: ${clientEmail}
@@ -102,7 +102,7 @@ function Test-ISTLicense {
         Write-Host "================================================================"
         Write-Host " LICENCE EXPIREE"
         Write-Host " Votre licence a expire le ${expiresAtStr}"
-        Write-Host " Renouvelez votre abonnement sur https://ist-security.fr"
+        Write-Host " Renouvelez votre abonnement sur https://ist-secu.com"
         Write-Host "================================================================"
         Write-Host ""
         exit 1
@@ -128,7 +128,7 @@ function generatePythonLicenseHeader(
   return `#!/usr/bin/env python3
 #================================================================
 # INFRA SHIELD TOOLS - Script sous licence
-# https://ist-security.fr
+# https://ist-secu.com
 #================================================================
 # Licence: ${licenseId}
 # Client: ${clientEmail}
@@ -150,7 +150,7 @@ def _ist_verify_license():
         print("================================================================")
         print(" LICENCE EXPIREE")
         print(f" Votre licence a expire le ${expiresAtStr}")
-        print(" Renouvelez votre abonnement sur https://ist-security.fr")
+        print(" Renouvelez votre abonnement sur https://ist-secu.com")
         print("================================================================")
         print("")
         sys.exit(1)
