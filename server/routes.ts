@@ -939,6 +939,58 @@ export async function registerRoutes(
     }
   });
 
+  // Delete user account
+  app.delete("/api/profile/delete-account", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifie" });
+      }
+
+      // Get current user
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Utilisateur non trouve" });
+      }
+
+      // Check if user is admin - prevent admin deletion
+      if (user.isAdmin) {
+        return res.status(403).json({ message: "Les comptes administrateurs ne peuvent pas etre supprimes" });
+      }
+
+      // Delete user's team memberships
+      await db.delete(teamMembers).where(eq(teamMembers.userId, userId));
+
+      // Delete user's invoices and invoice items
+      const userInvoices = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.userId, userId));
+      for (const invoice of userInvoices) {
+        await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));
+      }
+      await db.delete(invoices).where(eq(invoices.userId, userId));
+
+      // Delete user's purchases
+      await db.delete(purchases).where(eq(purchases.userId, userId));
+
+      // Delete user's sessions
+      await db.delete(sessions).where(eq(sessions.userId, userId));
+
+      // Finally delete the user
+      await db.delete(users).where(eq(users.id, userId));
+
+      // Destroy session
+      if ((req as any).session) {
+        (req as any).session.destroy((err: any) => {
+          if (err) console.error("Error destroying session:", err);
+        });
+      }
+
+      res.json({ success: true, message: "Votre compte a ete supprime avec succes" });
+    } catch (error) {
+      console.error("Delete account error:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du compte" });
+    }
+  });
+
   // Confirm email change via token
   app.get("/api/profile/confirm-email-change", async (req, res) => {
     try {
