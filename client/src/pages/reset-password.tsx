@@ -45,11 +45,11 @@ export default function ResetPasswordPage() {
   }, [token]);
 
   const validatePassword = (pwd: string): string | null => {
-    if (pwd.length < 8) return "Le mot de passe doit contenir au moins 8 caracteres";
-    if (!/[A-Z]/.test(pwd)) return "Le mot de passe doit contenir au moins une majuscule";
-    if (!/[a-z]/.test(pwd)) return "Le mot de passe doit contenir au moins une minuscule";
-    if (!/[0-9]/.test(pwd)) return "Le mot de passe doit contenir au moins un chiffre";
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) return "Le mot de passe doit contenir au moins un caractere special";
+    if (pwd.length < 8) return "Password must be at least 8 characters";
+    if (!/[A-Z]/.test(pwd)) return "Password must contain at least one uppercase letter";
+    if (!/[a-z]/.test(pwd)) return "Password must contain at least one lowercase letter";
+    if (!/[0-9]/.test(pwd)) return "Password must contain at least one number";
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) return "Password must contain at least one special character";
     return null;
   };
 
@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError("Passwords do not match");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
       await apiRequest("POST", "/api/auth/reset-password", { token, password });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Erreur lors de la reinitialisation");
+      setError(err.message || "Error during reset");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,7 +99,7 @@ export default function ResetPasswordPage() {
           <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
             <Link href="/auth">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
+              Back
             </Link>
           </Button>
         </div>
@@ -108,16 +108,16 @@ export default function ResetPasswordPage() {
       <div className="container mx-auto px-4 py-12 max-w-md flex-1">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle>Reinitialiser le mot de passe</CardTitle>
+            <CardTitle>Reset Password</CardTitle>
             <CardDescription>
-              Definissez un nouveau mot de passe pour votre compte
+              Set a new password for your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isVerifying ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground">Verification du lien...</p>
+                <p className="text-muted-foreground">Verifying link...</p>
               </div>
             ) : !tokenValid ? (
               <div className="text-center space-y-4">
@@ -125,11 +125,11 @@ export default function ResetPasswordPage() {
                   <AlertCircle className="h-12 w-12 text-destructive" />
                 </div>
                 <p className="text-muted-foreground">
-                  Ce lien de reinitialisation est invalide ou a expire. Veuillez faire une nouvelle demande.
+                  This reset link is invalid or has expired. Please make a new request.
                 </p>
                 <Button variant="outline" asChild className="w-full" data-testid="button-new-request">
                   <Link href="/forgot-password">
-                    Nouvelle demande
+                    New request
                   </Link>
                 </Button>
               </div>
@@ -139,18 +139,18 @@ export default function ResetPasswordPage() {
                   <CheckCircle className="h-12 w-12 text-green-500" />
                 </div>
                 <p className="text-muted-foreground">
-                  Votre mot de passe a ete reinitialise avec succes. Vous pouvez maintenant vous connecter.
+                  Your password has been reset successfully. You can now sign in.
                 </p>
                 <Button asChild className="w-full" data-testid="button-go-to-login">
                   <Link href="/auth">
-                    Se connecter
+                    Sign in
                   </Link>
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Nouveau mot de passe</Label>
+                  <Label htmlFor="password">New password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -165,11 +165,11 @@ export default function ResetPasswordPage() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    8 caracteres minimum, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractere special
+                    8 characters minimum, 1 uppercase, 1 lowercase, 1 number, 1 special character
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                  <Label htmlFor="confirm-password">Confirm password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -191,10 +191,10 @@ export default function ResetPasswordPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Reinitialisation...
+                      Resetting...
                     </>
                   ) : (
-                    "Reinitialiser le mot de passe"
+                    "Reset password"
                   )}
                 </Button>
               </form>

@@ -18,53 +18,53 @@ function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: 
   if (os === "VMware") {
     return {
       prerequisites: [
-        "Machine Windows avec PowerShell 5.1 ou supérieur",
-        "Module VMware PowerCLI installé (cmdlets PowerShell pour VMware)",
-        "Accès réseau vers vCenter Server ou hôte ESXi",
-        "Compte avec privilèges administrateur sur vCenter/ESXi",
-        "ESXi 7.0 ou 8.0"
+        "Windows machine with PowerShell 5.1 or higher",
+        "VMware PowerCLI module installed (PowerShell cmdlets for VMware)",
+        "Network access to vCenter Server or ESXi host",
+        "Account with administrator privileges on vCenter/ESXi",
+        "ESXi 7.0 or 8.0"
       ],
       steps: [
-        "Ouvrez PowerShell en tant qu'administrateur sur votre machine Windows",
-        "Installez le module VMware PowerCLI si ce n'est pas déjà fait",
-        "Connectez-vous à votre vCenter Server ou hôte ESXi via PowerCLI",
-        "Exécutez le script d'audit qui utilise les commandes PowerCLI"
+        "Open PowerShell as administrator on your Windows machine",
+        "Install the VMware PowerCLI module if not already done",
+        "Connect to your vCenter Server or ESXi host via PowerCLI",
+        "Run the audit script that uses PowerCLI commands"
       ],
-      command: `# Installation de PowerCLI (une seule fois)\nInstall-Module -Name VMware.PowerCLI -Scope CurrentUser -Force\n\n# Connexion à vCenter/ESXi\nConnect-VIServer -Server <adresse_vcenter_ou_esxi> -User <utilisateur> -Password <motdepasse>\n\n# Exécution du script d'audit\n.\\${filename}`
+      command: `# Install PowerCLI (one time only)\nInstall-Module -Name VMware.PowerCLI -Scope CurrentUser -Force\n\n# Connect to vCenter/ESXi\nConnect-VIServer -Server <vcenter_or_esxi_address> -User <username> -Password <password>\n\n# Run the audit script\n.\\${filename}`
     };
   }
 
   if (os === "NetApp") {
     return {
       prerequisites: [
-        "Machine Windows avec PowerShell 5.1 ou supérieur",
-        "Module NetApp.ONTAP installé (NetApp PowerShell Toolkit)",
-        "Accès réseau vers le cluster NetApp ONTAP",
-        "Compte avec privilèges administrateur sur le cluster",
+        "Windows machine with PowerShell 5.1 or higher",
+        "NetApp.ONTAP module installed (NetApp PowerShell Toolkit)",
+        "Network access to the NetApp ONTAP cluster",
+        "Account with administrator privileges on the cluster",
         "ONTAP 9.x"
       ],
       steps: [
-        "Ouvrez PowerShell en tant qu'administrateur sur votre machine Windows",
-        "Installez le module NetApp.ONTAP si ce n'est pas déjà fait",
-        "Exécutez le script avec l'adresse IP du cluster",
-        "Le script vous demandera les identifiants de connexion"
+        "Open PowerShell as administrator on your Windows machine",
+        "Install the NetApp.ONTAP module if not already done",
+        "Run the script with the cluster IP address",
+        "The script will prompt for login credentials"
       ],
-      command: `# Installation du module NetApp (une seule fois)\nInstall-Module -Name NetApp.ONTAP -Scope CurrentUser -Force\n\n# Exécution du script d'audit\n.\\${filename} -ClusterIP <adresse_ip_cluster>`
+      command: `# Install NetApp module (one time only)\nInstall-Module -Name NetApp.ONTAP -Scope CurrentUser -Force\n\n# Run the audit script\n.\\${filename} -ClusterIP <cluster_ip_address>`
     };
   }
 
   if (os === "Containers") {
     return {
       prerequisites: [
-        "Docker 20.10+ ou Podman 4.0+",
-        "Kubernetes 1.25+ (pour les audits K8s)",
-        "Accès aux sockets Docker/Podman",
-        "kubectl configuré (pour Kubernetes)"
+        "Docker 20.10+ or Podman 4.0+",
+        "Kubernetes 1.25+ (for K8s audits)",
+        "Access to Docker/Podman sockets",
+        "kubectl configured (for Kubernetes)"
       ],
       steps: [
-        "Assurez-vous que Docker/Podman est en cours d'exécution",
-        "Rendez le script exécutable",
-        "Exécutez le script avec les permissions appropriées"
+        "Ensure Docker/Podman is running",
+        "Make the script executable",
+        "Run the script with appropriate permissions"
       ],
       command: `chmod +x ${filename}\nsudo ./${filename}`
     };
@@ -73,14 +73,14 @@ function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: 
   if (os === "Linux" || filename.endsWith(".sh")) {
     return {
       prerequisites: [
-        "Système Linux (Debian/Ubuntu, RHEL/CentOS, Fedora, SUSE)",
-        "Accès root ou sudo",
-        "Bash 4.0 ou supérieur"
+        "Linux system (Debian/Ubuntu, RHEL/CentOS, Fedora, SUSE)",
+        "Root or sudo access",
+        "Bash 4.0 or higher"
       ],
       steps: [
-        "Téléchargez le script sur votre serveur Linux",
-        "Rendez le script exécutable avec chmod",
-        "Exécutez le script avec les privilèges root"
+        "Download the script to your Linux server",
+        "Make the script executable with chmod",
+        "Run the script with root privileges"
       ],
       command: `chmod +x ${filename}\nsudo ./${filename}`
     };
@@ -89,23 +89,23 @@ function getExecutionInstructions(script: Script, toolkitOs?: string): { steps: 
   if (os === "Windows" || filename.endsWith(".ps1")) {
     return {
       prerequisites: [
-        "Windows Server 2016, 2019, 2022 ou 2025",
-        "PowerShell 5.1 ou supérieur",
-        "Privilèges administrateur"
+        "Windows Server 2016, 2019, 2022 or 2025",
+        "PowerShell 5.1 or higher",
+        "Administrator privileges"
       ],
       steps: [
-        "Téléchargez le script sur votre serveur Windows",
-        "Ouvrez PowerShell en tant qu'administrateur",
-        "Autorisez l'exécution de scripts si nécessaire",
-        "Exécutez le script"
+        "Download the script to your Windows server",
+        "Open PowerShell as administrator",
+        "Allow script execution if necessary",
+        "Run the script"
       ],
       command: `Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process\n.\\${filename}`
     };
   }
 
   return {
-    prerequisites: ["Consultez la documentation spécifique"],
-    steps: ["Téléchargez et exécutez le script selon votre environnement"],
+    prerequisites: ["See specific documentation"],
+    steps: ["Download and run the script according to your environment"],
     command: `./${filename}`
   };
 }
@@ -141,7 +141,7 @@ export default function Documentation() {
     <div className="min-h-screen bg-background">
       <SEO 
         title="Documentation"
-        description="Guide complet d'utilisation des scripts d'audit de securite Infra Shield Tools. Installation, configuration et interpretation des rapports."
+        description="Complete guide for using Infra Shield Tools security audit scripts. Installation, configuration, and report interpretation."
         url="/documentation"
       />
       {/* Header with logo */}
@@ -162,7 +162,7 @@ export default function Documentation() {
           <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40">
             <Link href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
+              Back
             </Link>
           </Button>
         </div>
@@ -173,7 +173,7 @@ export default function Documentation() {
           <BookOpen className="h-8 w-8 text-primary" />
           <div>
             <h2 className="text-2xl font-bold">Documentation</h2>
-            <p className="text-muted-foreground">Consultez la documentation de chaque toolkit</p>
+            <p className="text-muted-foreground">View the documentation for each toolkit</p>
           </div>
         </div>
 
@@ -181,10 +181,10 @@ export default function Documentation() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Sélectionner un toolkit
+              Select a toolkit
             </CardTitle>
             <CardDescription>
-              Choisissez un toolkit pour afficher la documentation des scripts associés
+              Choose a toolkit to display the documentation for its associated scripts
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -198,7 +198,7 @@ export default function Documentation() {
                   <label className="text-sm font-medium">Toolkit</label>
                   <Select value={selectedToolkit} onValueChange={handleToolkitChange}>
                     <SelectTrigger data-testid="select-toolkit">
-                      <SelectValue placeholder="Sélectionnez un toolkit" />
+                      <SelectValue placeholder="Select a toolkit" />
                     </SelectTrigger>
                     <SelectContent>
                       {toolkits.map((toolkit) => (
@@ -248,7 +248,7 @@ export default function Documentation() {
                   <div className="space-y-6 pt-4 border-t">
                     <h3 className="font-semibold flex items-center gap-2">
                       <FileCode className="h-4 w-4" />
-                      Scripts inclus ({bundledScripts.length})
+                      Included scripts ({bundledScripts.length})
                     </h3>
                     <div className="space-y-6">
                       {bundledScripts.map((script) => {
@@ -275,7 +275,7 @@ export default function Documentation() {
                               
                               {script.features && script.features.length > 0 && (
                                 <div>
-                                  <h5 className="text-sm font-medium mb-2">Fonctionnalités</h5>
+                                  <h5 className="text-sm font-medium mb-2">Features</h5>
                                   <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {script.features.map((feature, idx) => (
                                       <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -289,7 +289,7 @@ export default function Documentation() {
 
                               {script.compliance && (
                                 <div>
-                                  <h5 className="text-sm font-medium mb-2">Standards de conformité</h5>
+                                  <h5 className="text-sm font-medium mb-2">Compliance standards</h5>
                                   <p className="text-sm text-muted-foreground">{script.compliance}</p>
                                 </div>
                               )}
@@ -297,12 +297,12 @@ export default function Documentation() {
                               <div className="mt-4 pt-4 border-t">
                                 <h5 className="text-sm font-medium mb-3 flex items-center gap-2">
                                   <Play className="h-4 w-4" />
-                                  Guide d'exécution
+                                  Execution guide
                                 </h5>
                                 
                                 <div className="space-y-3">
                                   <div>
-                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Prérequis</h6>
+                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Prerequisites</h6>
                                     <ul className="space-y-1">
                                       {instructions.prerequisites.map((prereq, idx) => (
                                         <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -314,7 +314,7 @@ export default function Documentation() {
                                   </div>
 
                                   <div>
-                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Étapes</h6>
+                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Steps</h6>
                                     <ol className="space-y-1">
                                       {instructions.steps.map((step, idx) => (
                                         <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -326,7 +326,7 @@ export default function Documentation() {
                                   </div>
 
                                   <div>
-                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Commande</h6>
+                                    <h6 className="text-xs font-medium text-muted-foreground uppercase mb-2">Command</h6>
                                     <pre className="bg-muted p-3 rounded-md text-sm font-mono overflow-x-auto whitespace-pre-wrap">
                                       {instructions.command}
                                     </pre>
@@ -343,7 +343,7 @@ export default function Documentation() {
 
                 {selectedToolkit && bundledScripts.length === 0 && (
                   <p className="text-center text-muted-foreground py-4">
-                    Aucun script associé à ce toolkit
+                    No scripts associated with this toolkit
                   </p>
                 )}
               </>
@@ -351,15 +351,15 @@ export default function Documentation() {
           </CardContent>
         </Card>
 
-        {/* Section Suivi du Parc - Upload de rapports JSON */}
+        {/* Fleet Tracking Section - JSON Report Upload */}
         <Card className="mt-8" id="suivi-parc">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
-              Suivi du Parc - Importer un rapport JSON
+              Fleet Tracking - Import a JSON Report
             </CardTitle>
             <CardDescription>
-              Apprenez a importer vos rapports d'audit pour suivre l'evolution de la securite de votre parc informatique
+              Learn how to import your audit reports to track the security evolution of your IT infrastructure
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -368,52 +368,52 @@ export default function Documentation() {
               <div className="flex items-start gap-3">
                 <BarChart3 className="h-5 w-5 mt-0.5 text-primary" />
                 <div>
-                  <h4 className="font-semibold">Qu'est-ce que le Suivi du Parc ?</h4>
+                  <h4 className="font-semibold">What is Fleet Tracking?</h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Le Suivi du Parc vous permet de centraliser tous les rapports d'audit de vos machines. 
-                    Vous pouvez suivre l'evolution des scores de conformite, identifier les controles defaillants 
-                    et gerer les corrections appliquees sur chaque machine.
+                    Fleet Tracking allows you to centralize all audit reports from your machines. 
+                    You can track the evolution of compliance scores, identify failing controls, 
+                    and manage the corrections applied on each machine.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Comment generer un rapport JSON */}
+            {/* How to generate a JSON report */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <FileCode className="h-4 w-4" />
-                Etape 1 : Generer un rapport JSON
+                Step 1: Generate a JSON report
               </h3>
               <div className="pl-6 space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Lors de l'execution d'un script d'audit, un fichier JSON est automatiquement genere dans le meme repertoire que le script.
-                  Ce fichier contient toutes les informations necessaires au suivi.
+                  When running an audit script, a JSON file is automatically generated in the same directory as the script.
+                  This file contains all the information needed for tracking.
                 </p>
                 <div className="bg-muted p-4 rounded-md">
-                  <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Exemple de sortie</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Output example</p>
                   <pre className="text-sm font-mono overflow-x-auto whitespace-pre-wrap">
-{`# Apres execution du script, vous obtiendrez :
-audit_base_20260119_005349.html  # Rapport lisible
-audit_base_20260119_005349.json  # Fichier a importer`}
+{`# After running the script, you will get:
+audit_base_20260119_005349.html  # Readable report
+audit_base_20260119_005349.json  # File to import`}
                   </pre>
                 </div>
               </div>
             </div>
 
-            {/* Structure du fichier JSON */}
+            {/* JSON file structure */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Structure du fichier JSON
+                JSON file structure
               </h3>
               <div className="pl-6 space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Le fichier JSON contient les informations essentielles pour le suivi :
+                  The JSON file contains essential information for tracking:
                 </p>
                 <div className="bg-muted p-4 rounded-md">
                   <pre className="text-sm font-mono overflow-x-auto whitespace-pre-wrap">
 {`{
-  "hostname": "serveur-web-01",
+  "hostname": "web-server-01",
   "os": "Ubuntu 22.04 LTS",
   "auditDate": "2026-01-20T14:30:00Z",
   "score": 78,
@@ -423,17 +423,17 @@ audit_base_20260119_005349.json  # Fichier a importer`}
   "controls": [
     {
       "id": "ANSSI-LIN-001",
-      "name": "Verification des permissions /etc/passwd",
+      "name": "Verify /etc/passwd permissions",
       "status": "passed",
       "severity": "high",
-      "details": "Permissions correctes: 644"
+      "details": "Correct permissions: 644"
     },
     {
       "id": "CIS-LIN-042",
-      "name": "Desactivation de l'IPv6",
+      "name": "Disable IPv6",
       "status": "failed",
       "severity": "medium",
-      "details": "IPv6 est encore actif sur eth0"
+      "details": "IPv6 is still active on eth0"
     }
   ]
 }`}
@@ -442,88 +442,88 @@ audit_base_20260119_005349.json  # Fichier a importer`}
               </div>
             </div>
 
-            {/* Comment importer le rapport */}
+            {/* How to import the report */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Etape 2 : Importer le rapport dans le Suivi du Parc
+                Step 2: Import the report into Fleet Tracking
               </h3>
               <div className="pl-6 space-y-3">
                 <ol className="space-y-3">
                   <li className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="text-primary font-medium">1.</span>
-                    <span>Connectez-vous a votre compte et accedez a la page <strong>"Suivi de votre parc"</strong> depuis le menu principal</span>
+                    <span>Log in to your account and navigate to the <strong>"Track your fleet"</strong> page from the main menu</span>
                   </li>
                   <li className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="text-primary font-medium">2.</span>
-                    <span>Dans le menu de gauche, cliquez sur <strong>"Rapports"</strong></span>
+                    <span>In the left menu, click on <strong>"Reports"</strong></span>
                   </li>
                   <li className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="text-primary font-medium">3.</span>
-                    <span>Cliquez sur le bouton <strong>"Importer un rapport"</strong> en haut de la liste</span>
+                    <span>Click the <strong>"Import a report"</strong> button at the top of the list</span>
                   </li>
                   <li className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="text-primary font-medium">4.</span>
-                    <span>Selectionnez votre fichier JSON genere par le script d'audit</span>
+                    <span>Select your JSON file generated by the audit script</span>
                   </li>
                   <li className="flex items-start gap-2 text-sm text-muted-foreground">
                     <span className="text-primary font-medium">5.</span>
-                    <span>Le systeme detecte automatiquement la machine (via le hostname) ou en cree une nouvelle</span>
+                    <span>The system automatically detects the machine (via hostname) or creates a new one</span>
                   </li>
                 </ol>
               </div>
             </div>
 
-            {/* Fonctionnalites du suivi */}
+            {/* Fleet tracking features */}
             <div className="space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
                 <Server className="h-4 w-4" />
-                Fonctionnalites du Suivi du Parc
+                Fleet Tracking Features
               </h3>
               <div className="pl-6">
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Tableau de bord avec statistiques globales
+                    Dashboard with global statistics
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Historique des audits par machine
+                    Audit history per machine
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Evolution des scores dans le temps
+                    Score evolution over time
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Detail des controles passes/echoues
+                    Detail of passed/failed controls
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Suivi des corrections appliquees
+                    Track applied corrections
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Organisation hierarchique (Site, Groupe)
+                    Hierarchical organization (Site, Group)
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Gestion des permissions d'equipe
+                    Team permission management
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    Export et partage des rapports
+                    Export and share reports
                   </li>
                 </ul>
               </div>
             </div>
 
-            {/* Lien vers le suivi */}
+            {/* Link to tracking */}
             <div className="pt-4 border-t">
               <Button asChild data-testid="link-suivi-from-doc">
                 <Link href="/suivi">
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Acceder au Suivi du Parc
+                  Access Fleet Tracking
                 </Link>
               </Button>
             </div>

@@ -30,11 +30,11 @@ import { Link } from "wouter";
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "overdue";
 
 const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  draft: { label: "Brouillon", variant: "secondary" },
-  sent: { label: "Envoyee", variant: "outline" },
-  paid: { label: "Payee", variant: "default" },
-  cancelled: { label: "Annulee", variant: "destructive" },
-  overdue: { label: "En retard", variant: "destructive" },
+  draft: { label: "Draft", variant: "secondary" },
+  sent: { label: "Sent", variant: "outline" },
+  paid: { label: "Paid", variant: "default" },
+  cancelled: { label: "Cancelled", variant: "destructive" },
+  overdue: { label: "Overdue", variant: "destructive" },
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -46,7 +46,7 @@ const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "
   active: { label: "Online", variant: "default", icon: Power },
   offline: { label: "Offline", variant: "destructive", icon: AlertTriangle },
   maintenance: { label: "Maintenance", variant: "secondary", icon: Wrench },
-  development: { label: "En developpement", variant: "secondary", icon: Clock },
+  development: { label: "In Development", variant: "secondary", icon: Clock },
 };
 
 export default function AdminPage() {
@@ -410,10 +410,10 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-requests"] });
-      toast({ title: "Statut mis à jour" });
+      toast({ title: "Status updated" });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le statut", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to update status", variant: "destructive" });
     },
   });
 
@@ -423,10 +423,10 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-requests"] });
-      toast({ title: "Demande supprimée" });
+      toast({ title: "Request deleted" });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de supprimer la demande", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to delete request", variant: "destructive" });
     },
   });
 
@@ -436,10 +436,10 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "Utilisateur supprimé" });
+      toast({ title: "User deleted" });
     },
     onError: (error: Error) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -447,17 +447,17 @@ export default function AdminPage() {
     mutationFn: async (userId: string) => {
       const response = await apiRequest("POST", `/api/admin/users/${userId}/reset-password`);
       if (!response.ok) {
-        const data = await response.json().catch(() => ({ message: "Erreur inconnue" }));
-        throw new Error(data.message || "Erreur lors de la reinitialisation");
+        const data = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(data.message || "Error during password reset");
       }
       return response.json();
     },
     onSuccess: (data: { newPassword: string; userEmail: string }) => {
       setResetPasswordResult({ email: data.userEmail, password: data.newPassword });
-      toast({ title: "Mot de passe reinitialise" });
+      toast({ title: "Password reset" });
     },
     onError: (error: Error) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -467,11 +467,11 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/scripts/all"] });
-      toast({ title: "Toolkit mis à jour" });
+      toast({ title: "Toolkit updated" });
       setEditingScript(null);
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le toolkit", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to update toolkit", variant: "destructive" });
     },
   });
 
@@ -482,10 +482,10 @@ export default function AdminPage() {
     },
     onSuccess: (data) => {
       const successCount = data.results?.filter((r: any) => r.success).length || 0;
-      toast({ title: "Synchronisation terminee", description: `${successCount} produit(s) synchronise(s) avec Stripe` });
+      toast({ title: "Sync complete", description: `${successCount} product(s) synced with Stripe` });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de synchroniser avec Stripe", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to sync with Stripe", variant: "destructive" });
     },
   });
 
@@ -494,8 +494,8 @@ export default function AdminPage() {
       setCheckingUpdatesFor(scriptId);
       const response = await apiRequest("GET", `/api/admin/scripts/${scriptId}/check-updates`);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Erreur inconnue" }));
-        throw new Error(errorData.message || "Erreur lors de la vérification");
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || "Error during verification");
       }
       return response.json();
     },
@@ -504,13 +504,13 @@ export default function AdminPage() {
         setUpdateSuggestions(data);
         setSelectedSuggestions(new Set());
       } else {
-        toast({ title: "Erreur", description: data?.message || "Données invalides reçues", variant: "destructive" });
+        toast({ title: "Error", description: data?.message || "Invalid data received", variant: "destructive" });
       }
       setCheckingUpdatesFor(null);
     },
     onError: (error: Error) => {
       setCheckingUpdatesFor(null);
-      toast({ title: "Erreur", description: error.message || "Impossible de vérifier les mises à jour", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Unable to check for updates", variant: "destructive" });
     },
   });
 
@@ -519,16 +519,16 @@ export default function AdminPage() {
       setApplyingUpdates(true);
       const response = await apiRequest("POST", `/api/admin/scripts/${scriptId}/apply-updates`, { controls });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Erreur inconnue" }));
-        throw new Error(errorData.message || "Erreur lors de la mise à jour");
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || "Error during update");
       }
       return response.json();
     },
     onSuccess: (data) => {
       setApplyingUpdates(false);
       toast({ 
-        title: "Controles ajoutes", 
-        description: `${data.addedControls || 0} controle(s) ajoute(s) au script` 
+        title: "Controls added", 
+        description: `${data.addedControls || 0} control(s) added to script` 
       });
       setUpdateSuggestions(null);
       setSelectedSuggestions(new Set());
@@ -536,7 +536,7 @@ export default function AdminPage() {
     },
     onError: (error: Error) => {
       setApplyingUpdates(false);
-      toast({ title: "Erreur", description: error.message || "Impossible d'appliquer les mises à jour", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Unable to apply updates", variant: "destructive" });
     },
   });
 
@@ -545,14 +545,14 @@ export default function AdminPage() {
     mutationFn: async (data: typeof newInvoice) => {
       const response = await apiRequest("POST", "/api/admin/invoices", data);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Erreur inconnue" }));
-        throw new Error(errorData.message || "Erreur lors de la creation de la facture");
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || "Error creating invoice");
       }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
-      toast({ title: "Facture creee", description: "La facture a ete creee avec succes" });
+      toast({ title: "Invoice created", description: "Invoice has been successfully created" });
       setShowInvoiceDialog(false);
       setNewInvoice({
         userId: "",
@@ -566,38 +566,38 @@ export default function AdminPage() {
       });
     },
     onError: (error: Error) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const updateInvoiceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const response = await apiRequest("PATCH", `/api/admin/invoices/${id}`, { status });
-      if (!response.ok) throw new Error("Erreur");
+      if (!response.ok) throw new Error("Error");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
-      toast({ title: "Statut mis a jour" });
+      toast({ title: "Status updated" });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de mettre a jour le statut", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to update status", variant: "destructive" });
     },
   });
 
   const deleteInvoiceMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await apiRequest("DELETE", `/api/admin/invoices/${id}`);
-      if (!response.ok) throw new Error("Erreur");
+      if (!response.ok) throw new Error("Error");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
-      toast({ title: "Facture supprimee" });
+      toast({ title: "Invoice deleted" });
       setViewingInvoice(null);
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de supprimer la facture", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to delete invoice", variant: "destructive" });
     },
   });
 
@@ -610,11 +610,11 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/annual-bundles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/annual-bundles"] });
-      toast({ title: "Pack mis a jour" });
+      toast({ title: "Bundle updated" });
       setEditingBundle(null);
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de mettre a jour le pack", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to update bundle", variant: "destructive" });
     },
   });
 
@@ -626,7 +626,7 @@ export default function AdminPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/annual-bundles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/annual-bundles"] });
-      toast({ title: "Pack cree" });
+      toast({ title: "Bundle created" });
       setShowCreateBundleDialog(false);
       setNewBundleName("");
       setNewBundleDescription("");
@@ -635,7 +635,7 @@ export default function AdminPage() {
       setNewBundleScriptIds([]);
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de creer le pack", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to create bundle", variant: "destructive" });
     },
   });
 
@@ -689,7 +689,7 @@ export default function AdminPage() {
         setViewingInvoice(data);
       }
     } catch {
-      toast({ title: "Erreur", description: "Impossible de charger la facture", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to load invoice", variant: "destructive" });
     }
   };
 
@@ -779,7 +779,7 @@ export default function AdminPage() {
       const data = await response.json();
       setScriptControls(data.controls || []);
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de charger les controles", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to load controls", variant: "destructive" });
     }
   };
 
@@ -792,10 +792,10 @@ export default function AdminPage() {
       if (viewingControlsFor) {
         fetchScriptControls(viewingControlsFor.id);
       }
-      toast({ title: "Controle mis a jour" });
+      toast({ title: "Control updated" });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de modifier le controle", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to update control", variant: "destructive" });
     },
   });
 
@@ -807,10 +807,10 @@ export default function AdminPage() {
       if (viewingControlsFor) {
         fetchScriptControls(viewingControlsFor.id);
       }
-      toast({ title: "Controle supprime" });
+      toast({ title: "Control deleted" });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de supprimer le controle", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to delete control", variant: "destructive" });
     },
   });
 
@@ -857,14 +857,14 @@ export default function AdminPage() {
       refetchTrash();
       setDeletingScript(null);
       toast({
-        title: "Toolkit supprime",
-        description: "Le toolkit a ete deplace dans la corbeille.",
+        title: "Toolkit deleted",
+        description: "Toolkit has been moved to trash.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le toolkit",
+        title: "Error",
+        description: error.message || "Unable to delete toolkit",
         variant: "destructive",
       });
     },
@@ -881,14 +881,14 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/scripts"] });
       refetchTrash();
       toast({
-        title: "Toolkit restaure",
-        description: "Le toolkit a ete restaure depuis la corbeille.",
+        title: "Toolkit restored",
+        description: "Toolkit has been restored from trash.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de restaurer le toolkit",
+        title: "Error",
+        description: error.message || "Unable to restore toolkit",
         variant: "destructive",
       });
     },
@@ -903,14 +903,14 @@ export default function AdminPage() {
     onSuccess: () => {
       refetchTrash();
       toast({
-        title: "Toolkit supprime definitivement",
-        description: "Le toolkit a ete supprime de facon permanente.",
+        title: "Toolkit permanently deleted",
+        description: "Toolkit has been permanently deleted.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le toolkit",
+        title: "Error",
+        description: error.message || "Unable to delete toolkit",
         variant: "destructive",
       });
     },
@@ -927,10 +927,10 @@ export default function AdminPage() {
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
-        <p className="text-muted-foreground mb-6">Vous devez être connecté pour accéder à cette page.</p>
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-muted-foreground mb-6">You must be logged in to access this page.</p>
         <Button asChild>
-          <a href="/auth">Se connecter</a>
+          <a href="/auth">Log In</a>
         </Button>
       </div>
     );
@@ -939,23 +939,23 @@ export default function AdminPage() {
   if (!user.isAdmin) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
-        <p className="text-muted-foreground mb-6">Vous n'avez pas les droits administrateur.</p>
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-muted-foreground mb-6">You do not have administrator rights.</p>
         <Button asChild variant="outline">
-          <Link href="/">Retour à l'accueil</Link>
+          <Link href="/">Back to Home</Link>
         </Button>
       </div>
     );
   }
 
   const sidebarItems = [
-    { id: "users" as AdminSection, label: "Utilisateurs", icon: Users, count: users?.length },
-    { id: "tickets" as AdminSection, label: "Gestion des tickets", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
-    { id: "toolkits" as AdminSection, label: "Gestion des toolkit", icon: Package, count: toolkitCount },
-    { id: "bundles" as AdminSection, label: "Packs Annuels", icon: Shield, count: annualBundles?.length },
-    { id: "invoices" as AdminSection, label: "Facturation", icon: FileText, count: allInvoices.length },
-    { id: "logs" as AdminSection, label: "Evenements", icon: Activity, count: logStats?.last24h },
-    { id: "stats" as AdminSection, label: "Statistiques", icon: BarChart3, count: undefined },
+    { id: "users" as AdminSection, label: "Users", icon: Users, count: users?.length },
+    { id: "tickets" as AdminSection, label: "Support", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
+    { id: "toolkits" as AdminSection, label: "Toolkits", icon: Package, count: toolkitCount },
+    { id: "bundles" as AdminSection, label: "Annual Bundles", icon: Shield, count: annualBundles?.length },
+    { id: "invoices" as AdminSection, label: "Invoices", icon: FileText, count: allInvoices.length },
+    { id: "logs" as AdminSection, label: "Activity", icon: Activity, count: logStats?.last24h },
+    { id: "stats" as AdminSection, label: "Dashboard", icon: BarChart3, count: undefined },
   ];
 
   const formatPrice = (cents: number) => {
@@ -972,7 +972,7 @@ export default function AdminPage() {
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Settings className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="font-bold text-lg">Administration</h1>
+            <h1 className="font-bold text-lg">Admin Panel</h1>
           </div>
         </div>
 
@@ -1010,7 +1010,7 @@ export default function AdminPage() {
           <Link href="/">
             <Button variant="ghost" className="w-full justify-start gap-3" data-testid="button-goto-home">
               <Home className="h-4 w-4" />
-              Retour au site
+              Back to Site
             </Button>
           </Link>
         </div>
@@ -1041,8 +1041,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <Users className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Utilisateurs</h2>
-                  <p className="text-muted-foreground">Gérer les comptes utilisateurs</p>
+                  <h2 className="text-2xl font-bold">Users</h2>
+                  <p className="text-muted-foreground">Manage user accounts</p>
                 </div>
               </div>
 
@@ -1050,15 +1050,15 @@ export default function AdminPage() {
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <CardTitle>Utilisateurs enregistrés</CardTitle>
+                      <CardTitle>Registered Users</CardTitle>
                       <CardDescription>
-                        {filteredUsers.length} sur {users?.length || 0} utilisateur(s)
+                        {filteredUsers.length} of {users?.length || 0} user(s)
                       </CardDescription>
                     </div>
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Rechercher..."
+                        placeholder="Search..."
                         value={userSearch}
                         onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
                         className="pl-9"
@@ -1074,7 +1074,7 @@ export default function AdminPage() {
                     </div>
                   ) : paginatedUsers.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
-                      {userSearch ? "Aucun utilisateur trouvé" : "Aucun utilisateur"}
+                      {userSearch ? "No users found" : "No users"}
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -1098,7 +1098,7 @@ export default function AdminPage() {
                                   <Badge variant="default" className="text-xs">Admin</Badge>
                                 )}
                                 {u.id === user.id && (
-                                  <Badge variant="secondary" className="text-xs">Vous</Badge>
+                                  <Badge variant="secondary" className="text-xs">You</Badge>
                                 )}
                               </div>
                               <div className="text-sm text-muted-foreground">{u.email}</div>
@@ -1110,7 +1110,7 @@ export default function AdminPage() {
                               size="icon"
                               onClick={() => resetPasswordMutation.mutate(u.id)}
                               disabled={u.id === user.id || resetPasswordMutation.isPending}
-                              title="Regenerer le mot de passe"
+                              title="Reset password"
                               data-testid={`button-reset-password-${u.id}`}
                             >
                               <KeyRound className="h-4 w-4" />
@@ -1121,7 +1121,7 @@ export default function AdminPage() {
                                   variant="destructive"
                                   size="icon"
                                   disabled={u.id === user.id || deleteUserMutation.isPending}
-                                  title="Supprimer l'utilisateur"
+                                  title="Delete user"
                                   data-testid={`button-delete-user-${u.id}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -1129,18 +1129,18 @@ export default function AdminPage() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                  <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Etes-vous sur de vouloir supprimer l'utilisateur {u.firstName} {u.lastName} ({u.email}) ? Cette action est irreversible.
+                                    Are you sure you want to delete user {u.firstName} {u.lastName} ({u.email})? This action is irreversible.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => deleteUserMutation.mutate(u.id)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    Supprimer
+                                    Delete
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -1152,7 +1152,7 @@ export default function AdminPage() {
                   )}
                   {totalUserPages > 1 && (
                     <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">Page {userPage} sur {totalUserPages}</p>
+                      <p className="text-sm text-muted-foreground">Page {userPage} of {totalUserPages}</p>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -1161,7 +1161,7 @@ export default function AdminPage() {
                           disabled={userPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
-                          Précédent
+                          Previous
                         </Button>
                         <Button
                           variant="outline"
@@ -1169,7 +1169,7 @@ export default function AdminPage() {
                           onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
                           disabled={userPage === totalUserPages}
                         >
-                          Suivant
+                          Next
                           <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
@@ -1186,8 +1186,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <MessageSquare className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Gestion des tickets</h2>
-                  <p className="text-muted-foreground">Demandes de contact et support</p>
+                  <h2 className="text-2xl font-bold">Support Tickets</h2>
+                  <p className="text-muted-foreground">Contact requests and support</p>
                 </div>
               </div>
 
@@ -1195,15 +1195,15 @@ export default function AdminPage() {
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <CardTitle>Demandes de contact</CardTitle>
+                      <CardTitle>Contact Requests</CardTitle>
                       <CardDescription>
-                        {filteredContacts.filter(c => c.status === "pending").length} en attente sur {filteredContacts.length} demande(s)
+                        {filteredContacts.filter(c => c.status === "pending").length} pending out of {filteredContacts.length} request(s)
                       </CardDescription>
                     </div>
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Rechercher..."
+                        placeholder="Search..."
                         value={contactSearch}
                         onChange={(e) => { setContactSearch(e.target.value); setContactPage(1); }}
                         className="pl-9"
@@ -1219,7 +1219,7 @@ export default function AdminPage() {
                     </div>
                   ) : paginatedContacts.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
-                      {contactSearch ? "Aucune demande trouvée" : "Aucune demande de contact"}
+                      {contactSearch ? "No requests found" : "No contact requests"}
                     </p>
                   ) : (
                     <div className="space-y-4">
@@ -1240,16 +1240,16 @@ export default function AdminPage() {
                                 </a>
                                 <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
                                   {request.status === "pending" ? (
-                                    <><Clock className="h-3 w-3 mr-1" /> En attente</>
+                                    <><Clock className="h-3 w-3 mr-1" /> Pending</>
                                   ) : (
-                                    <><CheckCircle className="h-3 w-3 mr-1" /> Traité</>
+                                    <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>
                                   )}
                                 </Badge>
                               </div>
                               <div className="text-sm font-medium">{request.subject}</div>
                               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
                               <div className="text-xs text-muted-foreground">
-                                {new Date(request.createdAt).toLocaleString('fr-FR')}
+                                {new Date(request.createdAt).toLocaleString('en-US')}
                               </div>
                             </div>
                             <div className="flex flex-col gap-2">
@@ -1261,7 +1261,7 @@ export default function AdminPage() {
                                   data-testid={`button-resolve-${request.id}`}
                                 >
                                   <CheckCircle className="h-4 w-4 mr-1" />
-                                  Marquer traité
+                                  Mark Resolved
                                 </Button>
                               ) : (
                                 <>
@@ -1273,7 +1273,7 @@ export default function AdminPage() {
                                     data-testid={`button-unresolve-${request.id}`}
                                   >
                                     <Clock className="h-4 w-4 mr-1" />
-                                    Rouvrir
+                                    Reopen
                                   </Button>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -1284,23 +1284,23 @@ export default function AdminPage() {
                                         data-testid={`button-delete-contact-${request.id}`}
                                       >
                                         <Trash2 className="h-4 w-4 mr-1" />
-                                        Supprimer
+                                        Delete
                                       </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                        <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Etes-vous sur de vouloir supprimer cette demande de contact de {request.name} ? Cette action est irreversible.
+                                          Are you sure you want to delete this contact request from {request.name}? This action is irreversible.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction
                                           onClick={() => deleteContactMutation.mutate(request.id)}
                                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                         >
-                                          Supprimer
+                                          Delete
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
@@ -1315,7 +1315,7 @@ export default function AdminPage() {
                   )}
                   {totalContactPages > 1 && (
                     <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">Page {contactPage} sur {totalContactPages}</p>
+                      <p className="text-sm text-muted-foreground">Page {contactPage} of {totalContactPages}</p>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -1324,7 +1324,7 @@ export default function AdminPage() {
                           disabled={contactPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
-                          Précédent
+                          Previous
                         </Button>
                         <Button
                           variant="outline"
@@ -1332,7 +1332,7 @@ export default function AdminPage() {
                           onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
                           disabled={contactPage === totalContactPages}
                         >
-                          Suivant
+                          Next
                           <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
@@ -1349,8 +1349,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <Package className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Gestion des toolkit</h2>
-                  <p className="text-muted-foreground">Scripts de sécurité disponibles</p>
+                  <h2 className="text-2xl font-bold">Toolkit Management</h2>
+                  <p className="text-muted-foreground">Available security scripts</p>
                 </div>
               </div>
 
@@ -1358,9 +1358,9 @@ export default function AdminPage() {
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <CardTitle>Toolkit disponibles</CardTitle>
+                      <CardTitle>Available Toolkits</CardTitle>
                       <CardDescription>
-                        {filteredScripts.length} toolkit(s) configure(s)
+                        {filteredScripts.length} toolkit(s) configured
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1371,7 +1371,7 @@ export default function AdminPage() {
                         data-testid="button-toggle-trash"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Corbeille {trashData?.scripts?.length ? `(${trashData.scripts.length})` : ""}
+                        Trash {trashData?.scripts?.length ? `(${trashData.scripts.length})` : ""}
                       </Button>
                       <Button
                         variant="outline"
@@ -1390,7 +1390,7 @@ export default function AdminPage() {
                       <div className="relative w-full sm:w-48">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Rechercher..."
+                          placeholder="Search..."
                           value={scriptSearch}
                           onChange={(e) => { setScriptSearch(e.target.value); setScriptPage(1); }}
                           className="pl-9"
@@ -1406,16 +1406,16 @@ export default function AdminPage() {
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-medium flex items-center gap-2">
                           <Trash2 className="h-5 w-5" />
-                          Corbeille
+                          Trash
                         </h3>
                         <Button variant="ghost" size="sm" onClick={() => setShowTrash(false)}>
                           <X className="h-4 w-4 mr-1" />
-                          Fermer
+                          Close
                         </Button>
                       </div>
                       {!trashData?.scripts?.length ? (
                         <p className="text-center text-muted-foreground py-8">
-                          La corbeille est vide
+                          Trash is empty
                         </p>
                       ) : (
                         <div className="space-y-3">
@@ -1426,10 +1426,10 @@ export default function AdminPage() {
                                 <div>
                                   <p className="font-medium">{script.name}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {script.os} - {(script.monthlyPriceCents / 100).toFixed(2)} EUR/mois
+                                    {script.os} - {(script.monthlyPriceCents / 100).toFixed(2)} EUR/month
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    Supprime le {script.deletedAt ? new Date(script.deletedAt).toLocaleDateString('fr-FR') : ""}
+                                    Deleted on {script.deletedAt ? new Date(script.deletedAt).toLocaleDateString('en-US') : ""}
                                   </p>
                                 </div>
                               </div>
@@ -1442,7 +1442,7 @@ export default function AdminPage() {
                                   data-testid={`button-restore-script-${script.id}`}
                                 >
                                   <RefreshCw className="h-4 w-4 mr-1" />
-                                  Restaurer
+                                  Restore
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
@@ -1453,23 +1453,23 @@ export default function AdminPage() {
                                       data-testid={`button-permanent-delete-${script.id}`}
                                     >
                                       <Trash2 className="h-4 w-4 mr-1" />
-                                      Supprimer
+                                      Delete
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Supprimer definitivement</AlertDialogTitle>
+                                      <AlertDialogTitle>Permanently Delete</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Cette action est irreversible. Le toolkit "{script.name}" sera supprime de facon permanente.
+                                        This action is irreversible. The toolkit "{script.name}" will be permanently deleted.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() => permanentDeleteMutation.mutate(script.id)}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                       >
-                                        Supprimer definitivement
+                                        Delete permanently
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -1486,7 +1486,7 @@ export default function AdminPage() {
                     </div>
                   ) : paginatedScripts.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
-                      {scriptSearch ? "Aucun toolkit trouve" : "Aucun toolkit configure"}
+                      {scriptSearch ? "No toolkits found" : "No toolkits configured"}
                     </p>
                   ) : (
                     <Accordion type="multiple" className="space-y-3">
@@ -1530,7 +1530,7 @@ export default function AdminPage() {
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
                                   <div className="font-medium text-primary">
-                                    {formatPrice(script.monthlyPriceCents)}/mois
+                                    {formatPrice(script.monthlyPriceCents)}/month
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     ID: {script.id}
@@ -1540,7 +1540,7 @@ export default function AdminPage() {
                                   variant="outline"
                                   size="icon"
                                   onClick={() => openControlsViewer(script)}
-                                  title="Voir les controles ajoutes"
+                                  title="View added controls"
                                   data-testid={`button-view-controls-${script.id}`}
                                 >
                                   <List className="h-4 w-4" />
@@ -1550,7 +1550,7 @@ export default function AdminPage() {
                                   size="icon"
                                   onClick={() => checkUpdatesMutation.mutate(script.id)}
                                   disabled={checkingUpdatesFor === script.id}
-                                  title="Verifier les mises a jour"
+                                  title="Check for updates"
                                   data-testid={`button-check-updates-${script.id}`}
                                 >
                                   {checkingUpdatesFor === script.id ? (
@@ -1583,7 +1583,7 @@ export default function AdminPage() {
                               <div className="border-t pt-4 mt-0">
                                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                                   <FileCode className="h-4 w-4" />
-                                  Scripts inclus dans ce toolkit
+                                  Scripts included in this toolkit
                                 </h4>
                                 <div className="space-y-2">
                                   {bundledScripts.map((bundledScript) => {
@@ -1611,7 +1611,7 @@ export default function AdminPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => openControlsViewer(bundledScript)}
-                                            title="Voir les controles ajoutes"
+                                            title="View added controls"
                                             data-testid={`button-view-controls-bundled-${bundledScript.id}`}
                                           >
                                             <List className="h-4 w-4" />
@@ -1621,7 +1621,7 @@ export default function AdminPage() {
                                             size="icon"
                                             onClick={() => checkUpdatesMutation.mutate(bundledScript.id)}
                                             disabled={checkingUpdatesFor === bundledScript.id}
-                                            title="Verifier les mises a jour"
+                                            title="Check for updates"
                                             data-testid={`button-check-updates-bundled-${bundledScript.id}`}
                                           >
                                             {checkingUpdatesFor === bundledScript.id ? (
@@ -1634,7 +1634,7 @@ export default function AdminPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => openEditDialog(bundledScript)}
-                                            title="Modifier ce script"
+                                            title="Edit this script"
                                             data-testid={`button-edit-bundled-${bundledScript.id}`}
                                           >
                                             <Pencil className="h-4 w-4" />
@@ -1662,7 +1662,7 @@ export default function AdminPage() {
                           disabled={scriptPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
-                          Précédent
+                          Previous
                         </Button>
                         <Button
                           variant="outline"
@@ -1670,7 +1670,7 @@ export default function AdminPage() {
                           onClick={() => setScriptPage(p => Math.min(totalScriptPages, p + 1))}
                           disabled={scriptPage === totalScriptPages}
                         >
-                          Suivant
+                          Next
                           <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
@@ -1688,21 +1688,21 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <Shield className="h-8 w-8 text-primary" />
                   <div>
-                    <h2 className="text-2xl font-bold">Packs Annuels</h2>
-                    <p className="text-muted-foreground">Gerer les packs annuels et leurs reductions</p>
+                    <h2 className="text-2xl font-bold">Annual Bundles</h2>
+                    <p className="text-muted-foreground">Manage annual bundles and their discounts</p>
                   </div>
                 </div>
                 <Button onClick={() => setShowCreateBundleDialog(true)} data-testid="button-new-bundle">
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau pack
+                  New Bundle
                 </Button>
               </div>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Liste des packs</CardTitle>
+                  <CardTitle>Bundle List</CardTitle>
                   <CardDescription>
-                    {annualBundles?.length || 0} pack(s) configures
+                    {annualBundles?.length || 0} bundle(s) configured
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1711,7 +1711,7 @@ export default function AdminPage() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : !annualBundles || annualBundles.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Aucun pack configure</p>
+                    <p className="text-center text-muted-foreground py-8">No bundles configured</p>
                   ) : (
                     <div className="space-y-3">
                       {annualBundles.map((bundle) => (
@@ -1728,13 +1728,13 @@ export default function AdminPage() {
                               <div className="flex items-center gap-2">
                                 <p className="font-medium">{bundle.name}</p>
                                 {bundle.isActive === 0 && (
-                                  <Badge variant="secondary">Inactif</Badge>
+                                  <Badge variant="secondary">Inactive</Badge>
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-1">{bundle.description}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline">{bundle.includedScriptIds?.length || 0} toolkits</Badge>
-                                <Badge variant="default" className="bg-green-600">{bundle.discountPercent}% reduction</Badge>
+                                <Badge variant="default" className="bg-green-600">{bundle.discountPercent}% discount</Badge>
                               </div>
                             </div>
                           </div>
@@ -1745,7 +1745,7 @@ export default function AdminPage() {
                             data-testid={`button-edit-bundle-${bundle.id}`}
                           >
                             <Pencil className="h-4 w-4 mr-2" />
-                            Modifier
+                            Edit
                           </Button>
                         </div>
                       ))}
@@ -1760,12 +1760,12 @@ export default function AdminPage() {
           <Dialog open={!!editingBundle} onOpenChange={(open) => !open && setEditingBundle(null)}>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Modifier le pack</DialogTitle>
-                <DialogDescription>Modifiez les parametres du pack annuel</DialogDescription>
+                <DialogTitle>Edit Bundle</DialogTitle>
+                <DialogDescription>Edit the annual bundle settings</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-bundle-name">Nom du pack</Label>
+                  <Label htmlFor="edit-bundle-name">Bundle Name</Label>
                   <Input
                     id="edit-bundle-name"
                     value={editBundleName}
@@ -1784,7 +1784,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-bundle-discount">Reduction (%)</Label>
+                  <Label htmlFor="edit-bundle-discount">Discount (%)</Label>
                   <Input
                     id="edit-bundle-discount"
                     type="number"
@@ -1796,7 +1796,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Toolkits inclus</Label>
+                  <Label>Included Toolkits</Label>
                   <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
                     {toolkits.map((toolkit) => (
                       <div key={toolkit.id} className="flex items-center gap-2">
@@ -1826,13 +1826,13 @@ export default function AdminPage() {
                     onCheckedChange={(checked) => setEditBundleIsActive(!!checked)}
                   />
                   <label htmlFor="edit-bundle-active" className="text-sm cursor-pointer">
-                    Pack actif (visible pour les clients)
+                    Active bundle (visible to clients)
                   </label>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingBundle(null)}>
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={saveEditBundle} 
@@ -1854,17 +1854,17 @@ export default function AdminPage() {
           <Dialog open={showCreateBundleDialog} onOpenChange={setShowCreateBundleDialog}>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nouveau pack annuel</DialogTitle>
-                <DialogDescription>Creez un nouveau pack avec reduction</DialogDescription>
+                <DialogTitle>New Annual Bundle</DialogTitle>
+                <DialogDescription>Create a new bundle with discount</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-bundle-name">Nom du pack</Label>
+                  <Label htmlFor="new-bundle-name">Bundle Name</Label>
                   <Input
                     id="new-bundle-name"
                     value={newBundleName}
                     onChange={(e) => setNewBundleName(e.target.value)}
-                    placeholder="Ex: Infrastructure Pack"
+                    placeholder="E.g.: Infrastructure Pack"
                     data-testid="input-new-bundle-name"
                   />
                 </div>
@@ -1874,13 +1874,13 @@ export default function AdminPage() {
                     id="new-bundle-description"
                     value={newBundleDescription}
                     onChange={(e) => setNewBundleDescription(e.target.value)}
-                    placeholder="Description du pack..."
+                    placeholder="Bundle description..."
                     rows={3}
                     data-testid="input-new-bundle-description"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-bundle-discount">Reduction (%)</Label>
+                  <Label htmlFor="new-bundle-discount">Discount (%)</Label>
                   <Input
                     id="new-bundle-discount"
                     type="number"
@@ -1892,7 +1892,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Toolkits a inclure</Label>
+                  <Label>Toolkits to include</Label>
                   <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
                     {toolkits.map((toolkit) => (
                       <div key={toolkit.id} className="flex items-center gap-2">
@@ -1918,7 +1918,7 @@ export default function AdminPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowCreateBundleDialog(false)}>
-                  Annuler
+                  Cancel
                 </Button>
                 <Button 
                   onClick={createBundle} 
@@ -1930,7 +1930,7 @@ export default function AdminPage() {
                   ) : (
                     <Plus className="h-4 w-4 mr-2" />
                   )}
-                  Creer le pack
+                  Create Bundle
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1943,13 +1943,13 @@ export default function AdminPage() {
                 <div className="flex items-center gap-3">
                   <FileText className="h-8 w-8 text-primary" />
                   <div>
-                    <h2 className="text-2xl font-bold">Gestion des factures</h2>
-                    <p className="text-muted-foreground">Creer et suivre les factures clients</p>
+                    <h2 className="text-2xl font-bold">Invoice Management</h2>
+                    <p className="text-muted-foreground">Create and track client invoices</p>
                   </div>
                 </div>
                 <Button onClick={() => setShowInvoiceDialog(true)} data-testid="button-new-invoice">
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle facture
+                  New Invoice
                 </Button>
               </div>
 
@@ -1957,15 +1957,15 @@ export default function AdminPage() {
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                      <CardTitle>Liste des factures</CardTitle>
+                      <CardTitle>Invoice List</CardTitle>
                       <CardDescription>
-                        {filteredInvoices.length} facture(s) - {allInvoices.filter(i => i.status === "paid").length} payee(s)
+                        {filteredInvoices.length} invoice(s) - {allInvoices.filter(i => i.status === "paid").length} paid
                       </CardDescription>
                     </div>
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Rechercher..."
+                        placeholder="Search..."
                         value={invoiceSearch}
                         onChange={(e) => setInvoiceSearch(e.target.value)}
                         className="pl-9"
@@ -1982,8 +1982,8 @@ export default function AdminPage() {
                   ) : invoicesByUser.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>{invoiceSearch ? "Aucune facture trouvee" : "Aucune facture"}</p>
-                      <p className="text-sm">Creez votre premiere facture pour commencer.</p>
+                      <p>{invoiceSearch ? "No invoice found" : "No invoices"}</p>
+                      <p className="text-sm">Create your first invoice to get started.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -2009,8 +2009,8 @@ export default function AdminPage() {
                                     <span className="font-medium" data-testid={`text-user-name-${userGroup.userId}`}>
                                       {userGroup.customerName}
                                     </span>
-                                    <Badge variant="outline">{userGroup.invoices.length} facture(s)</Badge>
-                                    <Badge variant="default">{userGroup.paidCount} payee(s)</Badge>
+                                    <Badge variant="outline">{userGroup.invoices.length} invoice(s)</Badge>
+                                    <Badge variant="default">{userGroup.paidCount} paid</Badge>
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {userGroup.customerEmail}
@@ -2021,7 +2021,7 @@ export default function AdminPage() {
                                     {formatPrice(userGroup.totalAmount)}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    Total factures
+                                    Total invoices
                                   </div>
                                 </div>
                                 {isExpanded ? (
@@ -2054,10 +2054,10 @@ export default function AdminPage() {
                                             <Badge variant={statusInfo.variant} className="text-xs">{statusInfo.label}</Badge>
                                           </div>
                                           <div className="text-xs text-muted-foreground mt-1">
-                                            Cree le {new Date(invoice.createdAt).toLocaleDateString('fr-FR')}
+                                            Created on {new Date(invoice.createdAt).toLocaleDateString('en-US')}
                                             {invoice.dueDate && (
                                               <span className="ml-2">
-                                                Echeance: {new Date(invoice.dueDate).toLocaleDateString('fr-FR')}
+                                                Due: {new Date(invoice.dueDate).toLocaleDateString('en-US')}
                                               </span>
                                             )}
                                           </div>
@@ -2067,7 +2067,7 @@ export default function AdminPage() {
                                             {formatPrice(invoice.totalCents)}
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            HT: {formatPrice(invoice.subtotalCents)} - TVA {invoice.taxRate}%
+                                            Subtotal: {formatPrice(invoice.subtotalCents)} - Tax {invoice.taxRate}%
                                           </div>
                                         </div>
                                       </div>
@@ -2076,7 +2076,7 @@ export default function AdminPage() {
                                           variant="outline"
                                           size="icon"
                                           onClick={(e) => { e.stopPropagation(); viewInvoiceDetails(invoice.id); }}
-                                          title="Voir details"
+                                          title="View details"
                                           data-testid={`button-view-invoice-${invoice.id}`}
                                         >
                                           <Eye className="h-4 w-4" />
@@ -2086,7 +2086,7 @@ export default function AdminPage() {
                                             variant="outline"
                                             size="icon"
                                             onClick={(e) => { e.stopPropagation(); updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" }); }}
-                                            title="Marquer comme envoyee"
+                                            title="Mark as sent"
                                             data-testid={`button-send-invoice-${invoice.id}`}
                                           >
                                             <Send className="h-4 w-4" />
@@ -2097,7 +2097,7 @@ export default function AdminPage() {
                                             variant="outline"
                                             size="icon"
                                             onClick={(e) => { e.stopPropagation(); updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" }); }}
-                                            title="Marquer comme payee"
+                                            title="Mark as paid"
                                             data-testid={`button-paid-invoice-${invoice.id}`}
                                           >
                                             <CreditCard className="h-4 w-4" />
@@ -2110,7 +2110,7 @@ export default function AdminPage() {
                                               size="icon"
                                               onClick={(e) => e.stopPropagation()}
                                               disabled={deleteInvoiceMutation.isPending}
-                                              title="Supprimer"
+                                              title="Delete"
                                               data-testid={`button-delete-invoice-${invoice.id}`}
                                             >
                                               <Trash2 className="h-4 w-4" />
@@ -2118,18 +2118,18 @@ export default function AdminPage() {
                                           </AlertDialogTrigger>
                                           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                             <AlertDialogHeader>
-                                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
                                               <AlertDialogDescription>
-                                                Etes-vous sur de vouloir supprimer la facture {invoice.invoiceNumber} ? Cette action est irreversible.
+                                                Are you sure you want to delete invoice {invoice.invoiceNumber}? This action is irreversible.
                                               </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
                                               <AlertDialogAction
                                                 onClick={() => deleteInvoiceMutation.mutate(invoice.id)}
                                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                               >
-                                                Supprimer
+                                                Delete
                                               </AlertDialogAction>
                                             </AlertDialogFooter>
                                           </AlertDialogContent>
@@ -2147,7 +2147,7 @@ export default function AdminPage() {
                   )}
                   {invoicesByUser.length > 10 && (
                     <div className="flex items-center justify-center mt-6 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">{invoicesByUser.length} utilisateur(s) - {filteredInvoices.length} facture(s) au total</p>
+                      <p className="text-sm text-muted-foreground">{invoicesByUser.length} user(s) - {filteredInvoices.length} total invoice(s)</p>
                     </div>
                   )}
                 </CardContent>
@@ -2161,8 +2161,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <Activity className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Evenements</h2>
-                  <p className="text-muted-foreground">Journal des activites du site</p>
+                  <h2 className="text-2xl font-bold">Activity Log</h2>
+                  <p className="text-muted-foreground">Site activity journal</p>
                 </div>
               </div>
 
@@ -2176,7 +2176,7 @@ export default function AdminPage() {
                       </div>
                       <div>
                         <p className="text-2xl font-bold">{logStats?.last24h || 0}</p>
-                        <p className="text-xs text-muted-foreground">Derniers 24h</p>
+                        <p className="text-xs text-muted-foreground">Last 24h</p>
                       </div>
                     </div>
                   </CardContent>
@@ -2216,34 +2216,34 @@ export default function AdminPage() {
                 <CardContent>
                   <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm">Categorie:</Label>
+                      <Label className="text-sm">Category:</Label>
                       <Select value={logCategory} onValueChange={(v) => { setLogCategory(v); setLogPage(1); }}>
                         <SelectTrigger className="w-[150px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Toutes</SelectItem>
-                          <SelectItem value="auth">Authentification</SelectItem>
-                          <SelectItem value="payment">Paiements</SelectItem>
-                          <SelectItem value="admin">Administration</SelectItem>
-                          <SelectItem value="fleet">Suivi du parc</SelectItem>
-                          <SelectItem value="system">Systeme</SelectItem>
-                          <SelectItem value="user">Utilisateur</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="auth">Authentication</SelectItem>
+                          <SelectItem value="payment">Payments</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="fleet">Fleet Tracking</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
+                          <SelectItem value="user">User</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm">Severite:</Label>
+                      <Label className="text-sm">Severity:</Label>
                       <Select value={logSeverity} onValueChange={(v) => { setLogSeverity(v); setLogPage(1); }}>
                         <SelectTrigger className="w-[130px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Toutes</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
                           <SelectItem value="info">Info</SelectItem>
                           <SelectItem value="warning">Warning</SelectItem>
-                          <SelectItem value="error">Erreur</SelectItem>
-                          <SelectItem value="critical">Critique</SelectItem>
+                          <SelectItem value="error">Error</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2256,10 +2256,10 @@ export default function AdminPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <List className="h-5 w-5" />
-                    Journal des evenements
+                    Event Log
                   </CardTitle>
                   <CardDescription>
-                    {logsData?.pagination.total || 0} evenement(s) au total
+                    {logsData?.pagination.total || 0} total event(s)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -2268,7 +2268,7 @@ export default function AdminPage() {
                       <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
                   ) : !logsData?.logs.length ? (
-                    <p className="text-center text-muted-foreground py-8">Aucun evenement</p>
+                    <p className="text-center text-muted-foreground py-8">No events</p>
                   ) : (
                     <div className="space-y-2">
                       {logsData.logs.map((log) => (
@@ -2331,7 +2331,7 @@ export default function AdminPage() {
                               </div>
                             </div>
                             <div className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(log.createdAt).toLocaleString('fr-FR', {
+                              {new Date(log.createdAt).toLocaleString('en-US', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric',
@@ -2354,10 +2354,10 @@ export default function AdminPage() {
                         onClick={() => setLogPage(p => Math.max(1, p - 1))}
                         disabled={logPage <= 1}
                       >
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Precedent
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        Page {logPage} sur {logsData.pagination.totalPages}
+                        Page {logPage} of {logsData.pagination.totalPages}
                       </span>
                       <Button
                         variant="outline"
@@ -2365,7 +2365,7 @@ export default function AdminPage() {
                         onClick={() => setLogPage(p => Math.min(logsData.pagination.totalPages, p + 1))}
                         disabled={logPage >= logsData.pagination.totalPages}
                       >
-                        Suivant <ChevronRight className="h-4 w-4 ml-1" />
+                        Next <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </div>
                   )}
@@ -2380,8 +2380,8 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <BarChart3 className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Statistiques</h2>
-                  <p className="text-muted-foreground">Tableau de bord et analyses</p>
+                  <h2 className="text-2xl font-bold">Statistics</h2>
+                  <p className="text-muted-foreground">Dashboard and analytics</p>
                 </div>
               </div>
 
@@ -2389,49 +2389,49 @@ export default function AdminPage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-sm font-medium">Utilisateurs</CardTitle>
+                    <CardTitle className="text-sm font-medium">Users</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{overviewStats?.users.total || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      +{overviewStats?.users.thisMonth || 0} ce mois
+                      +{overviewStats?.users.thisMonth || 0} this month
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
+                    <CardTitle className="text-sm font-medium">Revenue</CardTitle>
                     <Euro className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatPrice(overviewStats?.revenue.total || 0)}</div>
                     <p className="text-xs text-muted-foreground">
-                      +{formatPrice(overviewStats?.revenue.thisMonth || 0)} ce mois
+                      +{formatPrice(overviewStats?.revenue.thisMonth || 0)} this month
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-sm font-medium">Tickets en attente</CardTitle>
+                    <CardTitle className="text-sm font-medium">Pending Tickets</CardTitle>
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{overviewStats?.tickets.pending || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {overviewStats?.tickets.thisMonth || 0} ce mois
+                      {overviewStats?.tickets.thisMonth || 0} this month
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-                    <CardTitle className="text-sm font-medium">Achats total</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
                     <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{overviewStats?.purchases.total || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      Tous les achats
+                      All purchases
                     </p>
                   </CardContent>
                 </Card>
@@ -2447,19 +2447,19 @@ export default function AdminPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />
-                        Evolution des inscriptions
+                        Registration Trends
                       </CardTitle>
-                      <CardDescription>Nouveaux comptes utilisateurs</CardDescription>
+                      <CardDescription>New user accounts</CardDescription>
                     </div>
                     <Select value={userStatsPeriod} onValueChange={(v) => setUserStatsPeriod(v as typeof userStatsPeriod)}>
                       <SelectTrigger className="w-32" data-testid="select-user-period">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="day">Jour</SelectItem>
-                        <SelectItem value="week">Semaine</SelectItem>
-                        <SelectItem value="month">Mois</SelectItem>
-                        <SelectItem value="year">Annee</SelectItem>
+                        <SelectItem value="day">Day</SelectItem>
+                        <SelectItem value="week">Week</SelectItem>
+                        <SelectItem value="month">Month</SelectItem>
+                        <SelectItem value="year">Year</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2481,7 +2481,7 @@ export default function AdminPage() {
                         />
                         <Bar 
                           dataKey="count" 
-                          name="Inscriptions"
+                          name="Registrations"
                           fill="#10b981" 
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
@@ -2490,7 +2490,7 @@ export default function AdminPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Aucune donnee disponible pour cette periode
+                      No data available for this period
                     </div>
                   )}
                 </CardContent>
@@ -2501,9 +2501,9 @@ export default function AdminPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    Repartition des achats par toolkit
+                    Toolkit purchases breakdown
                   </CardTitle>
-                  <CardDescription>Distribution des achats de toolkits</CardDescription>
+                  <CardDescription>Distribution of toolkit purchases</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {toolkitStats?.data && toolkitStats.data.some(t => Number(t.purchase_count) > 0) ? (
@@ -2536,7 +2536,7 @@ export default function AdminPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Aucun achat de toolkit enregistre
+                      No toolkit purchases recorded
                     </div>
                   )}
                 </CardContent>
@@ -2549,9 +2549,9 @@ export default function AdminPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <Euro className="h-5 w-5" />
-                        Evolution du chiffre d'affaires
+                        Revenue Trends
                       </CardTitle>
-                      <CardDescription>Revenus bases sur les factures payees</CardDescription>
+                      <CardDescription>Revenue based on paid invoices</CardDescription>
                     </div>
                     <Select value={String(revenueYear)} onValueChange={(v) => setRevenueYear(Number(v))}>
                       <SelectTrigger className="w-32" data-testid="select-revenue-year">
@@ -2583,11 +2583,11 @@ export default function AdminPage() {
                         />
                         <Tooltip 
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                          formatter={(value: number) => [formatPrice(value), 'Revenus']}
+                          formatter={(value: number) => [formatPrice(value), 'Revenue']}
                         />
                         <Bar 
                           dataKey="revenue" 
-                          name="Revenus"
+                          name="Revenue"
                           fill="#10b981" 
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
@@ -2596,7 +2596,7 @@ export default function AdminPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Aucune donnee de revenus pour cette periode
+                      No revenue data for this period
                     </div>
                   )}
                 </CardContent>
@@ -2609,19 +2609,19 @@ export default function AdminPage() {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <MessageSquare className="h-5 w-5" />
-                        Tickets support
+                        Support Tickets
                       </CardTitle>
-                      <CardDescription>Tickets recus et traites</CardDescription>
+                      <CardDescription>Tickets received and processed</CardDescription>
                     </div>
                     <Select value={ticketStatsPeriod} onValueChange={(v) => setTicketStatsPeriod(v as typeof ticketStatsPeriod)}>
                       <SelectTrigger className="w-32" data-testid="select-ticket-period">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="day">Jour</SelectItem>
-                        <SelectItem value="week">Semaine</SelectItem>
-                        <SelectItem value="month">Mois</SelectItem>
-                        <SelectItem value="year">Annee</SelectItem>
+                        <SelectItem value="day">Day</SelectItem>
+                        <SelectItem value="week">Week</SelectItem>
+                        <SelectItem value="month">Month</SelectItem>
+                        <SelectItem value="year">Year</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2645,13 +2645,13 @@ export default function AdminPage() {
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />
                         <Legend />
-                        <Bar dataKey="received" name="Recus" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                        <Bar dataKey="processed" name="Traites" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="received" name="Received" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="processed" name="Processed" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Aucun ticket pour cette periode
+                      No tickets for this period
                     </div>
                   )}
                 </CardContent>
@@ -2666,24 +2666,24 @@ export default function AdminPage() {
       <Dialog open={!!editingScript} onOpenChange={(open) => !open && setEditingScript(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Modifier le toolkit</DialogTitle>
+            <DialogTitle>Edit Toolkit</DialogTitle>
             <DialogDescription>
-              Modifiez les informations du toolkit ci-dessous.
+              Edit the toolkit information below.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Nom du toolkit</Label>
+              <Label htmlFor="edit-name">Toolkit Name</Label>
               <Input
                 id="edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Nom du toolkit"
+                placeholder="Toolkit name"
                 data-testid="input-edit-name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-price">Prix mensuel (EUR)</Label>
+              <Label htmlFor="edit-price">Monthly Price (EUR)</Label>
               <div className="relative">
                 <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -2699,14 +2699,14 @@ export default function AdminPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Prix actuel: {editingScript ? (editingScript.monthlyPriceCents / 100).toFixed(2) : "0.00"} EUR/mois
+                Current price: {editingScript ? (editingScript.monthlyPriceCents / 100).toFixed(2) : "0.00"} EUR/month
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-status">Statut</Label>
+              <Label htmlFor="edit-status">Status</Label>
               <Select value={editStatus} onValueChange={(value) => setEditStatus(value as ScriptStatus)}>
                 <SelectTrigger data-testid="select-edit-status">
-                  <SelectValue placeholder="Selectionner un statut" />
+                  <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">
@@ -2739,7 +2739,7 @@ export default function AdminPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingScript(null)} data-testid="button-cancel-edit">
-              Annuler
+              Cancel
             </Button>
             <Button onClick={handleSaveScript} disabled={updateScriptMutation.isPending} data-testid="button-save-script">
               {updateScriptMutation.isPending ? (
@@ -2759,13 +2759,13 @@ export default function AdminPage() {
       <AlertDialog open={!!deletingScript} onOpenChange={(open) => !open && setDeletingScript(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer ce toolkit</AlertDialogTitle>
+            <AlertDialogTitle>Delete Toolkit</AlertDialogTitle>
             <AlertDialogDescription>
-              Etes-vous sur de vouloir supprimer "{deletingScript?.name}" ? Ce toolkit sera deplace dans la corbeille et pourra etre restaure ulterieurement.
+              Are you sure you want to delete "{deletingScript?.name}"? This toolkit will be moved to trash and can be restored later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingScript && deleteScriptMutation.mutate(deletingScript.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -2777,7 +2777,7 @@ export default function AdminPage() {
                   Suppression...
                 </>
               ) : (
-                "Supprimer"
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2790,12 +2790,12 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-primary" />
-              Suggestions de mise à jour
+              Update Suggestions
             </DialogTitle>
             <DialogDescription>
               {updateSuggestions && (
                 <span data-testid="text-toolkit-analysis">
-                  Analyse du toolkit <strong>{updateSuggestions.toolkit.name}</strong> ({updateSuggestions.toolkit.os})
+                  Analysis of toolkit <strong>{updateSuggestions.toolkit.name}</strong> ({updateSuggestions.toolkit.os})
                 </span>
               )}
             </DialogDescription>
@@ -2805,7 +2805,7 @@ export default function AdminPage() {
             <div className="space-y-4 py-2">
               {/* Standards Reference */}
               <div className="p-3 rounded-lg bg-muted/50" data-testid="section-standards-reference">
-                <div className="text-sm font-medium mb-2">Standards de référence</div>
+                <div className="text-sm font-medium mb-2">Reference Standards</div>
                 <div className="flex flex-wrap gap-2">
                   {updateSuggestions.standards.map((standard) => (
                     <Badge key={standard.id} variant="outline" data-testid={`badge-standard-${standard.id}`}>
@@ -2814,16 +2814,16 @@ export default function AdminPage() {
                   ))}
                 </div>
                 <div className="text-xs text-muted-foreground mt-2" data-testid="text-total-controls">
-                  {updateSuggestions.totalReferenceControls} contrôles dans la base de référence
+                  {updateSuggestions.totalReferenceControls} controls in reference database
                 </div>
               </div>
 
               {/* Current Status */}
               <div className="flex items-center justify-between p-3 rounded-lg border" data-testid="section-current-status">
                 <div>
-                  <div className="font-medium">Contrôles actuels</div>
+                  <div className="font-medium">Current Controls</div>
                   <div className="text-sm text-muted-foreground" data-testid="text-current-controls">
-                    ~{updateSuggestions.toolkit.currentControlCount} contrôles implémentés
+                    ~{updateSuggestions.toolkit.currentControlCount} controls implemented
                   </div>
                 </div>
                 <Badge variant="secondary" data-testid="badge-suggestions-count">
@@ -2835,9 +2835,9 @@ export default function AdminPage() {
               {updateSuggestions.suggestions.length > 0 ? (
                 <div className="space-y-2" data-testid="section-suggestions-list">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">Contrôles suggérés</div>
+                    <div className="font-medium">Suggested Controls</div>
                     <span className="text-sm text-muted-foreground" data-testid="text-selected-count">
-                      {selectedSuggestions.size} sélectionné(s)
+                      {selectedSuggestions.size} selected
                     </span>
                   </div>
                   {updateSuggestions.suggestions.map((suggestion) => (
@@ -2874,7 +2874,7 @@ export default function AdminPage() {
                             </Badge>
                             {suggestion.recommended && (
                               <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400 border-green-500/50" data-testid={`badge-suggestion-recommended-${suggestion.id}`}>
-                                Recommandé
+                                Recommended
                               </Badge>
                             )}
                           </div>
@@ -2900,14 +2900,14 @@ export default function AdminPage() {
               ) : (
                 <div className="text-center py-6 text-muted-foreground" data-testid="section-no-suggestions">
                   <Check className="h-8 w-8 mx-auto mb-2 text-green-500" data-testid="icon-no-suggestions" />
-                  <p data-testid="text-no-suggestions-title">Aucune suggestion de mise à jour</p>
-                  <p className="text-sm" data-testid="text-no-suggestions-message">Le toolkit est à jour avec les standards de référence.</p>
+                  <p data-testid="text-no-suggestions-title">No update suggestions</p>
+                  <p className="text-sm" data-testid="text-no-suggestions-message">The toolkit is up to date with reference standards.</p>
                 </div>
               )}
 
               {/* Analysis Info */}
               <div className="text-xs text-muted-foreground text-center pt-2 border-t" data-testid="text-analysis-date">
-                Analyse effectuée le {new Date(updateSuggestions.analysisDate).toLocaleString('fr-FR')}
+                Analysis performed on {new Date(updateSuggestions.analysisDate).toLocaleString('en-US')}
               </div>
             </div>
           )}
@@ -2922,7 +2922,7 @@ export default function AdminPage() {
                     onClick={selectAllSuggestions}
                     data-testid="button-select-all"
                   >
-                    Tout sélectionner
+                    Select all
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -2930,13 +2930,13 @@ export default function AdminPage() {
                     onClick={deselectAllSuggestions}
                     data-testid="button-deselect-all"
                   >
-                    Tout désélectionner
+                    Deselect all
                   </Button>
                 </>
               )}
             </div>
             <Button variant="outline" onClick={() => { setUpdateSuggestions(null); setSelectedSuggestions(new Set()); }} data-testid="button-close-suggestions">
-              Fermer
+              Close
             </Button>
             {updateSuggestions && updateSuggestions.suggestions.length > 0 && (
               <Button 
@@ -2947,11 +2947,11 @@ export default function AdminPage() {
                 {applyingUpdates ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ajout en cours...
+                    Adding...
                   </>
                 ) : (
                   <>
-                    Ajouter au script ({selectedSuggestions.size})
+                    Add to script ({selectedSuggestions.size})
                   </>
                 )}
               </Button>
@@ -2964,9 +2964,9 @@ export default function AdminPage() {
       <Dialog open={!!viewingControlsFor} onOpenChange={(open) => !open && setViewingControlsFor(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle data-testid="dialog-controls-title">Controles ajoutes - {viewingControlsFor?.name}</DialogTitle>
+            <DialogTitle data-testid="dialog-controls-title">Added Controls - {viewingControlsFor?.name}</DialogTitle>
             <DialogDescription data-testid="dialog-controls-description">
-              Liste des controles de securite ajoutes dynamiquement a ce toolkit
+              List of security controls dynamically added to this toolkit
             </DialogDescription>
           </DialogHeader>
           
@@ -2974,13 +2974,13 @@ export default function AdminPage() {
             {scriptControls.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground" data-testid="section-no-controls">
                 <List className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Aucun controle ajoute</p>
-                <p className="text-sm">Utilisez le verificateur de mises a jour pour ajouter des controles.</p>
+                <p>No controls added</p>
+                <p className="text-sm">Use the update checker to add controls.</p>
               </div>
             ) : (
               <>
                 <div className="text-sm text-muted-foreground mb-4" data-testid="text-controls-count">
-                  {scriptControls.length} controle(s) ajoute(s)
+                  {scriptControls.length} control(s) added
                 </div>
                 {scriptControls.map((control) => (
                   <div
@@ -3011,7 +3011,7 @@ export default function AdminPage() {
                         <div className="text-sm text-muted-foreground mt-1">{control.description}</div>
                         <div className="text-xs text-muted-foreground mt-1">
                           <span className="font-medium">Ref:</span> {control.reference}
-                          <span className="ml-2">Ajoute le {new Date(control.addedAt).toLocaleDateString('fr-FR')}</span>
+                          <span className="ml-2">Added on {new Date(control.addedAt).toLocaleDateString('en-US')}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -3033,7 +3033,7 @@ export default function AdminPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              title="Supprimer"
+                              title="Delete"
                               data-testid={`button-delete-control-${control.id}`}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -3041,18 +3041,18 @@ export default function AdminPage() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Etes-vous sur de vouloir supprimer le controle {control.controlId} ({control.name}) ? Cette action est irreversible.
+                                Are you sure you want to delete control {control.controlId} ({control.name})? This action is irreversible.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => deleteControlMutation.mutate(control.id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Supprimer
+                                Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -3067,7 +3067,7 @@ export default function AdminPage() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingControlsFor(null)} data-testid="button-close-controls">
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3077,9 +3077,9 @@ export default function AdminPage() {
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Nouvelle facture</DialogTitle>
+            <DialogTitle>New Invoice</DialogTitle>
             <DialogDescription>
-              Creer une nouvelle facture pour un client
+              Create a new invoice for a client
             </DialogDescription>
           </DialogHeader>
           
@@ -3089,7 +3089,7 @@ export default function AdminPage() {
               <Label>Client</Label>
               <Select value={newInvoice.userId} onValueChange={selectUserForInvoice}>
                 <SelectTrigger data-testid="select-invoice-customer">
-                  <SelectValue placeholder="Selectionner un client" />
+                  <SelectValue placeholder="Select a client" />
                 </SelectTrigger>
                 <SelectContent>
                   {usersList.map(u => (
@@ -3103,11 +3103,11 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nom du client</Label>
+                <Label>Client Name</Label>
                 <Input
                   value={newInvoice.customerName}
                   onChange={e => setNewInvoice(prev => ({ ...prev, customerName: e.target.value }))}
-                  placeholder="Nom complet"
+                  placeholder="Full name"
                   data-testid="input-invoice-customer-name"
                 />
               </div>
@@ -3124,11 +3124,11 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Adresse (optionnel)</Label>
+              <Label>Address (optional)</Label>
               <Textarea
                 value={newInvoice.customerAddress}
                 onChange={e => setNewInvoice(prev => ({ ...prev, customerAddress: e.target.value }))}
-                placeholder="Adresse de facturation"
+                placeholder="Billing address"
                 rows={2}
                 data-testid="input-invoice-address"
               />
@@ -3136,7 +3136,7 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Taux TVA (%)</Label>
+                <Label>Tax Rate (%)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -3147,7 +3147,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Date d'echeance</Label>
+                <Label>Due Date</Label>
                 <Input
                   type="date"
                   value={newInvoice.dueDate}
@@ -3160,16 +3160,16 @@ export default function AdminPage() {
             {/* Items */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Articles</Label>
+                <Label>Items</Label>
                 <Button variant="outline" size="sm" onClick={addItemToNewInvoice} data-testid="button-add-item">
                   <Plus className="h-4 w-4 mr-1" />
-                  Ajouter
+                  Add
                 </Button>
               </div>
               
               {newInvoice.items.length === 0 ? (
                 <div className="text-center py-4 text-sm text-muted-foreground border rounded-lg">
-                  Aucun article. Ajoutez des articles a la facture.
+                  No items. Add items to the invoice.
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -3181,12 +3181,12 @@ export default function AdminPage() {
                           onValueChange={(v) => selectScriptForItem(index, v)}
                         >
                           <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Choisir un toolkit (optionnel)" />
+                            <SelectValue placeholder="Choose a toolkit (optional)" />
                           </SelectTrigger>
                           <SelectContent>
                             {scripts?.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0).map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>
-                                {s.name} - {formatPrice(s.monthlyPriceCents)}/mois
+                                {s.name} - {formatPrice(s.monthlyPriceCents)}/month
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -3210,7 +3210,7 @@ export default function AdminPage() {
                         <Input
                           type="number"
                           min={1}
-                          placeholder="Qte"
+                          placeholder="Qty"
                           value={item.quantity}
                           onChange={e => updateItemInNewInvoice(index, 'quantity', parseInt(e.target.value) || 1)}
                         />
@@ -3218,7 +3218,7 @@ export default function AdminPage() {
                           type="number"
                           min={0}
                           step={0.01}
-                          placeholder="Prix EUR"
+                          placeholder="Price EUR"
                           value={item.unitPriceCents / 100}
                           onChange={e => updateItemInNewInvoice(index, 'unitPriceCents', Math.round(parseFloat(e.target.value) * 100) || 0)}
                         />
@@ -3239,11 +3239,11 @@ export default function AdminPage() {
                   return (
                     <>
                       <div className="flex justify-between text-sm">
-                        <span>Sous-total HT:</span>
+                        <span>Subtotal (excl. tax):</span>
                         <span>{formatPrice(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>TVA ({newInvoice.taxRate}%):</span>
+                        <span>Tax ({newInvoice.taxRate}%):</span>
                         <span>{formatPrice(tax)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-lg">
@@ -3257,11 +3257,11 @@ export default function AdminPage() {
             )}
 
             <div className="space-y-2">
-              <Label>Notes (optionnel)</Label>
+              <Label>Notes (optional)</Label>
               <Textarea
                 value={newInvoice.notes}
                 onChange={e => setNewInvoice(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes ou conditions particulieres"
+                placeholder="Notes or special conditions"
                 rows={2}
                 data-testid="input-invoice-notes"
               />
@@ -3270,7 +3270,7 @@ export default function AdminPage() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={() => createInvoiceMutation.mutate(newInvoice)}
@@ -3280,10 +3280,10 @@ export default function AdminPage() {
               {createInvoiceMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creation...
+                  Creating...
                 </>
               ) : (
-                "Creer la facture"
+                "Create invoice"
               )}
             </Button>
           </DialogFooter>
@@ -3296,10 +3296,10 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Facture {viewingInvoice?.invoice.invoiceNumber}
+              Invoice {viewingInvoice?.invoice.invoiceNumber}
             </DialogTitle>
             <DialogDescription>
-              Details de la facture
+              Invoice details
             </DialogDescription>
           </DialogHeader>
           
@@ -3311,7 +3311,7 @@ export default function AdminPage() {
                   {invoiceStatusLabels[viewingInvoice.invoice.status as InvoiceStatus]?.label || viewingInvoice.invoice.status}
                 </Badge>
                 <div className="text-sm text-muted-foreground">
-                  Creee le {new Date(viewingInvoice.invoice.createdAt).toLocaleDateString('fr-FR')}
+                  Created on {new Date(viewingInvoice.invoice.createdAt).toLocaleDateString('en-US')}
                 </div>
               </div>
 
@@ -3326,14 +3326,14 @@ export default function AdminPage() {
 
               {/* Items */}
               <div className="space-y-2">
-                <Label>Articles</Label>
+                <Label>Items</Label>
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-muted">
                       <tr>
                         <th className="text-left p-2">Description</th>
-                        <th className="text-center p-2">Qte</th>
-                        <th className="text-right p-2">Prix unit.</th>
+                        <th className="text-center p-2">Qty</th>
+                        <th className="text-right p-2">Unit Price</th>
                         <th className="text-right p-2">Total</th>
                       </tr>
                     </thead>
@@ -3354,11 +3354,11 @@ export default function AdminPage() {
               {/* Totals */}
               <div className="border-t pt-4 space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span>Sous-total HT:</span>
+                  <span>Subtotal (excl. tax):</span>
                   <span>{formatPrice(viewingInvoice.invoice.subtotalCents)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>TVA ({viewingInvoice.invoice.taxRate}%):</span>
+                  <span>Tax ({viewingInvoice.invoice.taxRate}%):</span>
                   <span>{formatPrice(viewingInvoice.invoice.taxCents)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg">
@@ -3378,13 +3378,13 @@ export default function AdminPage() {
                 {viewingInvoice.invoice.dueDate && (
                   <div className="flex items-center gap-1">
                     <CalendarDays className="h-4 w-4" />
-                    Echeance: {new Date(viewingInvoice.invoice.dueDate).toLocaleDateString('fr-FR')}
+                    Due: {new Date(viewingInvoice.invoice.dueDate).toLocaleDateString('en-US')}
                   </div>
                 )}
                 {viewingInvoice.invoice.paidAt && (
                   <div className="flex items-center gap-1 text-green-600">
                     <CreditCard className="h-4 w-4" />
-                    Payee le {new Date(viewingInvoice.invoice.paidAt).toLocaleDateString('fr-FR')}
+                    Paid on {new Date(viewingInvoice.invoice.paidAt).toLocaleDateString('en-US')}
                   </div>
                 )}
               </div>
@@ -3393,7 +3393,7 @@ export default function AdminPage() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingInvoice(null)}>
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3405,22 +3405,22 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-5 w-5" />
-              Nouveau mot de passe genere
+              New Password Generated
             </DialogTitle>
             <DialogDescription>
-              Communiquez ce mot de passe a l'utilisateur. Il ne sera plus visible apres la fermeture de cette fenetre.
+              Share this password with the user. It will no longer be visible after closing this window.
             </DialogDescription>
           </DialogHeader>
           
           {resetPasswordResult && (
             <div className="space-y-4">
               <div className="p-3 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Utilisateur</p>
+                <p className="text-xs text-muted-foreground mb-1">User</p>
                 <p className="font-medium">{resetPasswordResult.email}</p>
               </div>
               
               <div className="p-3 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Nouveau mot de passe</p>
+                <p className="text-xs text-muted-foreground mb-1">New password</p>
                 <div className="flex items-center justify-between gap-2">
                   <code className="text-lg font-mono font-bold text-primary" data-testid="text-new-password">
                     {resetPasswordResult.password}
@@ -3430,9 +3430,9 @@ export default function AdminPage() {
                     size="icon"
                     onClick={() => {
                       navigator.clipboard.writeText(resetPasswordResult.password);
-                      toast({ title: "Mot de passe copie" });
+                      toast({ title: "Password copied" });
                     }}
-                    title="Copier le mot de passe"
+                    title="Copy password"
                     data-testid="button-copy-password"
                   >
                     <Copy className="h-4 w-4" />
@@ -3444,7 +3444,7 @@ export default function AdminPage() {
           
           <DialogFooter>
             <Button onClick={() => setResetPasswordResult(null)}>
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

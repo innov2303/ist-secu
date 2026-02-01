@@ -24,7 +24,7 @@ export default function ChangeEmailPage() {
 
     if (!tokenParam) {
       setTokenValid(false);
-      setErrorMessage("Token manquant");
+      setErrorMessage("Missing token");
       setStatus("error");
       return;
     }
@@ -53,16 +53,16 @@ export default function ChangeEmailPage() {
       if (response.ok) {
         setStatus("success");
         toast({
-          title: "Email modifie",
-          description: "Votre adresse email a ete mise a jour avec succes.",
+          title: "Email changed",
+          description: "Your email address has been updated successfully.",
         });
       } else {
         setStatus("error");
-        setErrorMessage(data.message || "Erreur lors du changement d'email");
+        setErrorMessage(data.message || "Error changing email");
       }
     } catch (error) {
       setStatus("error");
-      setErrorMessage("Erreur de connexion au serveur");
+      setErrorMessage("Server connection error");
     } finally {
       setIsSubmitting(false);
     }
@@ -104,13 +104,13 @@ export default function ChangeEmailPage() {
               )}
             </div>
             <CardTitle className="text-xl">
-              {status === "form" && "Modifier votre email"}
-              {status === "success" && "Email modifie"}
-              {status === "error" && "Erreur"}
+              {status === "form" && "Change Your Email"}
+              {status === "success" && "Email Changed"}
+              {status === "error" && "Error"}
             </CardTitle>
             <CardDescription className="mt-2">
-              {status === "form" && "Renseignez votre nouvelle adresse email"}
-              {status === "success" && "Votre adresse email a ete mise a jour avec succes"}
+              {status === "form" && "Enter your new email address"}
+              {status === "success" && "Your email address has been updated successfully"}
               {status === "error" && errorMessage}
             </CardDescription>
           </CardHeader>
@@ -118,11 +118,11 @@ export default function ChangeEmailPage() {
             {status === "form" && tokenValid && (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newEmail">Nouvelle adresse email</Label>
+                  <Label htmlFor="newEmail">New email address</Label>
                   <Input
                     id="newEmail"
                     type="email"
-                    placeholder="nouvelle@email.com"
+                    placeholder="new@email.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     required
@@ -138,10 +138,10 @@ export default function ChangeEmailPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Modification en cours...
+                      Updating...
                     </>
                   ) : (
-                    "Confirmer le nouvel email"
+                    "Confirm new email"
                   )}
                 </Button>
               </form>
@@ -150,11 +150,11 @@ export default function ChangeEmailPage() {
             {status === "success" && (
               <div className="text-center space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Vous pouvez maintenant utiliser votre nouvelle adresse email pour vous connecter.
+                  You can now use your new email address to sign in.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild>
-                    <Link href="/profile">Mon compte</Link>
+                    <Link href="/profile">My Account</Link>
                   </Button>
                 </div>
               </div>
@@ -163,14 +163,14 @@ export default function ChangeEmailPage() {
             {status === "error" && (
               <div className="text-center space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Le lien est peut-etre expire ou invalide. Vous pouvez demander un nouveau lien depuis votre profil.
+                  The link may be expired or invalid. You can request a new link from your profile.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild variant="outline">
-                    <Link href="/">Retour a l'accueil</Link>
+                    <Link href="/">Back to Home</Link>
                   </Button>
                   <Button asChild>
-                    <Link href="/profile">Mon profil</Link>
+                    <Link href="/profile">My Profile</Link>
                   </Button>
                 </div>
               </div>

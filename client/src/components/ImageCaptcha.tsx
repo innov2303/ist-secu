@@ -37,14 +37,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  shield: "boucliers",
-  lock: "cadenas",
-  key: "cles",
-  server: "serveurs",
-  database: "bases de donnees",
-  cloud: "nuages",
+  shield: "shields",
+  lock: "locks",
+  key: "keys",
+  server: "servers",
+  database: "databases",
+  cloud: "clouds",
   globe: "globes",
-  star: "etoiles",
+  star: "stars",
 };
 
 export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
@@ -66,7 +66,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
       setIsVerified(false);
       onVerify(false, "", []);
     } catch (err) {
-      setError("Erreur de chargement. Veuillez rafraichir.");
+      setError("Loading error. Please refresh.");
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +97,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
 
   const handleVerify = async () => {
     if (!challenge || selectedIndices.size === 0) {
-      setError("Veuillez selectionner au moins une image");
+      setError("Please select at least one image");
       return;
     }
 
@@ -117,11 +117,11 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
         setError("");
         onVerify(true, challenge.challengeId, Array.from(selectedIndices));
       } else {
-        setError("Selection incorrecte. Essayez a nouveau.");
+        setError("Incorrect selection. Try again.");
         fetchChallenge();
       }
     } catch (err) {
-      setError("Erreur de verification. Veuillez reessayer.");
+      setError("Verification error. Please try again.");
       fetchChallenge();
     }
   };
@@ -132,7 +132,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
         <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
-        <span className="text-sm text-green-700 dark:text-green-300">Verification reussie</span>
+        <span className="text-sm text-green-700 dark:text-green-300">Verification successful</span>
       </div>
     );
   }
@@ -140,7 +140,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
   return (
     <div className={`space-y-1.5 p-2 bg-muted/50 border rounded ${className}`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Verification de securite</span>
+        <span className="text-xs font-medium text-muted-foreground">Security verification</span>
         <Button
           type="button"
           variant="ghost"
@@ -161,7 +161,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
       ) : challenge ? (
         <>
           <p className="text-xs font-medium text-center" data-testid="text-captcha-instruction">
-            Selectionnez tous les <span className="text-primary font-semibold">{challenge.targetLabel}</span>
+            Select all the <span className="text-primary font-semibold">{challenge.targetLabel}</span>
           </p>
           
           <div className="flex justify-center gap-1" data-testid="captcha-image-grid">
@@ -195,7 +195,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
               disabled={selectedIndices.size === 0}
               data-testid="button-verify-captcha"
             >
-              Verifier
+              Verify
             </Button>
           </div>
         </>

@@ -298,7 +298,6 @@ export default function Suivi() {
   const [showUserGroupPermissionsDialog, setShowUserGroupPermissionsDialog] = useState(false);
   const [editingUserGroup, setEditingUserGroup] = useState<UserGroup | null>(null);
   
-  // Edit hierarchy state
   const [showEditHierarchyDialog, setShowEditHierarchyDialog] = useState(false);
   const [editingHierarchyType, setEditingHierarchyType] = useState<"org" | "site" | "group" | null>(null);
   const [editingHierarchyId, setEditingHierarchyId] = useState<number | null>(null);
@@ -360,11 +359,9 @@ export default function Suivi() {
     enabled: !!user,
   });
 
-  // Derive all machine groups from hierarchy data for current team only
   const allMachineGroups = useMemo(() => {
     if (!hierarchyData?.organizations || !team?.id) return [];
     const groups: MachineGroupWithHierarchy[] = [];
-    // Filter organizations by current team
     const teamOrgs = hierarchyData.organizations.filter(org => org.teamId === team.id);
     for (const org of teamOrgs) {
       for (const site of org.sites) {
@@ -398,11 +395,11 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Permission mise a jour" });
+      toast({ title: "Permission updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+      toast({ title: "Error updating permission", variant: "destructive" });
     },
   });
 
@@ -416,15 +413,14 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Permission supprimee" });
+      toast({ title: "Permission deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members", selectedMemberForPermissions?.id, "permissions"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: "Error deleting permission", variant: "destructive" });
     },
   });
 
-  // User Groups queries and mutations
   const { data: userGroupsData } = useQuery<UserGroup[]>({
     queryKey: ["/api/teams", team?.id, "user-groups"],
     enabled: !!team?.id,
@@ -451,14 +447,14 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Groupe utilisateur cree" });
+      toast({ title: "User group created" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
       setShowUserGroupDialog(false);
       setNewUserGroupName("");
       setNewUserGroupDescription("");
     },
     onError: () => {
-      toast({ title: "Erreur lors de la creation", variant: "destructive" });
+      toast({ title: "Error creating group", variant: "destructive" });
     },
   });
 
@@ -471,12 +467,12 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Groupe utilisateur mis a jour" });
+      toast({ title: "User group updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
       setEditingUserGroup(null);
     },
     onError: () => {
-      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+      toast({ title: "Error updating group", variant: "destructive" });
     },
   });
 
@@ -485,12 +481,12 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${groupId}`);
     },
     onSuccess: () => {
-      toast({ title: "Groupe utilisateur supprime" });
+      toast({ title: "User group deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: "Error deleting group", variant: "destructive" });
     },
   });
 
@@ -502,13 +498,13 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Membre ajoute au groupe" });
+      toast({ title: "Member added to group" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de l'ajout", variant: "destructive" });
+      toast({ title: "Error adding member", variant: "destructive" });
     },
   });
 
@@ -517,13 +513,13 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${data.userGroupId}/members/${data.teamMemberId}`);
     },
     onSuccess: () => {
-      toast({ title: "Membre retire du groupe" });
+      toast({ title: "Member removed from group" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "members-in-groups"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors du retrait", variant: "destructive" });
+      toast({ title: "Error removing member", variant: "destructive" });
     },
   });
 
@@ -537,11 +533,11 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Permission mise a jour" });
+      toast({ title: "Permission updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "permissions"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+      toast({ title: "Error updating permission", variant: "destructive" });
     },
   });
 
@@ -550,11 +546,11 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/teams/${team?.id}/user-groups/${selectedUserGroup?.id}/permissions/${permissionId}`);
     },
     onSuccess: () => {
-      toast({ title: "Permission supprimee" });
+      toast({ title: "Permission deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams", team?.id, "user-groups", selectedUserGroup?.id, "permissions"] });
     },
     onError: () => {
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
+      toast({ title: "Error deleting permission", variant: "destructive" });
     },
   });
 
@@ -564,7 +560,7 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Organisation creee" });
+      toast({ title: "Organization created" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowAddOrgDialog(false);
       setNewOrgName("");
@@ -577,7 +573,7 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Site cree" });
+      toast({ title: "Site created" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowAddSiteDialog(false);
       setNewSiteName("");
@@ -592,7 +588,7 @@ export default function Suivi() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Groupe cree" });
+      toast({ title: "Group created" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowAddGroupDialog(false);
       setNewGroupName("");
@@ -605,7 +601,7 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/fleet/organizations/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Organisation supprimee" });
+      toast({ title: "Organization deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
     },
   });
@@ -615,7 +611,7 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/fleet/sites/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Site supprime" });
+      toast({ title: "Site deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
     },
   });
@@ -625,7 +621,7 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/fleet/groups/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Groupe supprime" });
+      toast({ title: "Group deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
     },
   });
@@ -635,7 +631,7 @@ export default function Suivi() {
       await apiRequest("PUT", `/api/fleet/organizations/${data.id}`, { name: data.name, description: data.description });
     },
     onSuccess: () => {
-      toast({ title: "Organisation mise a jour" });
+      toast({ title: "Organization updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowEditHierarchyDialog(false);
     },
@@ -646,7 +642,7 @@ export default function Suivi() {
       await apiRequest("PUT", `/api/fleet/sites/${data.id}`, { name: data.name, location: data.location });
     },
     onSuccess: () => {
-      toast({ title: "Site mis a jour" });
+      toast({ title: "Site updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowEditHierarchyDialog(false);
     },
@@ -657,7 +653,7 @@ export default function Suivi() {
       await apiRequest("PUT", `/api/fleet/groups/${data.id}`, { name: data.name, description: data.description });
     },
     onSuccess: () => {
-      toast({ title: "Groupe mis a jour" });
+      toast({ title: "Group updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowEditHierarchyDialog(false);
     },
@@ -668,7 +664,7 @@ export default function Suivi() {
       await apiRequest("PUT", `/api/fleet/machines/${data.machineId}/assign`, { groupId: data.groupId });
     },
     onSuccess: () => {
-      toast({ title: "Machine assignee" });
+      toast({ title: "Machine assigned" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
     },
@@ -681,8 +677,8 @@ export default function Suivi() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Rapport importe",
-        description: data.message || "Le rapport a ete importe avec succes",
+        title: "Report imported",
+        description: data.message || "The report has been imported successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
@@ -690,8 +686,8 @@ export default function Suivi() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de l'import du rapport",
+        title: "Error",
+        description: error.message || "Error importing the report",
         variant: "destructive",
       });
     },
@@ -702,7 +698,7 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/fleet/machines/${machineId}`);
     },
     onSuccess: () => {
-      toast({ title: "Machine supprimee" });
+      toast({ title: "Machine deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
     },
@@ -713,7 +709,7 @@ export default function Suivi() {
       await apiRequest("PUT", `/api/fleet/machines/${machineId}/assign`, { groupId });
     },
     onSuccess: () => {
-      toast({ title: "Machine deplacee" });
+      toast({ title: "Machine moved" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/hierarchy"] });
       setShowMoveDialog(false);
@@ -721,11 +717,10 @@ export default function Suivi() {
       setTargetGroupId("");
     },
     onError: () => {
-      toast({ title: "Erreur lors du deplacement", variant: "destructive" });
+      toast({ title: "Error moving machine", variant: "destructive" });
     },
   });
 
-  // Query for report controls
   const { data: reportControlsData, isLoading: isLoadingControls, refetch: refetchControls } = useQuery<{ 
     reportId: number; 
     controls: ReportControl[]; 
@@ -737,13 +732,12 @@ export default function Suivi() {
     enabled: !!selectedReportForControls,
   });
 
-  // Mutation for saving control correction
   const saveControlCorrectionMutation = useMutation({
     mutationFn: async (data: { reportId: number; controlId: string; originalStatus: string; correctedStatus: string; justification: string }) => {
       return await apiRequest("POST", `/api/fleet/reports/${data.reportId}/corrections`, data);
     },
     onSuccess: () => {
-      toast({ title: "Correction enregistree - Score mis a jour" });
+      toast({ title: "Correction saved - Score updated" });
       refetchControls();
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
@@ -753,8 +747,8 @@ export default function Suivi() {
     },
     onError: (error: any) => {
       toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la sauvegarde",
+        title: "Error",
+        description: error.message || "Error saving correction",
         variant: "destructive",
       });
     },
@@ -765,7 +759,7 @@ export default function Suivi() {
       await apiRequest("DELETE", `/api/fleet/reports/${reportId}`);
     },
     onSuccess: () => {
-      toast({ title: "Rapport supprime" });
+      toast({ title: "Report deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/reports"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/machines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/fleet/stats"] });
@@ -785,8 +779,8 @@ export default function Suivi() {
       setShowUploadDialog(true);
     } else {
       toast({
-        title: "Format invalide",
-        description: "Veuillez selectionner un fichier JSON",
+        title: "Invalid format",
+        description: "Please select a JSON file",
         variant: "destructive",
       });
     }
@@ -799,8 +793,8 @@ export default function Suivi() {
   const handleConfirmUpload = async () => {
     if (!uploadFile || !machineName.trim()) {
       toast({
-        title: "Nom de machine requis",
-        description: "Veuillez renseigner le nom de la machine",
+        title: "Machine name required",
+        description: "Please enter the machine name",
         variant: "destructive",
       });
       return;
@@ -835,7 +829,7 @@ export default function Suivi() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "--";
-    return new Date(dateString).toLocaleDateString("fr-FR", {
+    return new Date(dateString).toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -929,12 +923,12 @@ export default function Suivi() {
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8">
             <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-bold mb-2">Connexion requise</h2>
+            <h2 className="text-xl font-bold mb-2">Login Required</h2>
             <p className="text-muted-foreground mb-4">
-              Connectez-vous pour acceder au suivi de votre parc
+              Please log in to access fleet tracking
             </p>
             <Button asChild>
-              <Link href="/">Retour a l'accueil</Link>
+              <Link href="/">Back to Home</Link>
             </Button>
           </CardContent>
         </Card>
@@ -952,13 +946,13 @@ export default function Suivi() {
   const showAccessRequiredDialog = !hasTeamAccess;
 
   const navItems = [
-    { id: "dashboard" as TabType, label: "Tableau de bord", icon: LayoutDashboard },
+    { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
     { id: "machines" as TabType, label: "Machines", icon: Server },
-    { id: "reports" as TabType, label: "Rapports", icon: FileText },
+    { id: "reports" as TabType, label: "Reports", icon: FileText },
   ];
 
   const adminNavItems = [
-    { id: "team" as TabType, label: "Equipe", icon: Users },
+    { id: "team" as TabType, label: "Team", icon: Users },
   ];
 
   const teamName = isAdmin && !isTeamOwner && !isTeamMember 
@@ -972,35 +966,34 @@ export default function Suivi() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Dialog d'acces requis */}
       <Dialog open={showAccessRequiredDialog}>
         <DialogContent className="sm:max-w-lg [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4">
               <Server className="w-8 h-8 text-primary" />
             </div>
-            <DialogTitle className="text-center text-xl">Suivi de votre parc</DialogTitle>
+            <DialogTitle className="text-center text-xl">Fleet Tracking</DialogTitle>
             <DialogDescription className="text-center">
-              Tableau de bord de suivi de vos audits de securite
+              Security audit tracking dashboard
             </DialogDescription>
           </DialogHeader>
           {canCreateTeam ? (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 my-4">
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500 mb-2">
                 <Check className="h-4 w-4" />
-                <span className="font-medium text-sm">Abonnement actif</span>
+                <span className="font-medium text-sm">Active subscription</span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                Vous avez un abonnement actif. Pour acceder au suivi du parc, vous devez maintenant creer votre equipe.
+                You have an active subscription. To access fleet tracking, you need to create your team.
               </p>
               <ul className="text-sm text-muted-foreground text-left space-y-2">
                 <li className="flex items-start gap-2">
                   <Users className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                  <span>Rendez-vous sur votre profil pour creer votre equipe</span>
+                  <span>Go to your profile to create your team</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                  <span>Une fois l'equipe creee, vous aurez acces au suivi du parc</span>
+                  <span>Once the team is created, you will have access to fleet tracking</span>
                 </li>
               </ul>
             </div>
@@ -1008,19 +1001,19 @@ export default function Suivi() {
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 my-4">
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 mb-2">
                 <AlertTriangle className="h-4 w-4" />
-                <span className="font-medium text-sm">Acces requis</span>
+                <span className="font-medium text-sm">Access required</span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
-                Pour acceder au service de suivi du parc, vous devez :
+                To access the fleet tracking service, you must:
               </p>
               <ul className="text-sm text-muted-foreground text-left space-y-2">
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                  <span>Vous abonner a au moins un toolkit de securite</span>
+                  <span>Subscribe to at least one security toolkit</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Users className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                  <span>Ou demander des droits d'acces a l'administrateur principal de votre societe</span>
+                  <span>Or request access from your company's main administrator</span>
                 </li>
               </ul>
             </div>
@@ -1030,18 +1023,18 @@ export default function Suivi() {
               <Button asChild>
                 <Link href="/profile">
                   <Users className="w-4 h-4 mr-2" />
-                  Creer mon equipe
+                  Create my team
                 </Link>
               </Button>
             ) : (
               <>
                 <Button asChild variant="outline">
-                  <Link href="/">Voir les toolkits</Link>
+                  <Link href="/">View toolkits</Link>
                 </Button>
                 <Button asChild>
                   <Link href="/profile">
                     <Users className="w-4 h-4 mr-2" />
-                    Gerer mon equipe
+                    Manage my team
                   </Link>
                 </Button>
               </>
@@ -1050,22 +1043,19 @@ export default function Suivi() {
         </DialogContent>
       </Dialog>
 
-      {/* Sidebar fixe */}
       <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0">
-        {/* Header sidebar */}
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
               <Shield className="w-5 h-5 text-primary-foreground" />
             </div>
             <div className="overflow-hidden">
-              <h2 className="font-bold text-sm truncate">Suivi du Parc</h2>
+              <h2 className="font-bold text-sm truncate">Fleet Tracking</h2>
               <p className="text-xs text-muted-foreground truncate">{teamName}</p>
             </div>
           </div>
         </div>
 
-        {/* Navigation principale */}
         <nav className="flex-1 p-3 overflow-y-auto">
           <div className="mb-6">
             <p className="text-xs font-medium text-muted-foreground px-3 mb-2">Navigation</p>
@@ -1118,7 +1108,6 @@ export default function Suivi() {
           )}
         </nav>
 
-        {/* Footer sidebar */}
         <div className="p-3 border-t">
           <Button 
             variant="ghost" 
@@ -1127,28 +1116,26 @@ export default function Suivi() {
             data-testid="button-back-home"
           >
             <LogOut className="w-4 h-4 mr-3" />
-            Retour au site
+            Back to site
           </Button>
         </div>
       </aside>
 
-      {/* Contenu principal */}
       <main className="flex-1 overflow-auto">
-        {/* Header principal */}
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">
-                {activeTab === "dashboard" && "Tableau de bord"}
+                {activeTab === "dashboard" && "Dashboard"}
                 {activeTab === "machines" && "Machines"}
-                {activeTab === "reports" && "Rapports"}
-                {activeTab === "team" && "Equipe"}
+                {activeTab === "reports" && "Reports"}
+                {activeTab === "team" && "Team"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {activeTab === "dashboard" && "Vue d'ensemble de votre parc informatique"}
-                {activeTab === "machines" && "Gestion des machines enregistrees"}
-                {activeTab === "reports" && "Historique des rapports d'audit"}
-                {activeTab === "team" && "Gestion des membres de l'equipe"}
+                {activeTab === "dashboard" && "Overview of your IT fleet"}
+                {activeTab === "machines" && "Manage registered machines"}
+                {activeTab === "reports" && "Audit report history"}
+                {activeTab === "team" && "Manage team members"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1169,30 +1156,29 @@ export default function Suivi() {
                     data-testid="button-upload-report"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    {isUploading ? "Import en cours..." : "Importer un rapport"}
+                    {isUploading ? "Importing..." : "Import report"}
                   </Button>
                 </>
               )}
               {isAdmin && (
                 <Badge variant="default" className="bg-red-600">
-                  Administrateur
+                  Administrator
                 </Badge>
               )}
               {isTeamOwner && !isAdmin && (
                 <Badge variant="default" className="bg-green-600">
-                  Proprietaire
+                  Owner
                 </Badge>
               )}
               {isTeamMember && !isAdmin && (
                 <Badge variant={memberRole === "admin" ? "default" : "secondary"}>
-                  {memberRole === "admin" ? "Admin equipe" : "Membre"}
+                  {memberRole === "admin" ? "Team Admin" : "Member"}
                 </Badge>
               )}
             </div>
           </div>
         </header>
 
-        {/* Contenu des onglets */}
         <div className="p-6">
           {!hasFullAccess && (
             <Card className="mb-6 bg-blue-500/5 border-blue-500/20">
@@ -1200,21 +1186,19 @@ export default function Suivi() {
                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                   <Shield className="h-4 w-4" />
                   <span className="text-sm">
-                    Acces en lecture seule - Contactez un administrateur de l'equipe pour modifier les donnees
+                    Read-only access - Contact a team administrator to modify data
                   </span>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Dashboard */}
           {activeTab === "dashboard" && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Stats cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card>
                   <CardHeader className="pb-2">
@@ -1225,7 +1209,7 @@ export default function Suivi() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold">{stats?.totalMachines || 0}</div>
-                    <p className="text-xs text-muted-foreground">Total des machines</p>
+                    <p className="text-xs text-muted-foreground">Total machines</p>
                   </CardContent>
                 </Card>
                 
@@ -1238,7 +1222,7 @@ export default function Suivi() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold">{stats?.totalReports || 0}</div>
-                    <p className="text-xs text-muted-foreground">Rapports generes</p>
+                    <p className="text-xs text-muted-foreground">Reports generated</p>
                   </CardContent>
                 </Card>
                 
@@ -1246,7 +1230,7 @@ export default function Suivi() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <BarChart3 className="h-4 w-4" />
-                      Score moyen
+                      Average score
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1254,7 +1238,7 @@ export default function Suivi() {
                       {stats?.averageScore != null ? `${stats.averageScore}%` : "--"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {stats?.averageScore != null ? "Moyenne globale" : "Aucun audit"}
+                      {stats?.averageScore != null ? "Overall average" : "No audits"}
                     </p>
                   </CardContent>
                 </Card>
@@ -1263,7 +1247,7 @@ export default function Suivi() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Dernier audit
+                      Last audit
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1271,32 +1255,30 @@ export default function Suivi() {
                       {stats?.lastAuditDate ? formatDate(stats.lastAuditDate).split(' ')[0] : "--"}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {stats?.lastAuditDate ? formatDate(stats.lastAuditDate).split(' ')[1] : "Aucun historique"}
+                      {stats?.lastAuditDate ? formatDate(stats.lastAuditDate).split(' ')[1] : "No history"}
                     </p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Graphiques */}
-              {/* Score Evolution Chart */}
               <Card className="mb-6">
                 <CardHeader>
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2 text-base">
                         <TrendingUp className="h-4 w-4" />
-                        Evolution du score du parc
+                        Fleet score evolution
                       </CardTitle>
                       <CardDescription className="flex items-center gap-4 mt-1">
-                        <span>Score moyen par mois</span>
+                        <span>Average score per month</span>
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-gray-700 dark:bg-gray-500" />
-                            <span className="text-xs">Score initial</span>
+                            <span className="text-xs">Initial score</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-emerald-500" />
-                            <span className="text-xs">Score actuel</span>
+                            <span className="text-xs">Current score</span>
                           </div>
                         </div>
                       </CardDescription>
@@ -1350,7 +1332,7 @@ export default function Suivi() {
                           <Tooltip 
                             formatter={(value: number, name: string) => [
                               `${value}%`, 
-                              name === 'originalScore' ? 'Score initial' : 'Score actuel'
+                              name === 'originalScore' ? 'Initial score' : 'Current score'
                             ]}
                             labelFormatter={(label) => label}
                             contentStyle={{ 
@@ -1381,8 +1363,8 @@ export default function Suivi() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                       <BarChart3 className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="text-sm">Aucune donnee disponible</p>
-                      <p className="text-xs">Les scores apparaitront apres les premiers audits</p>
+                      <p className="text-sm">No data available</p>
+                      <p className="text-xs">Scores will appear after the first audits</p>
                     </div>
                   )}
                 </CardContent>
@@ -1393,21 +1375,20 @@ export default function Suivi() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Check className="h-4 w-4" />
-                      Repartition par OS
+                      Distribution by OS
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      // Define OS colors based on toolkits
                       const osColors: Record<string, string> = {
-                        'windows': '#7c3aed',      // Windows purple
-                        'linux': '#f59e0b',        // Linux orange/yellow
-                        'vmware': '#6d9a2e',       // VMware green
-                        'esxi': '#6d9a2e',         // ESXi green (same as VMware)
-                        'docker': '#06b6d4',       // Container cyan
-                        'container': '#06b6d4',   // Container cyan
-                        'web': '#ef4444',          // Web red
-                        'unknown': '#6b7280',      // Gray for unknown
+                        'windows': '#7c3aed',
+                        'linux': '#f59e0b',
+                        'vmware': '#6d9a2e',
+                        'esxi': '#6d9a2e',
+                        'docker': '#06b6d4',
+                        'container': '#06b6d4',
+                        'web': '#ef4444',
+                        'unknown': '#6b7280',
                       };
                       
                       const getOsColor = (os: string) => {
@@ -1479,7 +1460,7 @@ export default function Suivi() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                         <Monitor className="h-12 w-12 mb-3 opacity-20" />
-                        <p className="text-sm">Aucune machine enregistree</p>
+                        <p className="text-sm">No machines registered</p>
                       </div>
                     );
                     })()}
@@ -1490,7 +1471,7 @@ export default function Suivi() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <TrendingUp className="h-4 w-4" />
-                      Derniers audits
+                      Recent audits
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1504,7 +1485,7 @@ export default function Suivi() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium">{report.hostname}</p>
-                                <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Version inconnue'}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Unknown version'}</p>
                                 <p className="text-xs text-muted-foreground">{formatDate(report.auditDate)}</p>
                               </div>
                             </div>
@@ -1522,14 +1503,13 @@ export default function Suivi() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                         <FileText className="h-12 w-12 mb-3 opacity-20" />
-                        <p className="text-sm">Aucun rapport disponible</p>
+                        <p className="text-sm">No reports available</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Instructions d'import */}
               {machines.length === 0 && (
                 <Card className="border-dashed border-2">
                   <CardContent className="py-8">
@@ -1537,13 +1517,13 @@ export default function Suivi() {
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         <FileJson className="w-8 h-8 text-primary" />
                       </div>
-                      <h3 className="font-semibold mb-2">Importez vos rapports d'audit</h3>
+                      <h3 className="font-semibold mb-2">Import your audit reports</h3>
                       <p className="text-sm text-muted-foreground mb-4 max-w-md">
-                        Executez vos scripts d'audit sur vos machines, puis importez les fichiers JSON generes pour suivre l'evolution de la securite de votre parc.
+                        Run your audit scripts on your machines, then import the generated JSON files to track your fleet's security evolution.
                       </p>
                       <Button onClick={() => fileInputRef.current?.click()} data-testid="button-first-upload">
                         <Upload className="w-4 h-4 mr-2" />
-                        Importer un rapport JSON
+                        Import a JSON report
                       </Button>
                     </div>
                   </CardContent>
@@ -1552,7 +1532,6 @@ export default function Suivi() {
             </motion.div>
           )}
 
-          {/* Machines */}
           {activeTab === "machines" && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1565,16 +1544,16 @@ export default function Suivi() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <FolderTree className="h-5 w-5" />
-                      Arborescence du parc ({machines.length} machines)
+                      Fleet hierarchy ({machines.length} machines)
                     </CardTitle>
                     <CardDescription>
-                      Organisation hierarchique: Organisation - Site - Groupe - Machines
+                      Hierarchical organization: Organization - Site - Group - Machines
                     </CardDescription>
                   </div>
                   {hasFullAccess && (
                     <Button size="sm" onClick={() => setShowAddOrgDialog(true)} data-testid="button-add-org">
                       <Plus className="w-4 h-4 mr-2" />
-                      Ajouter une organisation
+                      Add organization
                     </Button>
                   )}
                 </CardHeader>
@@ -1582,18 +1561,17 @@ export default function Suivi() {
                   {organizations.length === 0 && unassignedMachines.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <FolderTree className="h-16 w-16 mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-1">Aucune organisation configuree</p>
-                      <p className="text-sm mb-4">Creez une organisation pour structurer votre parc</p>
+                      <p className="text-lg font-medium mb-1">No organization configured</p>
+                      <p className="text-sm mb-4">Create an organization to structure your fleet</p>
                       {hasFullAccess && (
                         <Button variant="outline" onClick={() => setShowAddOrgDialog(true)}>
                           <Plus className="w-4 h-4 mr-2" />
-                          Creer une organisation
+                          Create an organization
                         </Button>
                       )}
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {/* Organizations tree */}
                       {organizations.map((org) => (
                         <div key={org.id} className="border rounded-lg" data-testid={`org-${org.id}`}>
                           <div 
@@ -1616,7 +1594,7 @@ export default function Suivi() {
                                   size="icon" 
                                   variant="ghost" 
                                   onClick={(e) => { e.stopPropagation(); setSelectedOrgId(org.id); setShowAddSiteDialog(true); }}
-                                  title="Ajouter un site"
+                                  title="Add a site"
                                 >
                                   <Plus className="w-4 h-4" />
                                 </Button>
@@ -1631,7 +1609,7 @@ export default function Suivi() {
                                     setEditingHierarchyDescription(org.description || "");
                                     setShowEditHierarchyDialog(true);
                                   }}
-                                  title="Modifier le nom"
+                                  title="Edit name"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
@@ -1643,15 +1621,15 @@ export default function Suivi() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                      <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Voulez-vous vraiment supprimer l'organisation "{org.name}" ? Cette action est irreversible.
+                                        Are you sure you want to delete the organization "{org.name}"? This action is irreversible.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
                                       <AlertDialogAction onClick={() => deleteOrgMutation.mutate(org.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                        Supprimer
+                                        Delete
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -1663,7 +1641,7 @@ export default function Suivi() {
                           {expandedOrgs.has(org.id) && (
                             <div className="pl-6 pb-2">
                               {org.sites.length === 0 ? (
-                                <p className="text-sm text-muted-foreground p-2 pl-6">Aucun site</p>
+                                <p className="text-sm text-muted-foreground p-2 pl-6">No sites</p>
                               ) : (
                                 org.sites.map((site) => (
                                   <div key={site.id} className="ml-2 border-l-2 border-muted" data-testid={`site-${site.id}`}>
@@ -1688,7 +1666,7 @@ export default function Suivi() {
                                             size="icon" 
                                             variant="ghost" 
                                             onClick={(e) => { e.stopPropagation(); setSelectedSiteId(site.id); setShowAddGroupDialog(true); }}
-                                            title="Ajouter un groupe"
+                                            title="Add a group"
                                           >
                                             <Plus className="w-3 h-3" />
                                           </Button>
@@ -1703,7 +1681,7 @@ export default function Suivi() {
                                               setEditingHierarchyLocation(site.location || "");
                                               setShowEditHierarchyDialog(true);
                                             }}
-                                            title="Modifier le nom"
+                                            title="Edit name"
                                           >
                                             <Pencil className="w-3 h-3" />
                                           </Button>
@@ -1715,15 +1693,15 @@ export default function Suivi() {
                                             </AlertDialogTrigger>
                                             <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                               <AlertDialogHeader>
-                                                <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                  Voulez-vous vraiment supprimer le site "{site.name}" ? Cette action est irreversible.
+                                                  Are you sure you want to delete the site "{site.name}"? This action is irreversible.
                                                 </AlertDialogDescription>
                                               </AlertDialogHeader>
                                               <AlertDialogFooter>
-                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                 <AlertDialogAction onClick={() => deleteSiteMutation.mutate(site.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                  Supprimer
+                                                  Delete
                                                 </AlertDialogAction>
                                               </AlertDialogFooter>
                                             </AlertDialogContent>
@@ -1735,7 +1713,7 @@ export default function Suivi() {
                                     {expandedSites.has(site.id) && (
                                       <div className="pl-6">
                                         {site.groups.length === 0 ? (
-                                          <p className="text-sm text-muted-foreground p-2 pl-4">Aucun groupe</p>
+                                          <p className="text-sm text-muted-foreground p-2 pl-4">No groups</p>
                                         ) : (
                                           site.groups.map((group) => (
                                             <div key={group.id} className="ml-2 border-l-2 border-muted" data-testid={`group-${group.id}`}>
@@ -1764,7 +1742,7 @@ export default function Suivi() {
                                                         setEditingHierarchyDescription(group.description || "");
                                                         setShowEditHierarchyDialog(true);
                                                       }}
-                                                      title="Modifier le nom"
+                                                      title="Edit name"
                                                     >
                                                       <Pencil className="w-3 h-3" />
                                                     </Button>
@@ -1776,15 +1754,15 @@ export default function Suivi() {
                                                       </AlertDialogTrigger>
                                                       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                                         <AlertDialogHeader>
-                                                          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                          <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                                           <AlertDialogDescription>
-                                                            Voulez-vous vraiment supprimer le groupe "{group.name}" ? Cette action est irreversible.
+                                                            Are you sure you want to delete the group "{group.name}"? This action is irreversible.
                                                           </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                           <AlertDialogAction onClick={() => deleteGroupMutation.mutate(group.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                            Supprimer
+                                                            Delete
                                                           </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                       </AlertDialogContent>
@@ -1796,7 +1774,7 @@ export default function Suivi() {
                                               {expandedGroups.has(group.id) && (
                                                 <div className="pl-8 pb-2">
                                                   {group.machines.length === 0 ? (
-                                                    <p className="text-sm text-muted-foreground p-2">Aucune machine</p>
+                                                    <p className="text-sm text-muted-foreground p-2">No machines</p>
                                                   ) : (
                                                     <div className="space-y-1">
                                                       {group.machines.map((machine) => (
@@ -1805,7 +1783,7 @@ export default function Suivi() {
                                                             {getOSIcon(machine.os)}
                                                           </div>
                                                           <span className="font-medium text-sm">{machine.hostname}</span>
-                                                          <span className="text-xs text-muted-foreground capitalize">{machine.os} - {machine.osVersion || 'Version inconnue'}</span>
+                                                          <span className="text-xs text-muted-foreground capitalize">{machine.os} - {machine.osVersion || 'Unknown version'}</span>
                                                           {machine.lastScore != null && (
                                                             <div className="flex items-center gap-1">
                                                               {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
@@ -1827,7 +1805,7 @@ export default function Suivi() {
                                                                 size="icon" 
                                                                 variant="ghost"
                                                                 onClick={() => { setMachineToMove(machine); setShowMoveDialog(true); }}
-                                                                title="Deplacer vers un autre groupe"
+                                                                title="Move to another group"
                                                                 data-testid={`button-move-machine-${machine.id}`}
                                                               >
                                                                 <MoveHorizontal className="w-4 h-4" />
@@ -1840,15 +1818,15 @@ export default function Suivi() {
                                                                 </AlertDialogTrigger>
                                                                 <AlertDialogContent>
                                                                   <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                                    <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                      Voulez-vous vraiment supprimer "{machine.hostname}" ? Cette action est irreversible.
+                                                                      Are you sure you want to delete "{machine.hostname}"? This action is irreversible.
                                                                     </AlertDialogDescription>
                                                                   </AlertDialogHeader>
                                                                   <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                                     <AlertDialogAction onClick={() => deleteMachineMutation.mutate(machine.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                                                      Supprimer
+                                                                      Delete
                                                                     </AlertDialogAction>
                                                                   </AlertDialogFooter>
                                                                 </AlertDialogContent>
@@ -1874,41 +1852,25 @@ export default function Suivi() {
                         </div>
                       ))}
 
-                      {/* Unassigned machines */}
                       {unassignedMachines.length > 0 && (
                         <div className="border rounded-lg border-dashed" data-testid="unassigned-machines">
-                          <div className="p-3 bg-muted/30">
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="w-4 h-4 text-orange-500" />
-                              <span className="font-medium">Machines non assignees</span>
-                              <Badge variant="secondary">{unassignedMachines.length}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Ces machines n'appartiennent a aucun groupe. Assignez-les a un groupe pour une meilleure organisation.
-                            </p>
+                          <div className="flex items-center gap-2 p-3">
+                            <Monitor className="w-5 h-5 text-muted-foreground" />
+                            <span className="font-semibold text-muted-foreground">Unassigned</span>
+                            <Badge variant="secondary" className="ml-2">{unassignedMachines.length} machines</Badge>
                           </div>
-                          <div className="p-3 space-y-1">
+                          <div className="pl-6 pb-2 space-y-1">
                             {unassignedMachines.map((machine) => (
                               <div key={machine.id} className="flex items-center gap-2 p-2 rounded bg-muted/30" data-testid={`unassigned-machine-${machine.id}`}>
                                 <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold">
                                   {getOSIcon(machine.os)}
                                 </div>
                                 <span className="font-medium text-sm">{machine.hostname}</span>
-                                <span className="text-xs text-muted-foreground capitalize">{machine.os} - {machine.osVersion || 'Version inconnue'}</span>
+                                <span className="text-xs text-muted-foreground capitalize">{machine.os} - {machine.osVersion || 'Unknown version'}</span>
                                 {machine.lastScore != null && (
-                                  <div className="flex items-center gap-1">
-                                    {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {machine.originalScore}%
-                                      </span>
-                                    )}
-                                    {machine.originalScore != null && machine.originalScore !== machine.lastScore && (
-                                      <span className="text-xs text-muted-foreground">-&gt;</span>
-                                    )}
-                                    <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
-                                      {machine.lastScore}%
-                                    </Badge>
-                                  </div>
+                                  <Badge className={`text-xs ${getGradeColor(machine.lastGrade)}`}>
+                                    {machine.lastScore}%
+                                  </Badge>
                                 )}
                                 {hasFullAccess && (
                                   <div className="ml-auto flex gap-1">
@@ -1916,7 +1878,7 @@ export default function Suivi() {
                                       size="icon" 
                                       variant="ghost"
                                       onClick={() => { setMachineToMove(machine); setShowMoveDialog(true); }}
-                                      title="Affecter a un groupe"
+                                      title="Move to a group"
                                       data-testid={`button-move-unassigned-${machine.id}`}
                                     >
                                       <MoveHorizontal className="w-4 h-4" />
@@ -1929,15 +1891,15 @@ export default function Suivi() {
                                       </AlertDialogTrigger>
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                          <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                           <AlertDialogDescription>
-                                            Voulez-vous vraiment supprimer "{machine.hostname}" ? Cette action est irreversible.
+                                            Are you sure you want to delete "{machine.hostname}"? This action is irreversible.
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
-                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction onClick={() => deleteMachineMutation.mutate(machine.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                            Supprimer
+                                            Delete
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -1956,7 +1918,6 @@ export default function Suivi() {
             </motion.div>
           )}
 
-          {/* Reports */}
           {activeTab === "reports" && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1967,21 +1928,21 @@ export default function Suivi() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Rapports d'audit ({reports.length})
+                    Audit reports
                   </CardTitle>
                   <CardDescription>
-                    Historique de tous les rapports generes
+                    {reports.length} report{reports.length > 1 ? "s" : ""} in history
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {reports.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <FileText className="h-16 w-16 mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-1">Aucun rapport disponible</p>
-                      <p className="text-sm mb-4">Importez vos rapports JSON pour commencer le suivi</p>
-                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <p className="text-lg font-medium mb-1">No reports yet</p>
+                      <p className="text-sm mb-4">Import your first audit report</p>
+                      <Button onClick={() => fileInputRef.current?.click()} data-testid="button-first-report-upload">
                         <Upload className="w-4 h-4 mr-2" />
-                        Importer un rapport
+                        Import a report
                       </Button>
                     </div>
                   ) : (
@@ -1989,10 +1950,10 @@ export default function Suivi() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Machine</TableHead>
-                          <TableHead>Date d'audit</TableHead>
+                          <TableHead>Date</TableHead>
                           <TableHead>Script</TableHead>
                           <TableHead>Score</TableHead>
-                          <TableHead>Controles</TableHead>
+                          <TableHead>Controls</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -2006,13 +1967,13 @@ export default function Suivi() {
                                 </div>
                                 <div>
                                   <span className="font-medium">{report.hostname || `Machine #${report.machineId}`}</span>
-                                  <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Version inconnue'}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{report.os || 'unknown'} - {report.osVersion || 'Unknown version'}</p>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>{formatDate(report.auditDate)}</TableCell>
                             <TableCell>
-                              {report.scriptName || "Script inconnu"}
+                              {report.scriptName || "Unknown script"}
                               {report.scriptVersion && (
                                 <span className="text-xs text-muted-foreground ml-1">
                                   v{report.scriptVersion}
@@ -2050,7 +2011,7 @@ export default function Suivi() {
                                     setShowReportDialog(true);
                                   }}
                                   data-testid={`button-view-report-${report.id}`}
-                                  title="Voir le resume"
+                                  title="View summary"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
@@ -2063,7 +2024,7 @@ export default function Suivi() {
                                     setControlsFilter("all");
                                   }}
                                   data-testid={`button-view-controls-${report.id}`}
-                                  title="Voir les controles"
+                                  title="View controls"
                                 >
                                   <Shield className="w-4 h-4" />
                                 </Button>
@@ -2076,15 +2037,15 @@ export default function Suivi() {
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                        <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Voulez-vous vraiment supprimer ce rapport ? Cette action est irreversible.
+                                          Are you sure you want to delete this report? This action is irreversible.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction onClick={() => deleteReportMutation.mutate(report.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                          Supprimer
+                                          Delete
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
@@ -2102,7 +2063,6 @@ export default function Suivi() {
             </motion.div>
           )}
 
-          {/* Team */}
           {activeTab === "team" && hasFullAccess && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -2113,27 +2073,27 @@ export default function Suivi() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Membres de l'equipe sans groupe
+                    Team members without a group
                   </CardTitle>
                   <CardDescription>
-                    {team ? `${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length} membre${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length > 1 ? "s" : ""} sans groupe` : "Gestion des membres"}
+                    {team ? `${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length} member${teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length > 1 ? "s" : ""} without a group` : "Member management"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {!team || teamMembers.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Users className="h-16 w-16 mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-1">Aucun membre dans l'equipe</p>
-                      <p className="text-sm mb-4">Ajoutez des membres pour partager l'acces au suivi</p>
+                      <p className="text-lg font-medium mb-1">No members in the team</p>
+                      <p className="text-sm mb-4">Add members to share access to tracking</p>
                       <Button variant="outline" asChild>
-                        <Link href="/profile">Ajouter des membres</Link>
+                        <Link href="/profile">Add members</Link>
                       </Button>
                     </div>
                   ) : teamMembers.filter(m => !membersInGroupsData?.includes(m.id)).length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                       <Layers className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="text-sm">Tous les membres sont dans des groupes</p>
-                      <p className="text-xs mt-1">Gerez leurs permissions via les groupes d'utilisateurs</p>
+                      <p className="text-sm">All members are in groups</p>
+                      <p className="text-xs mt-1">Manage their permissions via user groups</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -2172,7 +2132,7 @@ export default function Suivi() {
                               Permissions
                             </Button>
                             <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                              {member.role === "admin" ? "Admin" : "Membre"}
+                              {member.role === "admin" ? "Admin" : "Member"}
                             </Badge>
                           </div>
                         </div>
@@ -2182,16 +2142,15 @@ export default function Suivi() {
                 </CardContent>
               </Card>
 
-              {/* User Groups Section */}
               <Card className="mt-6">
                 <CardHeader className="flex flex-row items-center justify-between gap-2">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Layers className="h-5 w-5" />
-                      Groupes d'utilisateurs
+                      User groups
                     </CardTitle>
                     <CardDescription>
-                      Regroupez les membres pour gerer les permissions plus facilement
+                      Group members to manage permissions more easily
                     </CardDescription>
                   </div>
                   <Button
@@ -2201,15 +2160,15 @@ export default function Suivi() {
                     data-testid="btn-add-user-group"
                   >
                     <Plus className="h-4 w-4 mr-1" />
-                    Nouveau groupe
+                    New group
                   </Button>
                 </CardHeader>
                 <CardContent>
                   {!userGroupsData || userGroupsData.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <Layers className="h-16 w-16 mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-1">Aucun groupe d'utilisateurs</p>
-                      <p className="text-sm">Creez des groupes pour gerer les permissions en masse</p>
+                      <p className="text-lg font-medium mb-1">No user groups</p>
+                      <p className="text-sm">Create groups to manage permissions in bulk</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -2226,7 +2185,7 @@ export default function Suivi() {
                             <div>
                               <p className="font-medium">{userGroup.name}</p>
                               <p className="text-sm text-muted-foreground">
-                                {userGroup.memberCount} membre{userGroup.memberCount > 1 ? "s" : ""}
+                                {userGroup.memberCount} member{userGroup.memberCount > 1 ? "s" : ""}
                                 {userGroup.description && ` - ${userGroup.description}`}
                               </p>
                             </div>
@@ -2242,7 +2201,7 @@ export default function Suivi() {
                               data-testid={`btn-members-${userGroup.id}`}
                             >
                               <Users className="h-4 w-4 mr-1" />
-                              Membres
+                              Members
                             </Button>
                             <Button
                               variant="outline"
@@ -2272,15 +2231,15 @@ export default function Suivi() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                  <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Voulez-vous vraiment supprimer le groupe "{userGroup.name}" ? Cette action est irreversible.
+                                    Are you sure you want to delete the group "{userGroup.name}"? This action is irreversible.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => deleteUserGroupMutation.mutate(userGroup.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                    Supprimer
+                                    Delete
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -2297,24 +2256,23 @@ export default function Suivi() {
         </div>
       </main>
 
-      {/* Dialog for adding organization */}
       <Dialog open={showAddOrgDialog} onOpenChange={setShowAddOrgDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5" />
-              Nouvelle organisation
+              New organization
             </DialogTitle>
             <DialogDescription>
-              Creez une organisation pour regrouper vos sites
+              Create an organization to group your sites
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="org-name">Nom de l'organisation *</Label>
+              <Label htmlFor="org-name">Organization name *</Label>
               <Input
                 id="org-name"
-                placeholder="ex: Entreprise ABC, Groupe XYZ..."
+                placeholder="e.g., ABC Company, XYZ Group..."
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
                 data-testid="input-org-name"
@@ -2323,20 +2281,19 @@ export default function Suivi() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAddOrgDialog(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={() => createOrgMutation.mutate({ name: newOrgName })} 
               disabled={!newOrgName.trim() || createOrgMutation.isPending}
               data-testid="button-confirm-add-org"
             >
-              {createOrgMutation.isPending ? "Creation..." : "Creer"}
+              {createOrgMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for editing hierarchy item */}
       <Dialog open={showEditHierarchyDialog} onOpenChange={(open) => { if (!open) { setShowEditHierarchyDialog(false); setEditingHierarchyType(null); setEditingHierarchyId(null); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -2344,12 +2301,12 @@ export default function Suivi() {
               {editingHierarchyType === "org" && <Building2 className="w-5 h-5" />}
               {editingHierarchyType === "site" && <MapPin className="w-5 h-5" />}
               {editingHierarchyType === "group" && <Folder className="w-5 h-5" />}
-              Modifier {editingHierarchyType === "org" ? "l'organisation" : editingHierarchyType === "site" ? "le site" : "le groupe"}
+              Edit {editingHierarchyType === "org" ? "organization" : editingHierarchyType === "site" ? "site" : "group"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-hierarchy-name">Nom *</Label>
+              <Label htmlFor="edit-hierarchy-name">Name *</Label>
               <Input
                 id="edit-hierarchy-name"
                 value={editingHierarchyName}
@@ -2359,7 +2316,7 @@ export default function Suivi() {
             </div>
             {editingHierarchyType === "site" && (
               <div className="space-y-2">
-                <Label htmlFor="edit-hierarchy-location">Localisation</Label>
+                <Label htmlFor="edit-hierarchy-location">Location</Label>
                 <Input
                   id="edit-hierarchy-location"
                   value={editingHierarchyLocation}
@@ -2382,7 +2339,7 @@ export default function Suivi() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setShowEditHierarchyDialog(false); setEditingHierarchyType(null); setEditingHierarchyId(null); }}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={() => {
@@ -2397,40 +2354,39 @@ export default function Suivi() {
               disabled={!editingHierarchyName.trim() || updateOrgMutation.isPending || updateSiteMutation.isPending || updateGroupMutation.isPending}
               data-testid="button-confirm-edit-hierarchy"
             >
-              {(updateOrgMutation.isPending || updateSiteMutation.isPending || updateGroupMutation.isPending) ? "Mise a jour..." : "Enregistrer"}
+              {(updateOrgMutation.isPending || updateSiteMutation.isPending || updateGroupMutation.isPending) ? "Updating..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for adding site */}
       <Dialog open={showAddSiteDialog} onOpenChange={setShowAddSiteDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Nouveau site
+              New site
             </DialogTitle>
             <DialogDescription>
-              Creez un site pour regrouper vos groupes de machines
+              Create a site to group your machine groups
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="site-name">Nom du site *</Label>
+              <Label htmlFor="site-name">Site name *</Label>
               <Input
                 id="site-name"
-                placeholder="ex: Siege Paris, Usine Lyon..."
+                placeholder="e.g., Paris HQ, Lyon Factory..."
                 value={newSiteName}
                 onChange={(e) => setNewSiteName(e.target.value)}
                 data-testid="input-site-name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="site-location">Localisation</Label>
+              <Label htmlFor="site-location">Location</Label>
               <Input
                 id="site-location"
-                placeholder="ex: 123 rue de Paris, 75001 Paris"
+                placeholder="e.g., 123 Main Street, New York"
                 value={newSiteLocation}
                 onChange={(e) => setNewSiteLocation(e.target.value)}
                 data-testid="input-site-location"
@@ -2439,37 +2395,36 @@ export default function Suivi() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setShowAddSiteDialog(false); setSelectedOrgId(null); }}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={() => selectedOrgId && createSiteMutation.mutate({ organizationId: selectedOrgId, name: newSiteName, location: newSiteLocation })} 
               disabled={!newSiteName.trim() || !selectedOrgId || createSiteMutation.isPending}
               data-testid="button-confirm-add-site"
             >
-              {createSiteMutation.isPending ? "Creation..." : "Creer"}
+              {createSiteMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for adding group */}
       <Dialog open={showAddGroupDialog} onOpenChange={setShowAddGroupDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Folder className="w-5 h-5" />
-              Nouveau groupe de machines
+              New machine group
             </DialogTitle>
             <DialogDescription>
-              Creez un groupe pour organiser vos machines
+              Create a group to organize your machines
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="group-name">Nom du groupe *</Label>
+              <Label htmlFor="group-name">Group name *</Label>
               <Input
                 id="group-name"
-                placeholder="ex: Serveurs Web, Postes Comptabilite..."
+                placeholder="e.g., Web Servers, Accounting Workstations..."
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
                 data-testid="input-group-name"
@@ -2478,20 +2433,19 @@ export default function Suivi() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setShowAddGroupDialog(false); setSelectedSiteId(null); }}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={() => selectedSiteId && createGroupMutation.mutate({ siteId: selectedSiteId, name: newGroupName })} 
               disabled={!newGroupName.trim() || !selectedSiteId || createGroupMutation.isPending}
               data-testid="button-confirm-add-group"
             >
-              {createGroupMutation.isPending ? "Creation..." : "Creer"}
+              {createGroupMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for managing member permissions */}
       <Dialog open={showPermissionsDialog} onOpenChange={(open) => {
         setShowPermissionsDialog(open);
         if (!open) setSelectedMemberForPermissions(null);
@@ -2500,31 +2454,31 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Permissions de {selectedMemberForPermissions?.firstName || selectedMemberForPermissions?.email}
+              Permissions for {selectedMemberForPermissions?.firstName || selectedMemberForPermissions?.email}
             </DialogTitle>
             <DialogDescription>
-              Definissez les droits d'acces aux groupes de machines pour ce membre
+              Define access rights to machine groups for this member
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {!allMachineGroups || allMachineGroups.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Folder className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>Aucun groupe de machines disponible</p>
-                <p className="text-sm">Creez d'abord des organisations, sites et groupes dans l'onglet Machines</p>
+                <p>No machine groups available</p>
+                <p className="text-sm">First create organizations, sites and groups in the Machines tab</p>
               </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Cochez les groupes auxquels ce membre peut acceder et definissez ses droits (visualisation ou edition).
+                  Check the groups this member can access and define their rights (view or edit).
                 </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Groupe</TableHead>
-                      <TableHead>Hierarchie</TableHead>
-                      <TableHead className="text-center">Voir</TableHead>
-                      <TableHead className="text-center">Editer</TableHead>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Hierarchy</TableHead>
+                      <TableHead className="text-center">View</TableHead>
+                      <TableHead className="text-center">Edit</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2587,15 +2541,15 @@ export default function Suivi() {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Retirer l'acces</AlertDialogTitle>
+                                    <AlertDialogTitle>Remove access</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Voulez-vous vraiment retirer l'acces de ce membre au groupe "{group.name}" ?
+                                      Are you sure you want to remove this member's access to the group "{group.name}"?
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction onClick={() => deletePermissionMutation.mutate(permission.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                      Retirer
+                                      Remove
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -2612,22 +2566,21 @@ export default function Suivi() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPermissionsDialog(false)}>
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for uploading report with machine name */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="w-5 h-5" />
-              Importer un rapport
+              Import a report
             </DialogTitle>
             <DialogDescription>
-              Renseignez le nom de la machine associee a ce rapport
+              Enter the name of the machine associated with this report
             </DialogDescription>
           </DialogHeader>
           
@@ -2635,13 +2588,13 @@ export default function Suivi() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
               <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800 dark:text-blue-200">
-                <p className="mb-2">Donnees recuperees automatiquement depuis le rapport :</p>
+                <p className="mb-2">Data automatically retrieved from the report:</p>
                 <ul className="list-disc list-inside space-y-0.5 text-xs">
-                  <li>Systeme d'exploitation et sa version</li>
-                  <li>Resultats des tests de securite (score, controles)</li>
-                  <li>Date de l'audit</li>
+                  <li>Operating system and version</li>
+                  <li>Security test results (score, controls)</li>
+                  <li>Audit date</li>
                 </ul>
-                <p className="mt-2 text-xs opacity-80">Veuillez renseigner manuellement le nom de la machine.</p>
+                <p className="mt-2 text-xs opacity-80">Please manually enter the machine name.</p>
               </div>
             </div>
 
@@ -2653,25 +2606,25 @@ export default function Suivi() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="machine-name">Nom de la machine *</Label>
+              <Label htmlFor="machine-name">Machine name *</Label>
               <Input
                 id="machine-name"
-                placeholder="ex: srv-web-01, pc-compta-jean..."
+                placeholder="e.g., srv-web-01, pc-accounting-john..."
                 value={machineName}
                 onChange={(e) => setMachineName(e.target.value)}
                 data-testid="input-machine-name"
               />
               <p className="text-xs text-muted-foreground">
-                Identifiant unique pour cette machine dans votre parc
+                Unique identifier for this machine in your fleet
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Emplacement dans l'arborescence (optionnel)</Label>
+              <Label>Location in hierarchy (optional)</Label>
               <div className="border rounded-lg p-3 max-h-64 overflow-y-auto bg-muted/30">
                 {organizations.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Aucune organisation creee. Creez d'abord une structure dans l'onglet Machines.
+                    No organization created. First create a structure in the Machines tab.
                   </p>
                 ) : (
                   <div className="space-y-1">
@@ -2683,7 +2636,7 @@ export default function Suivi() {
                       data-testid="select-no-group"
                     >
                       <Monitor className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">Non assigne</span>
+                      <span className="text-sm">Unassigned</span>
                     </div>
                     
                     {organizations.map(org => (
@@ -2762,8 +2715,8 @@ export default function Suivi() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {selectedGroupId ? 
-                  `Machine assignee au groupe selectionne` : 
-                  `Cliquez sur un groupe pour assigner la machine`
+                  `Machine will be assigned to the selected group` : 
+                  `Click on a group to assign the machine`
                 }
               </p>
             </div>
@@ -2771,7 +2724,7 @@ export default function Suivi() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleCancelUpload} disabled={isUploading}>
-              Annuler
+              Cancel
             </Button>
             <Button 
               onClick={handleConfirmUpload} 
@@ -2779,11 +2732,11 @@ export default function Suivi() {
               data-testid="button-confirm-upload"
             >
               {isUploading ? (
-                <>Import en cours...</>
+                <>Importing...</>
               ) : (
                 <>
                   <Check className="w-4 h-4 mr-2" />
-                  Confirmer l'import
+                  Confirm import
                 </>
               )}
             </Button>
@@ -2791,7 +2744,6 @@ export default function Suivi() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for viewing and editing controls */}
       <Dialog open={showControlsDialog} onOpenChange={(open) => { 
         setShowControlsDialog(open); 
         if (!open) { 
@@ -2803,11 +2755,11 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              Controles de securite
+              Security controls
             </DialogTitle>
             <DialogDescription>
-              {selectedReportForControls?.hostname} - {selectedReportForControls?.totalControls} controles
-              {reportControlsData?.correctedCount ? ` (${reportControlsData.correctedCount} corrige(s))` : ""}
+              {selectedReportForControls?.hostname} - {selectedReportForControls?.totalControls} controls
+              {reportControlsData?.correctedCount ? ` (${reportControlsData.correctedCount} corrected)` : ""}
             </DialogDescription>
           </DialogHeader>
           
@@ -2817,7 +2769,7 @@ export default function Suivi() {
               variant={controlsFilter === "all" ? "default" : "outline"}
               onClick={() => setControlsFilter("all")}
             >
-              Tous
+              All
             </Button>
             <Button
               size="sm"
@@ -2825,7 +2777,7 @@ export default function Suivi() {
               onClick={() => setControlsFilter("PASS")}
               className="text-green-600"
             >
-              Reussis
+              Passed
             </Button>
             <Button
               size="sm"
@@ -2833,7 +2785,7 @@ export default function Suivi() {
               onClick={() => setControlsFilter("FAIL")}
               className="text-red-600"
             >
-              Echoues
+              Failed
             </Button>
             <Button
               size="sm"
@@ -2841,7 +2793,7 @@ export default function Suivi() {
               onClick={() => setControlsFilter("WARN")}
               className="text-yellow-600"
             >
-              Avertissements
+              Warnings
             </Button>
           </div>
 
@@ -2852,7 +2804,7 @@ export default function Suivi() {
               </div>
             ) : reportControlsData?.controls?.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Aucun controle trouve dans ce rapport
+                No controls found in this report
               </div>
             ) : (
               reportControlsData?.controls
@@ -2880,7 +2832,7 @@ export default function Suivi() {
                             </Badge>
                             {control.correction && (
                               <Badge className="text-xs bg-blue-100 text-blue-700">
-                                Corrige
+                                Corrected
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground">[{control.id}]</span>
@@ -2900,7 +2852,7 @@ export default function Suivi() {
                           
                           {control.correction && (
                             <div className="mt-2 p-2 rounded bg-blue-100/50 dark:bg-blue-900/30 text-sm">
-                              <p className="font-medium text-blue-700 dark:text-blue-300">Justification de la correction:</p>
+                              <p className="font-medium text-blue-700 dark:text-blue-300">Correction justification:</p>
                               <p className="text-blue-600 dark:text-blue-400">{control.correction.justification}</p>
                             </div>
                           )}
@@ -2908,15 +2860,15 @@ export default function Suivi() {
                           {isEditing && (
                             <div className="mt-3 p-3 rounded-lg border bg-background space-y-3">
                               <div>
-                                <Label className="text-sm">Nouveau statut</Label>
+                                <Label className="text-sm">New status</Label>
                                 <Select value={correctionStatus} onValueChange={setCorrectionStatus}>
                                   <SelectTrigger className="mt-1">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="PASS">PASS - Corrige</SelectItem>
-                                    <SelectItem value="WARN">WARN - Ameliore</SelectItem>
-                                    <SelectItem value="FAIL">FAIL - Non corrige</SelectItem>
+                                    <SelectItem value="PASS">PASS - Fixed</SelectItem>
+                                    <SelectItem value="WARN">WARN - Improved</SelectItem>
+                                    <SelectItem value="FAIL">FAIL - Not fixed</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -2924,7 +2876,7 @@ export default function Suivi() {
                                 <Label className="text-sm">Justification</Label>
                                 <Input
                                   className="mt-1"
-                                  placeholder="Expliquez la correction effectuee..."
+                                  placeholder="Explain the correction made..."
                                   value={correctionJustification}
                                   onChange={(e) => setCorrectionJustification(e.target.value)}
                                 />
@@ -2939,13 +2891,13 @@ export default function Suivi() {
                                         controlId: control.id,
                                         originalStatus: control.status,
                                         correctedStatus: correctionStatus,
-                                        justification: correctionJustification.trim()
+                                        justification: correctionJustification,
                                       });
                                     }
                                   }}
                                   disabled={!correctionJustification.trim() || saveControlCorrectionMutation.isPending}
                                 >
-                                  {saveControlCorrectionMutation.isPending ? "..." : "Enregistrer"}
+                                  {saveControlCorrectionMutation.isPending ? "Saving..." : "Save"}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -2955,14 +2907,14 @@ export default function Suivi() {
                                     setCorrectionJustification("");
                                   }}
                                 >
-                                  Annuler
+                                  Cancel
                                 </Button>
                               </div>
                             </div>
                           )}
                         </div>
                         
-                        {!isEditing && reportControlsData?.canEdit && (control.status === 'FAIL' || control.status === 'WARN') && (
+                        {hasFullAccess && reportControlsData?.canEdit && !isEditing && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -2972,7 +2924,8 @@ export default function Suivi() {
                               setCorrectionJustification(control.correction?.justification || "");
                             }}
                           >
-                            {control.correction ? "Modifier" : "Corriger"}
+                            <Pencil className="w-3 h-3 mr-1" />
+                            {control.correction ? "Edit" : "Correct"}
                           </Button>
                         )}
                       </div>
@@ -2981,16 +2934,21 @@ export default function Suivi() {
                 })
             )}
           </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowControlsDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for viewing report details */}
       <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Details du rapport
+              Report summary
             </DialogTitle>
             <DialogDescription>
               {selectedReport?.hostname} - {formatDate(selectedReport?.auditDate)}
@@ -3000,7 +2958,7 @@ export default function Suivi() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-muted/50">
-                  <p className="text-sm text-muted-foreground mb-1">Score actuel</p>
+                  <p className="text-sm text-muted-foreground mb-1">Current score</p>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-bold">{selectedReport.score}%</span>
                     <Badge className={getGradeColor(selectedReport.grade)}>
@@ -3009,13 +2967,13 @@ export default function Suivi() {
                   </div>
                   {selectedReport.originalScore != null && selectedReport.originalScore !== selectedReport.score && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Score initial: {selectedReport.originalScore}%
+                      Initial score: {selectedReport.originalScore}%
                     </p>
                   )}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50">
                   <p className="text-sm text-muted-foreground mb-1">Script</p>
-                  <p className="font-medium">{selectedReport.scriptName || "Inconnu"}</p>
+                  <p className="font-medium">{selectedReport.scriptName || "Unknown"}</p>
                   {selectedReport.scriptVersion && (
                     <p className="text-xs text-muted-foreground">v{selectedReport.scriptVersion}</p>
                   )}
@@ -3023,7 +2981,7 @@ export default function Suivi() {
               </div>
               
               <div className="p-4 rounded-lg bg-muted/50">
-                <p className="text-sm text-muted-foreground mb-2">Resultats des controles</p>
+                <p className="text-sm text-muted-foreground mb-2">Control results</p>
                 <div className="grid grid-cols-4 gap-4 text-center">
                   <div>
                     <p className="text-xl font-bold">{selectedReport.totalControls}</p>
@@ -3031,15 +2989,15 @@ export default function Suivi() {
                   </div>
                   <div>
                     <p className="text-xl font-bold text-green-600">{selectedReport.passedControls}</p>
-                    <p className="text-xs text-muted-foreground">Reussis</p>
+                    <p className="text-xs text-muted-foreground">Passed</p>
                   </div>
                   <div>
                     <p className="text-xl font-bold text-red-600">{selectedReport.failedControls}</p>
-                    <p className="text-xs text-muted-foreground">Echoues</p>
+                    <p className="text-xs text-muted-foreground">Failed</p>
                   </div>
                   <div>
                     <p className="text-xl font-bold text-yellow-600">{selectedReport.warningControls}</p>
-                    <p className="text-xs text-muted-foreground">Avertissements</p>
+                    <p className="text-xs text-muted-foreground">Warnings</p>
                   </div>
                 </div>
               </div>
@@ -3047,7 +3005,7 @@ export default function Suivi() {
               {selectedReport.fileName && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileJson className="w-4 h-4" />
-                  <span>Fichier: {selectedReport.fileName}</span>
+                  <span>File: {selectedReport.fileName}</span>
                 </div>
               )}
             </div>
@@ -3055,7 +3013,6 @@ export default function Suivi() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for moving machine to another group */}
       <Dialog open={showMoveDialog} onOpenChange={(open) => {
         setShowMoveDialog(open);
         if (!open) {
@@ -3067,21 +3024,21 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MoveHorizontal className="w-5 h-5" />
-              Deplacer la machine
+              Move machine
             </DialogTitle>
             <DialogDescription>
-              {machineToMove && `Selectionnez le groupe de destination pour "${machineToMove.hostname}"`}
+              {machineToMove && `Select the destination group for "${machineToMove.hostname}"`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Groupe de destination</label>
+              <label className="text-sm font-medium">Destination group</label>
               <Select value={targetGroupId} onValueChange={setTargetGroupId}>
                 <SelectTrigger data-testid="select-target-group">
-                  <SelectValue placeholder="Selectionnez un groupe..." />
+                  <SelectValue placeholder="Select a group..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unassigned">Non affecte (retirer du groupe)</SelectItem>
+                  <SelectItem value="unassigned">Unassigned (remove from group)</SelectItem>
                   {allMachineGroups?.map((group) => (
                     <SelectItem 
                       key={group.id} 
@@ -3097,7 +3054,7 @@ export default function Suivi() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button
               onClick={() => {
@@ -3109,13 +3066,12 @@ export default function Suivi() {
               disabled={!targetGroupId || moveMachineMutation.isPending}
               data-testid="button-confirm-move"
             >
-              {moveMachineMutation.isPending ? "Deplacement..." : "Deplacer"}
+              {moveMachineMutation.isPending ? "Moving..." : "Move"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for creating user group */}
       <Dialog open={showUserGroupDialog} onOpenChange={(open) => {
         setShowUserGroupDialog(open);
         if (!open) {
@@ -3127,18 +3083,18 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5" />
-              Nouveau groupe d'utilisateurs
+              New user group
             </DialogTitle>
             <DialogDescription>
-              Creez un groupe pour gerer les permissions de plusieurs membres
+              Create a group to manage permissions for multiple members
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="user-group-name">Nom du groupe *</Label>
+              <Label htmlFor="user-group-name">Group name *</Label>
               <Input
                 id="user-group-name"
-                placeholder="ex: Administrateurs, Techniciens..."
+                placeholder="e.g., Administrators, Technicians..."
                 value={newUserGroupName}
                 onChange={(e) => setNewUserGroupName(e.target.value)}
                 data-testid="input-user-group-name"
@@ -3148,7 +3104,7 @@ export default function Suivi() {
               <Label htmlFor="user-group-description">Description</Label>
               <Input
                 id="user-group-description"
-                placeholder="Description du groupe..."
+                placeholder="Group description..."
                 value={newUserGroupDescription}
                 onChange={(e) => setNewUserGroupDescription(e.target.value)}
                 data-testid="input-user-group-description"
@@ -3157,7 +3113,7 @@ export default function Suivi() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowUserGroupDialog(false)}>
-              Annuler
+              Cancel
             </Button>
             <Button
               onClick={() => createUserGroupMutation.mutate({ 
@@ -3167,13 +3123,12 @@ export default function Suivi() {
               disabled={!newUserGroupName.trim() || createUserGroupMutation.isPending}
               data-testid="button-confirm-create-user-group"
             >
-              {createUserGroupMutation.isPending ? "Creation..." : "Creer"}
+              {createUserGroupMutation.isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for editing user group */}
       <Dialog open={!!editingUserGroup} onOpenChange={(open) => {
         if (!open) setEditingUserGroup(null);
       }}>
@@ -3181,13 +3136,13 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="w-5 h-5" />
-              Modifier le groupe
+              Edit group
             </DialogTitle>
           </DialogHeader>
           {editingUserGroup && (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-group-name">Nom du groupe *</Label>
+                <Label htmlFor="edit-group-name">Group name *</Label>
                 <Input
                   id="edit-group-name"
                   value={editingUserGroup.name}
@@ -3208,7 +3163,7 @@ export default function Suivi() {
           )}
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditingUserGroup(null)}>
-              Annuler
+              Cancel
             </Button>
             <Button
               onClick={() => {
@@ -3223,13 +3178,12 @@ export default function Suivi() {
               disabled={!editingUserGroup?.name.trim() || updateUserGroupMutation.isPending}
               data-testid="button-confirm-edit-user-group"
             >
-              {updateUserGroupMutation.isPending ? "Mise a jour..." : "Enregistrer"}
+              {updateUserGroupMutation.isPending ? "Updating..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for managing user group members */}
       <Dialog open={showUserGroupMembersDialog} onOpenChange={(open) => {
         setShowUserGroupMembersDialog(open);
         if (!open) setSelectedUserGroup(null);
@@ -3238,16 +3192,15 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Membres du groupe: {selectedUserGroup?.name}
+              Group members: {selectedUserGroup?.name}
             </DialogTitle>
             <DialogDescription>
-              Gerez les membres de ce groupe d'utilisateurs
+              Manage members of this user group
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* Current members */}
             <div>
-              <h4 className="text-sm font-medium mb-2">Membres actuels</h4>
+              <h4 className="text-sm font-medium mb-2">Current members</h4>
               {userGroupMembersData && userGroupMembersData.length > 0 ? (
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {userGroupMembersData.map((gm) => (
@@ -3255,7 +3208,7 @@ export default function Suivi() {
                       <span className="text-sm">
                         {gm.member?.firstName && gm.member?.lastName 
                           ? `${gm.member.firstName} ${gm.member.lastName}` 
-                          : gm.member?.email || "Membre inconnu"}
+                          : gm.member?.email || "Unknown member"}
                       </span>
                       <Button
                         variant="ghost"
@@ -3275,13 +3228,12 @@ export default function Suivi() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Aucun membre dans ce groupe</p>
+                <p className="text-sm text-muted-foreground">No members in this group</p>
               )}
             </div>
             
-            {/* Add member */}
             <div>
-              <h4 className="text-sm font-medium mb-2">Ajouter un membre</h4>
+              <h4 className="text-sm font-medium mb-2">Add a member</h4>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {teamMembers
                   .filter(m => !userGroupMembersData?.some(gm => gm.teamMemberId === m.id))
@@ -3305,25 +3257,24 @@ export default function Suivi() {
                         }}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Ajouter
+                        Add
                       </Button>
                     </div>
                   ))}
                 {teamMembers.filter(m => !userGroupMembersData?.some(gm => gm.teamMemberId === m.id)).length === 0 && (
-                  <p className="text-sm text-muted-foreground">Tous les membres sont deja dans ce groupe</p>
+                  <p className="text-sm text-muted-foreground">All members are already in this group</p>
                 )}
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUserGroupMembersDialog(false)}>
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog for managing user group permissions */}
       <Dialog open={showUserGroupPermissionsDialog} onOpenChange={(open) => {
         setShowUserGroupPermissionsDialog(open);
         if (!open) setSelectedUserGroup(null);
@@ -3332,24 +3283,24 @@ export default function Suivi() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
-              Permissions du groupe: {selectedUserGroup?.name}
+              Group permissions: {selectedUserGroup?.name}
             </DialogTitle>
             <DialogDescription>
-              Definissez les groupes de machines accessibles pour ce groupe d'utilisateurs
+              Define which machine groups are accessible to this user group
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {allMachineGroups.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Aucun groupe de machines disponible. Creez d'abord une hierarchie (Organisation / Site / Groupe).
+                No machine groups available. First create a hierarchy (Organization / Site / Group).
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Groupe de machines</TableHead>
-                    <TableHead className="w-24 text-center">Lecture</TableHead>
-                    <TableHead className="w-24 text-center">Edition</TableHead>
+                    <TableHead>Machine group</TableHead>
+                    <TableHead className="w-24 text-center">View</TableHead>
+                    <TableHead className="w-24 text-center">Edit</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -3406,7 +3357,7 @@ export default function Suivi() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUserGroupPermissionsDialog(false)}>
-              Fermer
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

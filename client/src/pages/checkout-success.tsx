@@ -35,7 +35,7 @@ export default function CheckoutSuccess() {
         <Card className="max-w-md w-full mx-4">
           <CardContent className="flex flex-col items-center py-12">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Vérification du paiement...</p>
+            <p className="text-muted-foreground">Verifying payment...</p>
           </CardContent>
         </Card>
       </div>
@@ -48,14 +48,14 @@ export default function CheckoutSuccess() {
         <Card className="max-w-md w-full mx-4">
           <CardHeader className="text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <CardTitle>Erreur de paiement</CardTitle>
+            <CardTitle>Payment Error</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Une erreur est survenue lors de la vérification de votre paiement.
+              An error occurred while verifying your payment.
             </p>
             <Button asChild data-testid="button-return-home">
-              <Link href="/">Retour à l'accueil</Link>
+              <Link href="/">Back to Home</Link>
             </Button>
           </CardContent>
         </Card>
@@ -68,18 +68,18 @@ export default function CheckoutSuccess() {
       <Card className="max-w-md w-full mx-4">
         <CardHeader className="text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <CardTitle className="text-2xl">Paiement réussi</CardTitle>
+          <CardTitle className="text-2xl">Payment Successful</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-6">
           <p className="text-muted-foreground">
-            Merci pour votre achat. Vous pouvez maintenant télécharger votre script de sécurité.
+            Thank you for your purchase. You can now download your security script.
           </p>
           <div className="flex flex-col gap-3">
             <Button asChild data-testid="button-view-purchases">
-              <Link href="/purchases">Voir mes achats</Link>
+              <Link href="/purchases">View My Purchases</Link>
             </Button>
             <Button variant="outline" asChild data-testid="button-return-home">
-              <Link href="/">Retour à l'accueil</Link>
+              <Link href="/">Back to Home</Link>
             </Button>
           </div>
         </CardContent>

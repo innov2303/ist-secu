@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
       await apiRequest("POST", "/api/auth/forgot-password", { email });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Erreur lors de la demande");
+      setError(err.message || "Error during request");
     } finally {
       setIsSubmitting(false);
     }
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
           <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
             <Link href="/auth">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
+              Back
             </Link>
           </Button>
         </div>
@@ -60,9 +60,9 @@ export default function ForgotPasswordPage() {
       <div className="container mx-auto px-4 py-12 max-w-md flex-1">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle>Mot de passe oublie</CardTitle>
+            <CardTitle>Forgot Password</CardTitle>
             <CardDescription>
-              Entrez votre email pour recevoir un lien de reinitialisation
+              Enter your email to receive a reset link
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -72,11 +72,11 @@ export default function ForgotPasswordPage() {
                   <CheckCircle className="h-12 w-12 text-green-500" />
                 </div>
                 <p className="text-muted-foreground">
-                  Si cette adresse email est associee a un compte, vous recevrez un email avec les instructions pour reinitialiser votre mot de passe.
+                  If this email address is associated with an account, you will receive an email with instructions to reset your password.
                 </p>
                 <Button variant="outline" asChild className="w-full" data-testid="button-back-to-login">
                   <Link href="/auth">
-                    Retour a la connexion
+                    Back to login
                   </Link>
                 </Button>
               </div>
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="votre@email.com"
+                      placeholder="your@email.com"
                       className="pl-10"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -105,15 +105,15 @@ export default function ForgotPasswordPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Envoi en cours...
+                      Sending...
                     </>
                   ) : (
-                    "Envoyer le lien de reinitialisation"
+                    "Send reset link"
                   )}
                 </Button>
                 <div className="text-center">
                   <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-back-to-login">
-                    Retour a la connexion
+                    Back to login
                   </Link>
                 </div>
               </form>

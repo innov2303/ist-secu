@@ -15,7 +15,7 @@ export default function ConfirmEmailChangePage() {
 
     if (!token) {
       setStatus("error");
-      setMessage("Token de confirmation manquant");
+      setMessage("Missing confirmation token");
       return;
     }
 
@@ -26,14 +26,14 @@ export default function ConfirmEmailChangePage() {
 
         if (response.ok) {
           setStatus("success");
-          setMessage(data.message || "Votre adresse email a ete modifiee avec succes");
+          setMessage(data.message || "Your email address has been changed successfully");
         } else {
           setStatus("error");
-          setMessage(data.message || "Erreur lors de la confirmation");
+          setMessage(data.message || "Error during confirmation");
         }
       } catch (error) {
         setStatus("error");
-        setMessage("Erreur de connexion au serveur");
+        setMessage("Server connection error");
       }
     };
 
@@ -68,9 +68,9 @@ export default function ConfirmEmailChangePage() {
               )}
             </div>
             <CardTitle className="text-xl">
-              {status === "loading" && "Confirmation en cours..."}
-              {status === "success" && "Email modifie"}
-              {status === "error" && "Echec de la confirmation"}
+              {status === "loading" && "Confirming..."}
+              {status === "success" && "Email Changed"}
+              {status === "error" && "Confirmation Failed"}
             </CardTitle>
             <CardDescription className="mt-2">
               {message}
@@ -80,11 +80,11 @@ export default function ConfirmEmailChangePage() {
             {status === "success" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Votre nouvelle adresse email est maintenant active. Vous pouvez l'utiliser pour vous connecter.
+                  Your new email address is now active. You can use it to sign in.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild>
-                    <Link href="/profile">Mon compte</Link>
+                    <Link href="/profile">My Account</Link>
                   </Button>
                 </div>
               </>
@@ -92,16 +92,16 @@ export default function ConfirmEmailChangePage() {
             {status === "error" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Le lien de confirmation est peut-etre expire ou invalide. Vous pouvez demander un nouveau lien depuis votre profil.
+                  The confirmation link may be expired or invalid. You can request a new link from your profile.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild variant="outline">
-                    <Link href="/">Retour a l'accueil</Link>
+                    <Link href="/">Back to Home</Link>
                   </Button>
                   <Button asChild>
                     <Link href="/profile">
                       <Mail className="w-4 h-4 mr-2" />
-                      Mon profil
+                      My Profile
                     </Link>
                   </Button>
                 </div>

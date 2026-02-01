@@ -132,8 +132,8 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
     onError: () => {
       toast({
         variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de créer la session de paiement. Veuillez réessayer.",
+        title: "Error",
+        description: "Unable to create payment session. Please try again.",
       });
     },
   });
@@ -199,7 +199,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           <div className="text-xs text-muted-foreground mb-4">
             <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
               <Wrench className="w-3 h-3 mr-1" />
-              En maintenance
+              Under maintenance
             </Badge>
           </div>
         )}
@@ -218,7 +218,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
                 data-testid={`button-cycle-monthly-${script.id}`}
               >
                 <RefreshCw className="w-3 h-3 inline mr-1" />
-                Mensuel
+                Monthly
               </button>
               <button
                 onClick={() => setBillingCycle("yearly")}
@@ -230,7 +230,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
                 data-testid={`button-cycle-yearly-${script.id}`}
               >
                 <Calendar className="w-3 h-3 inline mr-1" />
-                Annuel -15%
+                Yearly -15%
               </button>
             </div>
             <div className="flex items-center justify-between">
@@ -238,22 +238,22 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
                 {billingCycle === "monthly" ? (
                   <>
                     <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
-                      {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> HT/mois</span>
+                      {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> excl. VAT/month</span>
                     </p>
                   </>
                 ) : (
                   <>
                     <p className="text-lg font-bold text-primary" data-testid={`text-price-yearly-${script.id}`}>
-                      {formatPrice(yearlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> HT/an</span>
+                      {formatPrice(yearlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> excl. VAT/year</span>
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400">
-                      Economisez {formatPrice(monthlySavings)} HT
+                      Save {formatPrice(monthlySavings)} excl. VAT
                     </p>
                   </>
                 )}
               </div>
               <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-                Mise a jour et support inclus
+                Updates and support included
               </p>
             </div>
           </div>
@@ -263,7 +263,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           {!user && !isInDevelopment && (
             <Button asChild className="w-full" data-testid={`button-login-${script.id}`}>
               <a href="/auth">
-                Connectez-vous pour acheter
+                Log in to purchase
               </a>
             </Button>
           )}
@@ -282,14 +282,14 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              {billingCycle === "yearly" ? "S'abonner pour 1 an" : "S'abonner"}
+              {billingCycle === "yearly" ? "Subscribe for 1 year" : "Subscribe"}
             </Button>
           )}
 
           {user && lockedByCompletePack && !hasPurchased && (
             <div className="text-center py-3 text-sm text-green-600 dark:text-green-400">
               <Check className="w-4 h-4 inline mr-2" />
-              Inclus dans votre Pack Complet
+              Included in your Complete Pack
             </div>
           )}
 
@@ -298,7 +298,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
             <div className="flex justify-center">
               <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
                 <Clock className="w-3 h-3 mr-1.5" />
-                Prochainement disponible
+                Coming soon
               </Badge>
             </div>
           )}
@@ -306,7 +306,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           {isMaintenance && !isInDevelopment && hasPurchased && !hideMaintenanceBadge && (
             <div className="text-center py-3 text-sm text-orange-600 dark:text-orange-400">
               <Wrench className="w-4 h-4 inline mr-2" />
-              Téléchargement temporairement indisponible
+              Download temporarily unavailable
             </div>
           )}
 
@@ -314,7 +314,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
             <>
               <div className="flex items-center justify-center gap-2 text-sm text-primary py-2">
                 <Check className="w-4 h-4" />
-                <span>Accès Admin</span>
+                <span>Admin Access</span>
               </div>
               <Button
                 asChild
@@ -323,7 +323,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               >
                 <Link href="/purchases">
                   <ShoppingBag className="w-4 h-4 mr-2" />
-                  Mes Produits
+                  My Products
                 </Link>
               </Button>
             </>
@@ -334,7 +334,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 py-2">
                 <Check className="w-4 h-4" />
                 <span>
-                  {purchaseType === "direct" ? "Achat permanent" : "Abonnement actif"}
+                  {purchaseType === "direct" ? "Permanent purchase" : "Active subscription"}
                 </span>
               </div>
               <Button
@@ -344,7 +344,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               >
                 <Link href="/purchases">
                   <ShoppingBag className="w-4 h-4 mr-2" />
-                  Mes Produits
+                  My Products
                 </Link>
               </Button>
             </>

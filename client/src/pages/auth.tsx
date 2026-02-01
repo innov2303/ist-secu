@@ -58,7 +58,7 @@ export default function AuthPage() {
     setError(null);
     
     if (!loginCaptchaVerified || !loginCaptchaData) {
-      setError("Veuillez completer la verification de securite");
+      setError("Please complete the security verification");
       return;
     }
     
@@ -83,12 +83,12 @@ export default function AuthPage() {
     setError(null);
     
     if (registerData.password !== registerData.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError("Passwords do not match");
       return;
     }
     
     if (!registerCaptchaVerified || !registerCaptchaData) {
-      setError("Veuillez completer la verification de securite");
+      setError("Please complete the security verification");
       return;
     }
     
@@ -111,8 +111,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SEO 
-        title="Connexion"
-        description="Connectez-vous ou creez votre compte Infra Shield Tools pour acceder aux scripts d'audit de securite."
+        title="Login"
+        description="Sign in or create your Infra Shield Tools account to access security audit scripts."
         url="/auth"
       />
       {/* Header with logo */}
@@ -133,7 +133,7 @@ export default function AuthPage() {
           <Button variant="outline" size="sm" asChild className="bg-background/20 backdrop-blur border-white/30 text-white hover:bg-background/40" data-testid="button-back">
             <Link href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
+              Back
             </Link>
           </Button>
         </div>
@@ -143,16 +143,16 @@ export default function AuthPage() {
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle>Authentification</CardTitle>
+            <CardTitle>Authentication</CardTitle>
             <CardDescription>
-              Connectez-vous ou créez un compte pour accéder aux toolkit
+              Sign in or create an account to access the toolkits
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" data-testid="tab-login">Connexion</TabsTrigger>
-                <TabsTrigger value="register" data-testid="tab-register">Inscription</TabsTrigger>
+                <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
+                <TabsTrigger value="register" data-testid="tab-register">Register</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login" className="space-y-4 mt-4">
@@ -164,7 +164,7 @@ export default function AuthPage() {
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="votre@email.com"
+                        placeholder="your@email.com"
                         className="pl-10"
                         value={loginData.email}
                         onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
@@ -174,7 +174,7 @@ export default function AuthPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Mot de passe</Label>
+                    <Label htmlFor="login-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -202,7 +202,7 @@ export default function AuthPage() {
                   )}
                   <div className="flex justify-end">
                     <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-forgot-password">
-                      Mot de passe oublie ?
+                      Forgot password?
                     </Link>
                   </div>
                   <ImageCaptcha
@@ -220,10 +220,10 @@ export default function AuthPage() {
                     {isLoggingIn ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Connexion...
+                        Signing in...
                       </>
                     ) : (
-                      "Se connecter"
+                      "Sign In"
                     )}
                   </Button>
                 </form>
@@ -234,13 +234,13 @@ export default function AuthPage() {
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="register-firstname">Prénom</Label>
+                      <Label htmlFor="register-firstname">First Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="register-firstname"
                           type="text"
-                          placeholder="Jean"
+                          placeholder="John"
                           className="pl-10"
                           value={registerData.firstName}
                           onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
@@ -250,11 +250,11 @@ export default function AuthPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="register-lastname">Nom</Label>
+                      <Label htmlFor="register-lastname">Last Name</Label>
                       <Input
                         id="register-lastname"
                         type="text"
-                        placeholder="Dupont"
+                        placeholder="Doe"
                         value={registerData.lastName}
                         onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
                         data-testid="input-register-lastname"
@@ -263,13 +263,13 @@ export default function AuthPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="register-company">Societe</Label>
+                      <Label htmlFor="register-company">Company</Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="register-company"
                           type="text"
-                          placeholder="Nom de votre societe"
+                          placeholder="Your company name"
                           className="pl-10"
                           value={registerData.companyName}
                           onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
@@ -285,21 +285,21 @@ export default function AuthPage() {
                       >
                         <SelectTrigger id="register-profession" className="w-full" data-testid="select-register-profession">
                           <Briefcase className="h-4 w-4 text-muted-foreground mr-2" />
-                          <SelectValue placeholder="Selectionnez..." />
+                          <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin_sys">Administrateur Systeme</SelectItem>
-                          <SelectItem value="admin_reseau">Administrateur Reseau</SelectItem>
-                          <SelectItem value="ingenieur_infra">Ingenieur Infrastructure</SelectItem>
+                          <SelectItem value="admin_sys">System Administrator</SelectItem>
+                          <SelectItem value="admin_reseau">Network Administrator</SelectItem>
+                          <SelectItem value="ingenieur_infra">Infrastructure Engineer</SelectItem>
                           <SelectItem value="devops">DevOps / SRE</SelectItem>
-                          <SelectItem value="rssi">RSSI / Responsable Securite</SelectItem>
-                          <SelectItem value="analyste_secu">Analyste Securite</SelectItem>
-                          <SelectItem value="chef_projet">Chef de Projet IT</SelectItem>
-                          <SelectItem value="dsi">DSI / Directeur IT</SelectItem>
-                          <SelectItem value="consultant">Consultant IT</SelectItem>
-                          <SelectItem value="tech_support">Technicien Support</SelectItem>
-                          <SelectItem value="architecte">Architecte IT</SelectItem>
-                          <SelectItem value="autre">Autre</SelectItem>
+                          <SelectItem value="rssi">CISO / Security Manager</SelectItem>
+                          <SelectItem value="analyste_secu">Security Analyst</SelectItem>
+                          <SelectItem value="chef_projet">IT Project Manager</SelectItem>
+                          <SelectItem value="dsi">CIO / IT Director</SelectItem>
+                          <SelectItem value="consultant">IT Consultant</SelectItem>
+                          <SelectItem value="tech_support">Support Technician</SelectItem>
+                          <SelectItem value="architecte">IT Architect</SelectItem>
+                          <SelectItem value="autre">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -311,7 +311,7 @@ export default function AuthPage() {
                       <Input
                         id="register-email"
                         type="email"
-                        placeholder="votre@email.com"
+                        placeholder="your@email.com"
                         className="pl-10"
                         value={registerData.email}
                         onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
@@ -322,7 +322,7 @@ export default function AuthPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="register-password">Mot de passe</Label>
+                      <Label htmlFor="register-password">Password</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -345,10 +345,10 @@ export default function AuthPage() {
                           {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Min. 8 car., majuscule, chiffre, special</p>
+                      <p className="text-xs text-muted-foreground">Min. 8 chars, uppercase, number, special</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="register-confirm-password">Confirmer</Label>
+                      <Label htmlFor="register-confirm-password">Confirm</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -375,16 +375,16 @@ export default function AuthPage() {
                   </div>
 
                   <div className="border-t pt-4 mt-4">
-                    <h3 className="text-sm font-medium mb-3">Adresse</h3>
+                    <h3 className="text-sm font-medium mb-3">Address</h3>
                     <div className="grid grid-cols-6 gap-3">
                       <div className="col-span-3 space-y-2">
-                        <Label htmlFor="register-street">Rue</Label>
+                        <Label htmlFor="register-street">Street</Label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="register-street"
                             type="text"
-                            placeholder="123 rue de la Paix"
+                            placeholder="123 Main Street"
                             className="pl-10"
                             value={registerData.street}
                             onChange={(e) => setRegisterData({ ...registerData, street: e.target.value })}
@@ -394,11 +394,11 @@ export default function AuthPage() {
                         </div>
                       </div>
                       <div className="col-span-1 space-y-2">
-                        <Label htmlFor="register-postal-code">Code postal</Label>
+                        <Label htmlFor="register-postal-code">Postal Code</Label>
                         <Input
                           id="register-postal-code"
                           type="text"
-                          placeholder="75001"
+                          placeholder="10001"
                           value={registerData.postalCode}
                           onChange={(e) => setRegisterData({ ...registerData, postalCode: e.target.value })}
                           required
@@ -406,11 +406,11 @@ export default function AuthPage() {
                         />
                       </div>
                       <div className="col-span-2 space-y-2">
-                        <Label htmlFor="register-city">Ville</Label>
+                        <Label htmlFor="register-city">City</Label>
                         <Input
                           id="register-city"
                           type="text"
-                          placeholder="Paris"
+                          placeholder="New York"
                           value={registerData.city}
                           onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
                           required
@@ -435,22 +435,22 @@ export default function AuthPage() {
                         data-testid="checkbox-billing-same"
                       />
                       <Label htmlFor="billing-same" className="text-sm font-normal cursor-pointer">
-                        Adresse de facturation identique a l'adresse actuelle
+                        Billing address same as current address
                       </Label>
                     </div>
 
                     {!registerData.billingAddressSameAsAddress && (
                       <div className="animate-in fade-in-0 slide-in-from-top-2">
-                        <h3 className="text-sm font-medium mb-3">Adresse de facturation</h3>
+                        <h3 className="text-sm font-medium mb-3">Billing Address</h3>
                         <div className="grid grid-cols-6 gap-3">
                           <div className="col-span-3 space-y-2">
-                            <Label htmlFor="register-billing-street">Rue</Label>
+                            <Label htmlFor="register-billing-street">Street</Label>
                             <div className="relative">
                               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
                                 id="register-billing-street"
                                 type="text"
-                                placeholder="456 avenue des Champs"
+                                placeholder="456 Business Ave"
                                 className="pl-10"
                                 value={registerData.billingStreet}
                                 onChange={(e) => setRegisterData({ ...registerData, billingStreet: e.target.value })}
@@ -460,11 +460,11 @@ export default function AuthPage() {
                             </div>
                           </div>
                           <div className="col-span-1 space-y-2">
-                            <Label htmlFor="register-billing-postal-code">Code postal</Label>
+                            <Label htmlFor="register-billing-postal-code">Postal Code</Label>
                             <Input
                               id="register-billing-postal-code"
                               type="text"
-                              placeholder="75008"
+                              placeholder="10002"
                               value={registerData.billingPostalCode}
                               onChange={(e) => setRegisterData({ ...registerData, billingPostalCode: e.target.value })}
                               required
@@ -472,11 +472,11 @@ export default function AuthPage() {
                             />
                           </div>
                           <div className="col-span-2 space-y-2">
-                            <Label htmlFor="register-billing-city">Ville</Label>
+                            <Label htmlFor="register-billing-city">City</Label>
                             <Input
                               id="register-billing-city"
                               type="text"
-                              placeholder="Paris"
+                              placeholder="New York"
                               value={registerData.billingCity}
                               onChange={(e) => setRegisterData({ ...registerData, billingCity: e.target.value })}
                               required
@@ -506,10 +506,10 @@ export default function AuthPage() {
                     {isRegistering ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Inscription...
+                        Creating account...
                       </>
                     ) : (
-                      "Créer un compte"
+                      "Create Account"
                     )}
                   </Button>
                 </form>

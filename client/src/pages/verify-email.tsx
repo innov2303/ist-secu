@@ -16,7 +16,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus("error");
-      setMessage("Token de verification manquant");
+      setMessage("Missing verification token");
       return;
     }
 
@@ -27,14 +27,14 @@ export default function VerifyEmailPage() {
 
         if (response.ok) {
           setStatus("success");
-          setMessage(data.message || "Votre email a ete verifie avec succes");
+          setMessage(data.message || "Your email has been verified successfully");
         } else {
           setStatus("error");
-          setMessage(data.message || "Erreur lors de la verification");
+          setMessage(data.message || "Error during verification");
         }
       } catch (error) {
         setStatus("error");
-        setMessage("Erreur de connexion au serveur");
+        setMessage("Server connection error");
       }
     };
 
@@ -69,9 +69,9 @@ export default function VerifyEmailPage() {
               )}
             </div>
             <CardTitle className="text-xl">
-              {status === "loading" && "Verification en cours..."}
-              {status === "success" && "Email verifie"}
-              {status === "error" && "Echec de la verification"}
+              {status === "loading" && "Verifying..."}
+              {status === "success" && "Email Verified"}
+              {status === "error" && "Verification Failed"}
             </CardTitle>
             <CardDescription className="mt-2">
               {message}
@@ -81,11 +81,11 @@ export default function VerifyEmailPage() {
             {status === "success" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Votre adresse email a ete verifiee. Vous pouvez maintenant profiter de toutes les fonctionnalites de notre plateforme.
+                  Your email address has been verified. You can now enjoy all the features of our platform.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild>
-                    <Link href="/">Acceder a la plateforme</Link>
+                    <Link href="/">Access the Platform</Link>
                   </Button>
                 </div>
               </>
@@ -93,16 +93,16 @@ export default function VerifyEmailPage() {
             {status === "error" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Le lien de verification est peut-etre expire ou invalide. Vous pouvez demander un nouveau lien depuis votre profil.
+                  The verification link may be expired or invalid. You can request a new link from your profile.
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button asChild variant="outline">
-                    <Link href="/">Retour a l'accueil</Link>
+                    <Link href="/">Back to Home</Link>
                   </Button>
                   <Button asChild>
                     <Link href="/profile">
                       <Mail className="w-4 h-4 mr-2" />
-                      Mon profil
+                      My Profile
                     </Link>
                   </Button>
                 </div>

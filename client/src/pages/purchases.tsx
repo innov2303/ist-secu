@@ -127,11 +127,11 @@ function VersionHistoryDialog({
   });
 
   const changeTypeLabels: Record<string, { label: string; icon: any; color: string }> = {
-    controls_added: { label: "Controles ajoutes", icon: Plus, color: "text-green-600 dark:text-green-400" },
-    controls_removed: { label: "Controles supprimes", icon: Minus, color: "text-red-600 dark:text-red-400" },
-    major_update: { label: "Mise a jour majeure", icon: Tag, color: "text-blue-600 dark:text-blue-400" },
-    minor_update: { label: "Mise a jour mineure", icon: Tag, color: "text-yellow-600 dark:text-yellow-400" },
-    patch: { label: "Correctif", icon: Tag, color: "text-gray-600 dark:text-gray-400" },
+    controls_added: { label: "Controls added", icon: Plus, color: "text-green-600 dark:text-green-400" },
+    controls_removed: { label: "Controls removed", icon: Minus, color: "text-red-600 dark:text-red-400" },
+    major_update: { label: "Major update", icon: Tag, color: "text-blue-600 dark:text-blue-400" },
+    minor_update: { label: "Minor update", icon: Tag, color: "text-yellow-600 dark:text-yellow-400" },
+    patch: { label: "Patch", icon: Tag, color: "text-gray-600 dark:text-gray-400" },
   };
 
   const allVersions = [
@@ -145,24 +145,24 @@ function VersionHistoryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Historique des versions
+            Version History
           </DialogTitle>
           <DialogDescription>
-            {scriptName} - Version actuelle: {currentVersion}
+            {scriptName} - Current version: {currentVersion}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
           <div className="flex-1">
-            <label className="text-sm font-medium mb-1 block">Telecharger une version</label>
+            <label className="text-sm font-medium mb-1 block">Download a version</label>
             <Select value={selectedVersion} onValueChange={setSelectedVersion}>
               <SelectTrigger className="w-full" data-testid="select-version">
-                <SelectValue placeholder="Selectionner une version" />
+                <SelectValue placeholder="Select a version" />
               </SelectTrigger>
               <SelectContent>
                 {allVersions.map((version) => (
                   <SelectItem key={version} value={version}>
-                    v{version} {version === currentVersion && "(actuelle)"}
+                    v{version} {version === currentVersion && "(current)"}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -177,7 +177,7 @@ function VersionHistoryDialog({
             >
               <a href={`/api/scripts/${scriptId}/download?version=${selectedVersion}`} download>
                 <Download className="h-4 w-4 mr-2" />
-                Telecharger
+                Download
               </a>
             </Button>
           </div>
@@ -191,8 +191,8 @@ function VersionHistoryDialog({
           ) : error ? (
             <div className="text-center py-8 text-muted-foreground">
               <XCircle className="h-10 w-10 mx-auto mb-2 text-destructive opacity-50" />
-              <p>Impossible de charger l'historique des versions.</p>
-              <p className="text-sm">Veuillez reessayer plus tard.</p>
+              <p>Failed to load version history.</p>
+              <p className="text-sm">Please try again later.</p>
             </div>
           ) : data?.versions && data.versions.length > 0 ? (
             <div className="space-y-3">
@@ -227,19 +227,19 @@ function VersionHistoryDialog({
                       <div className="flex gap-3 text-xs">
                         {version.controlsAdded !== null && version.controlsAdded > 0 && (
                           <span className="text-green-600 dark:text-green-400">
-                            +{version.controlsAdded} controle(s)
+                            +{version.controlsAdded} control(s)
                           </span>
                         )}
                         {version.controlsRemoved !== null && version.controlsRemoved > 0 && (
                           <span className="text-red-600 dark:text-red-400">
-                            -{version.controlsRemoved} controle(s)
+                            -{version.controlsRemoved} control(s)
                           </span>
                         )}
                       </div>
                     ) : null}
                     {version.previousVersion && (
                       <div className="text-xs text-muted-foreground">
-                        Depuis v{version.previousVersion}
+                        Since v{version.previousVersion}
                       </div>
                     )}
                   </div>
@@ -249,8 +249,8 @@ function VersionHistoryDialog({
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <History className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>Aucun historique de mise a jour disponible.</p>
-              <p className="text-sm">Ce toolkit n'a pas encore recu de mises a jour.</p>
+              <p>No update history available.</p>
+              <p className="text-sm">This toolkit has not yet received any updates.</p>
             </div>
           )}
         </div>
@@ -395,10 +395,10 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundlePurchase.firstPurchaseId, "subscription-status"] });
-      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
+      toast({ title: "Renewal cancelled", description: "Your subscription will not be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to cancel renewal.", variant: "destructive" });
     },
   });
 
@@ -410,10 +410,10 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundlePurchase.firstPurchaseId, "subscription-status"] });
-      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
+      toast({ title: "Renewal reactivated", description: "Your subscription will be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to reactivate renewal.", variant: "destructive" });
     },
   });
 
@@ -434,10 +434,10 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
                   <CardTitle className="text-lg flex items-center gap-2">
                     {bundlePurchase.bundle.name}
                     {bundlePurchase.expired ? (
-                      <Badge variant="destructive" className="text-xs">Expire</Badge>
+                      <Badge variant="destructive" className="text-xs">Expired</Badge>
                     ) : (
                       <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                        Actif
+                        Active
                       </Badge>
                     )}
                   </CardTitle>
@@ -459,11 +459,11 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-4">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Achat: {formatDate(bundlePurchase.purchasedAt)}</span>
+                <span>Purchased: {formatDate(bundlePurchase.purchasedAt)}</span>
               </div>
               <span className="hidden sm:inline mx-1">-</span>
               <span className="font-medium">
-                {formatPrice(bundlePurchase.priceCents)} HT/an
+                {formatPrice(bundlePurchase.priceCents)} excl. VAT/year
               </span>
               <Badge variant="outline" className="ml-2">
                 -{bundlePurchase.bundle.discountPercent}%
@@ -474,16 +474,16 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
               <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 mb-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">
-                    {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                    {cancelAtPeriodEnd ? "Expires on" : "Next renewal"}
                   </span>
                   {expirationDate ? (
                     <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                    <span className="text-sm text-muted-foreground">Active subscription</span>
                   )}
                   {cancelAtPeriodEnd && (
                     <span className="text-xs text-orange-600 dark:text-orange-400">
-                      Le renouvellement automatique est desactive
+                      Automatic renewal is disabled
                     </span>
                   )}
                 </div>
@@ -502,22 +502,22 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
                           ) : (
                             <>
                               <RotateCcw className="h-4 w-4 mr-1" />
-                              Reactiver
+                              Reactivate
                             </>
                           )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                          <AlertDialogTitle>Reactivate renewal</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Voulez-vous reactiver le renouvellement automatique de votre pack annuel ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                            Do you want to reactivate automatic renewal of your annual package? Your card will be charged automatically on the renewal date.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
-                            Confirmer
+                            Confirm
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -536,22 +536,22 @@ function AnnualBundleCard({ bundlePurchase, allScripts }: { bundlePurchase: Annu
                           ) : (
                             <>
                               <XCircle className="h-4 w-4 mr-1" />
-                              Arreter le renouvellement
+                              Stop renewal
                             </>
                           )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                          <AlertDialogTitle>Stop renewal</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Etes-vous sur de vouloir arreter le renouvellement automatique ? Vous conserverez l'acces jusqu'a la fin de la periode en cours.
+                            Are you sure you want to stop automatic renewal? You will retain access until the end of the current period.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={() => cancelMutation.mutate()}>
-                            Confirmer
+                            Confirm
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -606,7 +606,7 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                     </Badge>
                     {isMaintenanceOrOffline && (
                       <Badge variant="secondary" className="text-xs">
-                        {toolkitScript?.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                        {toolkitScript?.status === "maintenance" ? "Under maintenance" : "Offline"}
                       </Badge>
                     )}
                   </CardTitle>
@@ -624,12 +624,12 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                   {canDownload ? (
                     <a href={`/api/scripts/${toolkit.id}/download`} download>
                       <Download className="h-4 w-4 mr-1" />
-                      Telecharger
+                      Download
                     </a>
                   ) : (
                     <>
                       <Download className="h-4 w-4 mr-1" />
-                      {isMaintenanceOrOffline ? "Indisponible" : "Telecharger"}
+                      {isMaintenanceOrOffline ? "Unavailable" : "Download"}
                     </>
                   )}
                 </Button>
@@ -640,7 +640,7 @@ function NestedToolkitCard({ toolkit, allScripts, parentExpired }: { toolkit: To
                   data-testid={`button-version-history-nested-${toolkit.id}`}
                 >
                   <History className="h-4 w-4 mr-1" />
-                  Mises a jour
+                  Updates
                 </Button>
                 <AccordionTrigger className="p-0 hover:no-underline" data-testid={`accordion-trigger-toolkit-${toolkit.id}`}>
                   <Badge variant="outline" className="flex items-center gap-1">
@@ -722,10 +722,10 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
-      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
+      toast({ title: "Renewal cancelled", description: "Your subscription will not be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to cancel renewal.", variant: "destructive" });
     },
   });
 
@@ -737,10 +737,10 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", bundle.firstPurchaseId, "subscription-status"] });
-      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
+      toast({ title: "Renewal reactivated", description: "Your subscription will be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to reactivate renewal.", variant: "destructive" });
     },
   });
 
@@ -765,15 +765,15 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                   <CardTitle className="text-lg flex items-center gap-2">
                     {bundle.name}
                     {bundle.expired ? (
-                      <Badge variant="destructive" className="text-xs">Expire</Badge>
+                      <Badge variant="destructive" className="text-xs">Expired</Badge>
                     ) : (
                       <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                        Actif
+                        Active
                       </Badge>
                     )}
                     {isMaintenanceOrOffline && (
                       <Badge variant="secondary" className="text-xs">
-                        {toolkitScript?.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                        {toolkitScript?.status === "maintenance" ? "Under maintenance" : "Offline"}
                       </Badge>
                     )}
                   </CardTitle>
@@ -798,11 +798,11 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Achat: {formatDate(bundle.purchasedAt)}</span>
+                <span>Purchased: {formatDate(bundle.purchasedAt)}</span>
               </div>
               <span className="hidden sm:inline mx-1">-</span>
               <span className="font-medium">
-                {bundle.purchaseType === "yearly" ? formatPrice(bundle.priceCents * 12 * 0.85) + " HT/an" : formatPrice(bundle.priceCents) + " HT/mois"}
+                {bundle.purchaseType === "yearly" ? formatPrice(bundle.priceCents * 12 * 0.85) + " excl. VAT/year" : formatPrice(bundle.priceCents) + " excl. VAT/month"}
               </span>
             </div>
             
@@ -817,12 +817,12 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                 {canDownload ? (
                   <a href={`/api/scripts/${bundle.id}/download`} download>
                     <Download className="h-4 w-4 mr-2" />
-                    Telecharger le toolkit
+                    Download toolkit
                   </a>
                 ) : (
                   <>
                     <Download className="h-4 w-4 mr-2" />
-                    {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
+                    {isMaintenanceOrOffline ? "Download temporarily unavailable" : "Download"}
                   </>
                 )}
               </Button>
@@ -833,7 +833,7 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                 data-testid={`button-version-history-${bundle.id}`}
               >
                 <History className="h-4 w-4 mr-2" />
-                Mises a jour
+                Updates
               </Button>
             </div>
             
@@ -841,16 +841,16 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
               <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 mt-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium">
-                    {cancelAtPeriodEnd ? "Expire le" : "Prochain renouvellement"}
+                    {cancelAtPeriodEnd ? "Expires on" : "Next renewal"}
                   </span>
                   {expirationDate ? (
                     <span className="text-sm text-muted-foreground">{formatDate(expirationDate)}</span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Abonnement actif</span>
+                    <span className="text-sm text-muted-foreground">Active subscription</span>
                   )}
                   {cancelAtPeriodEnd && (
                     <span className="text-xs text-orange-600 dark:text-orange-400">
-                      Le renouvellement automatique est desactive
+                      Automatic renewal is disabled
                     </span>
                   )}
                 </div>
@@ -869,22 +869,22 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                           ) : (
                             <>
                               <RotateCcw className="h-4 w-4 mr-1" />
-                              Reactiver
+                              Reactivate
                             </>
                           )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Reactiver le renouvellement</AlertDialogTitle>
+                          <AlertDialogTitle>Reactivate renewal</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Voulez-vous reactiver le renouvellement automatique de votre abonnement ? Votre carte sera debitee automatiquement a la date de renouvellement.
+                            Do you want to reactivate automatic renewal of your subscription? Your card will be charged automatically on the renewal date.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={() => reactivateMutation.mutate()}>
-                            Confirmer
+                            Confirm
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -903,22 +903,22 @@ function ToolkitCard({ bundle, allScripts }: { bundle: ToolkitBundle, allScripts
                           ) : (
                             <>
                               <XCircle className="h-4 w-4 mr-1" />
-                              Arreter le renouvellement
+                              Stop renewal
                             </>
                           )}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Arreter le renouvellement</AlertDialogTitle>
+                          <AlertDialogTitle>Stop renewal</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Etes-vous sur de vouloir arreter le renouvellement automatique ? Vous conserverez l'acces jusqu'a la fin de la periode en cours.
+                            Are you sure you want to stop automatic renewal? You will retain access until the end of the current period.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction onClick={() => cancelMutation.mutate()}>
-                            Confirmer
+                            Confirm
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -997,10 +997,10 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
-      toast({ title: "Renouvellement annule", description: "Votre abonnement ne sera pas renouvele automatiquement." });
+      toast({ title: "Renewal cancelled", description: "Your subscription will not be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible d'annuler le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to cancel renewal.", variant: "destructive" });
     },
   });
 
@@ -1012,10 +1012,10 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/purchases", purchase.id, "subscription-status"] });
-      toast({ title: "Renouvellement reactive", description: "Votre abonnement sera renouvele automatiquement." });
+      toast({ title: "Renewal reactivated", description: "Your subscription will be automatically renewed." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible de reactiver le renouvellement.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to reactivate renewal.", variant: "destructive" });
     },
   });
 
@@ -1037,15 +1037,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
                 v{currentVersion}
               </Badge>
               {expired ? (
-                <Badge variant="destructive" className="text-xs">Expire</Badge>
+                <Badge variant="destructive" className="text-xs">Expired</Badge>
               ) : (
                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                  Actif
+                  Active
                 </Badge>
               )}
               {isMaintenanceOrOffline && (
                 <Badge variant="secondary" className="text-xs">
-                  {purchase.script.status === "maintenance" ? "En maintenance" : "Hors ligne"}
+                  {purchase.script.status === "maintenance" ? "Under maintenance" : "Offline"}
                 </Badge>
               )}
             </CardTitle>
@@ -1058,15 +1058,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              <span>Achat: {formatDate(purchase.purchasedAt)}</span>
+              <span>Purchased: {formatDate(purchase.purchasedAt)}</span>
             </div>
             <span className="hidden sm:inline mx-1">-</span>
             <span className="font-medium">
               {purchase.purchaseType === "direct" 
-                ? formatPrice(purchase.priceCents) + " HT" 
+                ? formatPrice(purchase.priceCents) + " excl. VAT" 
                 : purchase.purchaseType === "yearly"
-                  ? formatPrice(purchase.priceCents) + " HT/an"
-                  : formatPrice(purchase.priceCents) + " HT/mois"
+                  ? formatPrice(purchase.priceCents) + " excl. VAT/year"
+                  : formatPrice(purchase.priceCents) + " excl. VAT/month"
               }
             </span>
           </div>
@@ -1082,12 +1082,12 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
               {canDownload ? (
                 <a href={`/api/scripts/${purchase.scriptId}/download`} download>
                   <Download className="h-4 w-4 mr-2" />
-                  Telecharger
+                  Download
                 </a>
               ) : (
                 <>
                   <Download className="h-4 w-4 mr-2" />
-                  {isMaintenanceOrOffline ? "Telechargement temporairement indisponible" : "Telecharger"}
+                  {isMaintenanceOrOffline ? "Download temporarily unavailable" : "Download"}
                 </>
               )}
             </Button>
@@ -1098,16 +1098,15 @@ function PurchaseCard({ purchase }: { purchase: PurchaseWithScript }) {
               data-testid={`button-version-history-${purchase.id}`}
             >
               <History className="h-4 w-4 mr-2" />
-              Mises a jour
+              Updates
             </Button>
           </div>
 
-          {/* Afficher la date d'expiration pour les achats directs */}
           {purchase.purchaseType === "direct" && purchase.expiresAt && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium">
-                  {expired ? "Expire le" : "Valide jusqu'au"}
+                  {expired ? "Expires on" : "Valid until"}
                 </span>
                 <span className="text-sm text-muted-foreground">{formatDate(purchase.expiresAt)}</span>
               </div>
@@ -1269,7 +1268,7 @@ function AdminScriptCard({ script, allScripts }: { script: Script; allScripts: S
           >
             <a href={`/api/scripts/${script.id}/download`} download>
               <Download className="h-4 w-4 mr-2" />
-              Telecharger
+              Download
             </a>
           </Button>
           <Button
@@ -1279,7 +1278,7 @@ function AdminScriptCard({ script, allScripts }: { script: Script; allScripts: S
             data-testid={`button-admin-version-history-${script.id}`}
           >
             <History className="h-4 w-4 mr-2" />
-            Mises a jour
+            Updates
           </Button>
           {bundledScripts.length > 0 && (
             <Button
@@ -1289,7 +1288,7 @@ function AdminScriptCard({ script, allScripts }: { script: Script; allScripts: S
               data-testid={`button-toggle-bundled-${script.id}`}
             >
               <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-              {expanded ? 'Masquer les scripts' : 'Voir les scripts'}
+              {expanded ? 'Hide scripts' : 'View scripts'}
             </Button>
           )}
         </div>
@@ -1298,7 +1297,7 @@ function AdminScriptCard({ script, allScripts }: { script: Script; allScripts: S
           <div className="border-t pt-4 space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2">
               <FileCode className="h-4 w-4" />
-              Scripts inclus dans ce toolkit
+              Scripts included in this toolkit
             </h4>
             {bundledScripts.map((bundledScript) => {
               const BundledIcon = iconMap[bundledScript.icon] || FileCode;
@@ -1440,12 +1439,12 @@ export default function Purchases() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-16 px-4 max-w-4xl text-center">
           <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Connexion requise</h1>
+          <h1 className="text-2xl font-bold mb-2">Login required</h1>
           <p className="text-muted-foreground mb-6">
-            Connectez-vous pour acceder a vos achats
+            Log in to access your purchases
           </p>
           <Button asChild data-testid="button-login-redirect">
-            <Link href="/">Retour a l'accueil</Link>
+            <Link href="/">Back to home</Link>
           </Button>
         </div>
       </div>
@@ -1466,7 +1465,7 @@ export default function Purchases() {
         <Button variant="default" size="sm" asChild data-testid="link-home">
           <Link href="/">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Accueil
+            Home
           </Link>
         </Button>
         {user.isAdmin && (
@@ -1507,7 +1506,7 @@ export default function Purchases() {
             </Link>
             <div>
               <h1 className="text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>
-                Mes produits
+                My products
               </h1>
             </div>
           </div>
@@ -1522,7 +1521,7 @@ export default function Purchases() {
           <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-5 w-5 text-green-600" />
-              <h2 className="text-xl font-semibold">Acces Administrateur - Tous les Toolkits</h2>
+              <h2 className="text-xl font-semibold">Admin Access - All Toolkits</h2>
             </div>
             <div className="space-y-4">
               {scripts?.filter(s => !s.isHidden && s.bundledScriptIds && s.bundledScriptIds.length > 0).map((script) => (
@@ -1536,7 +1535,7 @@ export default function Purchases() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" />
-                  Packs Annuels
+                  Annual Packages
                 </h2>
                 {annualBundlePurchases.map((bundlePurchase) => (
                   <AnnualBundleCard key={bundlePurchase.bundle.id} bundlePurchase={bundlePurchase} allScripts={scripts || []} />
@@ -1560,7 +1559,7 @@ export default function Purchases() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <FileCode className="h-5 w-5 text-primary" />
-                  Scripts individuels
+                  Individual Scripts
                 </h2>
                 {standalone.map((purchase) => (
                   <PurchaseCard key={purchase.id} purchase={purchase} />
@@ -1575,11 +1574,11 @@ export default function Purchases() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Users className="h-5 w-5 text-primary" />
-                      Produits partages par l'equipe
+                      Products shared by the team
                     </CardTitle>
                     <CardDescription>
-                      Acces aux produits de l'equipe "{sharedData?.teamName}"
-                      {sharedData?.memberRole === "admin" ? " (Admin)" : " (Membre)"}
+                      Access to team products "{sharedData?.teamName}"
+                      {sharedData?.memberRole === "admin" ? " (Admin)" : " (Member)"}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -1588,7 +1587,7 @@ export default function Purchases() {
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       <Shield className="h-5 w-5 text-primary" />
-                      Toolkits partages
+                      Shared Toolkits
                     </h2>
                     {sharedPurchasesGrouped.toolkitBundles.map((bundle) => (
                       <ToolkitCard key={`shared-${bundle.id}`} bundle={bundle} allScripts={scripts || []} />
@@ -1600,7 +1599,7 @@ export default function Purchases() {
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       <FileCode className="h-5 w-5 text-primary" />
-                      Scripts partages
+                      Shared Scripts
                     </h2>
                     {sharedPurchasesGrouped.standalone.map((purchase) => (
                       <PurchaseCard key={`shared-${purchase.id}`} purchase={purchase} />
@@ -1616,11 +1615,11 @@ export default function Purchases() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Users className="h-5 w-5 text-primary" />
-                  Produits partages par l'equipe
+                  Products shared by the team
                 </CardTitle>
                 <CardDescription>
-                  Vous avez acces aux produits de l'equipe "{sharedData?.teamName}" 
-                  {sharedData?.memberRole === "admin" ? " (Admin)" : " (Membre)"}
+                  You have access to team products "{sharedData?.teamName}" 
+                  {sharedData?.memberRole === "admin" ? " (Admin)" : " (Member)"}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -1629,7 +1628,7 @@ export default function Purchases() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Shield className="h-5 w-5 text-primary" />
-                  Toolkits partages
+                  Shared Toolkits
                 </h2>
                 {sharedPurchasesGrouped.toolkitBundles.map((bundle) => (
                   <ToolkitCard key={`shared-${bundle.id}`} bundle={bundle} allScripts={scripts || []} />
@@ -1641,7 +1640,7 @@ export default function Purchases() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <FileCode className="h-5 w-5 text-primary" />
-                  Scripts partages
+                  Shared Scripts
                 </h2>
                 {sharedPurchasesGrouped.standalone.map((purchase) => (
                   <PurchaseCard key={`shared-${purchase.id}`} purchase={purchase} />
@@ -1653,12 +1652,12 @@ export default function Purchases() {
           <Card className="text-center py-12">
             <CardContent>
               <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-lg font-semibold mb-2">Aucun achat</h2>
+              <h2 className="text-lg font-semibold mb-2">No purchases</h2>
               <p className="text-muted-foreground mb-6">
-                Vous n'avez pas encore achete de scripts de securite
+                You haven't purchased any security scripts yet
               </p>
               <Button asChild data-testid="button-browse-scripts">
-                <Link href="/">Parcourir les scripts</Link>
+                <Link href="/">Browse scripts</Link>
               </Button>
             </CardContent>
           </Card>

@@ -66,12 +66,12 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Equipe creee avec succes" });
+      toast({ title: "Team created successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
       setTeamName("");
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -82,13 +82,13 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Equipe mise a jour" });
+      toast({ title: "Team updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
       setEditingTeamName(false);
       setTeamName("");
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -99,11 +99,11 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Equipe supprimee" });
+      toast({ title: "Team deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -114,14 +114,14 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Membre ajoute" });
+      toast({ title: "Member added" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
       setNewMemberEmail("");
       setNewMemberName("");
       setNewMemberRole("member");
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -132,11 +132,11 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Membre supprime" });
+      toast({ title: "Member removed" });
       queryClient.invalidateQueries({ queryKey: ["/api/teams/my-team"] });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -154,7 +154,7 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Profil mis a jour" });
+      toast({ title: "Profile updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setFirstName("");
       setLastName("");
@@ -164,7 +164,7 @@ export default function Profile() {
       setBillingCity("");
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -175,12 +175,12 @@ export default function Profile() {
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Email envoye", 
+        title: "Email sent", 
         description: data.message 
       });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -191,12 +191,12 @@ export default function Profile() {
     },
     onSuccess: (data) => {
       toast({ 
-        title: "Email envoye", 
+        title: "Email sent", 
         description: data.message 
       });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -206,11 +206,11 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Email envoye", description: data.message });
+      toast({ title: "Email sent", description: data.message });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -220,16 +220,16 @@ export default function Profile() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Compte supprime", description: "Votre compte a ete supprime avec succes." });
+      toast({ title: "Account deleted", description: "Your account has been successfully deleted." });
       window.location.href = "/";
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const handleDeleteAccount = () => {
-    if (deleteConfirmText === "SUPPRIMER") {
+    if (deleteConfirmText === "DELETE") {
       deleteAccountMutation.mutate();
     }
   };
@@ -237,7 +237,7 @@ export default function Profile() {
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() && !lastName.trim() && !companyName.trim() && !billingStreet.trim() && !billingPostalCode.trim() && !billingCity.trim()) {
-      toast({ title: "Erreur", description: "Veuillez remplir au moins un champ", variant: "destructive" });
+      toast({ title: "Error", description: "Please fill in at least one field", variant: "destructive" });
       return;
     }
     updateProfileMutation.mutate({
@@ -261,33 +261,33 @@ export default function Profile() {
   const handleViewInvoice = async (invoiceId: number) => {
     try {
       const response = await apiRequest("GET", `/api/my-invoices/${invoiceId}`);
-      if (!response.ok) throw new Error("Erreur lors de la recuperation de la facture");
+      if (!response.ok) throw new Error("Error retrieving invoice");
       const data = await response.json();
       setViewingInvoice(data);
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de charger la facture", variant: "destructive" });
+      toast({ title: "Error", description: "Unable to load invoice", variant: "destructive" });
     }
   };
 
   const getInvoiceStatusBadge = (status: string) => {
     switch (status) {
       case "paid":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Payee</Badge>;
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Paid</Badge>;
       case "sent":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Envoyee</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Sent</Badge>;
       case "draft":
-        return <Badge variant="secondary">Brouillon</Badge>;
+        return <Badge variant="secondary">Draft</Badge>;
       case "overdue":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">En retard</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Overdue</Badge>;
       case "cancelled":
-        return <Badge variant="outline">Annulee</Badge>;
+        return <Badge variant="outline">Cancelled</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const formatCurrency = (cents: number) => {
-    return (cents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' });
   };
 
   const handlePrintInvoice = () => {
@@ -301,7 +301,7 @@ export default function Profile() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Facture ${invoice.invoiceNumber}</title>
+        <title>Invoice ${invoice.invoiceNumber}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: Arial, sans-serif; padding: 40px; color: #1f2937; }
@@ -337,19 +337,19 @@ export default function Profile() {
           <div class="logo">Infra <span>Shield Tools</span></div>
           <div class="invoice-info">
             <div class="invoice-number">${invoice.invoiceNumber}</div>
-            <div class="invoice-date">Date: ${new Date(invoice.createdAt).toLocaleDateString('fr-FR')}</div>
-            ${invoice.paidAt ? `<div class="status paid">Payee le ${new Date(invoice.paidAt).toLocaleDateString('fr-FR')}</div>` : ''}
+            <div class="invoice-date">Date: ${new Date(invoice.createdAt).toLocaleDateString('en-US')}</div>
+            ${invoice.paidAt ? `<div class="status paid">Paid on ${new Date(invoice.paidAt).toLocaleDateString('en-US')}</div>` : ''}
           </div>
         </div>
         
         <div class="parties">
           <div class="party">
-            <div class="party-title">Emetteur</div>
+            <div class="party-title">Issuer</div>
             <div class="party-name">Infra Shield Tools</div>
             <div class="party-detail">ist-security.fr</div>
           </div>
           <div class="party">
-            <div class="party-title">Client</div>
+            <div class="party-title">Customer</div>
             <div class="party-name">${invoice.customerName}</div>
             <div class="party-detail">${invoice.customerEmail}</div>
             ${invoice.customerAddress ? `<div class="party-detail">${invoice.customerAddress}</div>` : ''}
@@ -360,9 +360,9 @@ export default function Profile() {
           <thead>
             <tr>
               <th>Description</th>
-              <th class="amount">Quantite</th>
-              <th class="amount">Prix unitaire HT</th>
-              <th class="amount">Total HT</th>
+              <th class="amount">Quantity</th>
+              <th class="amount">Unit Price (excl. tax)</th>
+              <th class="amount">Total (excl. tax)</th>
             </tr>
           </thead>
           <tbody>
@@ -370,8 +370,8 @@ export default function Profile() {
               <tr>
                 <td>${item.description}</td>
                 <td class="amount">${item.quantity}</td>
-                <td class="amount">${(item.unitPriceCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
-                <td class="amount">${(item.totalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</td>
+                <td class="amount">${(item.unitPriceCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</td>
+                <td class="amount">${(item.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -379,16 +379,16 @@ export default function Profile() {
         
         <div class="totals">
           <div class="total-row">
-            <span>Sous-total HT</span>
-            <span>${(invoice.subtotalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+            <span>Subtotal (excl. tax)</span>
+            <span>${(invoice.subtotalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
           </div>
           <div class="total-row">
-            <span>TVA (${invoice.taxRate}%)</span>
-            <span>${(invoice.taxCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+            <span>VAT (${invoice.taxRate}%)</span>
+            <span>${(invoice.taxCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
           </div>
           <div class="total-row final">
             <span>Total</span>
-            <span>${(invoice.totalCents / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</span>
+            <span>${(invoice.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
           </div>
         </div>
         
@@ -427,11 +427,11 @@ export default function Profile() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">
-              Veuillez vous connecter pour acceder a votre profil.
+              Please log in to access your profile.
             </p>
             <div className="flex justify-center mt-4">
               <Link href="/auth">
-                <Button data-testid="button-goto-login">Se connecter</Button>
+                <Button data-testid="button-goto-login">Log in</Button>
               </Link>
             </div>
           </CardContent>
@@ -441,16 +441,16 @@ export default function Profile() {
   }
 
   const sidebarItems = [
-    { id: "personal" as ProfileSection, label: "Informations personnelles", icon: User },
-    { id: "team" as ProfileSection, label: "Mon equipe", icon: Users, count: teamData?.members?.length },
-    { id: "purchases" as ProfileSection, label: "Historique des achats", icon: ShoppingBag, count: invoicesData?.invoices?.length },
+    { id: "personal" as ProfileSection, label: "Personal Information", icon: User },
+    { id: "team" as ProfileSection, label: "My Team", icon: Users, count: teamData?.members?.length },
+    { id: "purchases" as ProfileSection, label: "Purchase History", icon: ShoppingBag, count: invoicesData?.invoices?.length },
   ];
 
   return (
     <div className="min-h-screen bg-background flex">
       <SEO 
-        title="Mon Compte"
-        description="Gerez votre compte Infra Shield Tools, vos informations personnelles et votre historique d'achats."
+        title="My Account"
+        description="Manage your Infra Shield Tools account, personal information, and purchase history."
         url="/profile"
         noindex={true}
       />
@@ -462,7 +462,7 @@ export default function Profile() {
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="font-bold text-lg">Mon compte</h1>
+            <h1 className="font-bold text-lg">My Account</h1>
           </div>
         </div>
 
@@ -500,7 +500,7 @@ export default function Profile() {
           <Link href="/">
             <Button variant="ghost" className="w-full justify-start gap-3" data-testid="button-goto-home">
               <Home className="h-4 w-4" />
-              Retour au site
+              Back to site
             </Button>
           </Link>
         </div>
@@ -531,15 +531,15 @@ export default function Profile() {
               <div className="flex items-center gap-3">
                 <User className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Informations personnelles</h2>
-                  <p className="text-muted-foreground">Gerez vos informations de compte</p>
+                  <h2 className="text-2xl font-bold">Personal Information</h2>
+                  <p className="text-muted-foreground">Manage your account information</p>
                 </div>
               </div>
 
               {/* Current Info Header */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Informations actuelles</CardTitle>
+                  <CardTitle className="text-base">Current Information</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -548,7 +548,7 @@ export default function Profile() {
                         <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Identite</p>
+                        <p className="text-xs text-muted-foreground">Identity</p>
                         <p className="font-medium">{user.firstName} {user.lastName}</p>
                       </div>
                     </div>
@@ -557,8 +557,8 @@ export default function Profile() {
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Entreprise</p>
-                        <p className="font-medium">{(user as any).companyName || "Non renseignee"}</p>
+                        <p className="text-xs text-muted-foreground">Company</p>
+                        <p className="font-medium">{(user as any).companyName || "Not provided"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -566,11 +566,11 @@ export default function Profile() {
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Adresse</p>
+                        <p className="text-xs text-muted-foreground">Address</p>
                         <p className="font-medium">
                           {(user as any).billingStreet || (user as any).billingCity 
-                            ? `${(user as any).billingPostalCode || ""} ${(user as any).billingCity || ""}`.trim() || "Non renseignee"
-                            : "Non renseignee"}
+                            ? `${(user as any).billingPostalCode || ""} ${(user as any).billingCity || ""}`.trim() || "Not provided"
+                            : "Not provided"}
                         </p>
                       </div>
                     </div>
@@ -585,13 +585,13 @@ export default function Profile() {
                           {user.isEmailVerified ? (
                             <Badge variant="outline" className="text-green-600 border-green-600/30 bg-green-50 dark:bg-green-900/20 gap-1" data-testid="badge-email-verified">
                               <BadgeCheck className="h-3 w-3" />
-                              Verifie
+                              Verified
                             </Badge>
                           ) : (
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-amber-600 border-amber-600/30 bg-amber-50 dark:bg-amber-900/20 gap-1" data-testid="badge-email-not-verified">
                                 <AlertTriangle className="h-3 w-3" />
-                                Non verifie
+                                Not verified
                               </Badge>
                               <Button
                                 variant="ghost"
@@ -606,7 +606,7 @@ export default function Profile() {
                                 ) : (
                                   <Send className="h-3 w-3 mr-1" />
                                 )}
-                                Renvoyer
+                                Resend
                               </Button>
                             </div>
                           )}
@@ -620,43 +620,43 @@ export default function Profile() {
               {/* Combined Profile Card */}
               <Card>
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-base">Modifier mes informations</CardTitle>
-                  <CardDescription>Ces informations apparaitront sur vos factures</CardDescription>
+                  <CardTitle className="text-base">Edit my information</CardTitle>
+                  <CardDescription>This information will appear on your invoices</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleUpdateProfile} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-1.5">
                         <Label htmlFor="firstName" className="text-xs flex items-center gap-1.5">
-                          <User className="h-3 w-3" /> Prenom
+                          <User className="h-3 w-3" /> First name
                         </Label>
                         <Input
                           id="firstName"
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
-                          placeholder={user.firstName || "Prenom"}
+                          placeholder={user.firstName || "First name"}
                           data-testid="input-first-name"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="lastName" className="text-xs">Nom</Label>
+                        <Label htmlFor="lastName" className="text-xs">Last name</Label>
                         <Input
                           id="lastName"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
-                          placeholder={user.lastName || "Nom"}
+                          placeholder={user.lastName || "Last name"}
                           data-testid="input-last-name"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="companyName" className="text-xs flex items-center gap-1.5">
-                          <Building2 className="h-3 w-3" /> Entreprise
+                          <Building2 className="h-3 w-3" /> Company
                         </Label>
                         <Input
                           id="companyName"
                           value={companyName}
                           onChange={(e) => setCompanyName(e.target.value)}
-                          placeholder={(user as any).companyName || "Nom de l'entreprise"}
+                          placeholder={(user as any).companyName || "Company name"}
                           data-testid="input-company-name"
                         />
                       </div>
@@ -664,33 +664,33 @@ export default function Profile() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5 md:col-span-1">
                         <Label htmlFor="billingStreet" className="text-xs flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3" /> Adresse
+                          <MapPin className="h-3 w-3" /> Address
                         </Label>
                         <Input
                           id="billingStreet"
                           value={billingStreet}
                           onChange={(e) => setBillingStreet(e.target.value)}
-                          placeholder={(user as any).billingStreet || "Rue, numero"}
+                          placeholder={(user as any).billingStreet || "Street, number"}
                           data-testid="input-billing-street"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="billingPostalCode" className="text-xs">Code postal</Label>
+                        <Label htmlFor="billingPostalCode" className="text-xs">Postal code</Label>
                         <Input
                           id="billingPostalCode"
                           value={billingPostalCode}
                           onChange={(e) => setBillingPostalCode(e.target.value)}
-                          placeholder={(user as any).billingPostalCode || "75000"}
+                          placeholder={(user as any).billingPostalCode || "12345"}
                           data-testid="input-billing-postal-code"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="billingCity" className="text-xs">Ville</Label>
+                        <Label htmlFor="billingCity" className="text-xs">City</Label>
                         <Input
                           id="billingCity"
                           value={billingCity}
                           onChange={(e) => setBillingCity(e.target.value)}
-                          placeholder={(user as any).billingCity || "Paris"}
+                          placeholder={(user as any).billingCity || "City"}
                           data-testid="input-billing-city"
                         />
                       </div>
@@ -700,7 +700,7 @@ export default function Profile() {
                       disabled={updateProfileMutation.isPending}
                       data-testid="button-update-profile"
                     >
-                      {updateProfileMutation.isPending ? "Mise a jour..." : "Enregistrer les modifications"}
+                      {updateProfileMutation.isPending ? "Updating..." : "Save changes"}
                     </Button>
                   </form>
                 </CardContent>
@@ -712,19 +712,19 @@ export default function Profile() {
                   <CardHeader className="pb-4">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Lock className="h-4 w-4" />
-                      Securite du compte
+                      Account Security
                     </CardTitle>
-                    <CardDescription>Modifiez votre email ou mot de passe</CardDescription>
+                    <CardDescription>Change your email or password</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Email Change */}
                       <div className="space-y-3">
                         <h4 className="text-sm font-medium flex items-center gap-2">
-                          <Mail className="h-3.5 w-3.5" /> Changer l'email
+                          <Mail className="h-3.5 w-3.5" /> Change email
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          Un lien sera envoye a votre adresse email actuelle pour renseigner votre nouvel email.
+                          A link will be sent to your current email address to enter your new email.
                         </p>
                         <Button 
                           size="sm"
@@ -733,9 +733,9 @@ export default function Profile() {
                           data-testid="button-request-email-change"
                         >
                           {requestEmailChangeMutation.isPending ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
+                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Sending...</>
                           ) : (
-                            <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
+                            <><Send className="h-3.5 w-3.5 mr-2" /> Send link</>
                           )}
                         </Button>
                       </div>
@@ -743,10 +743,10 @@ export default function Profile() {
                       {/* Password Change */}
                       <div className="space-y-3">
                         <h4 className="text-sm font-medium flex items-center gap-2">
-                          <Lock className="h-3.5 w-3.5" /> Changer le mot de passe
+                          <Lock className="h-3.5 w-3.5" /> Change password
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          Un lien de reinitialisation sera envoye a votre adresse email.
+                          A password reset link will be sent to your email address.
                         </p>
                         <Button 
                           size="sm"
@@ -755,9 +755,9 @@ export default function Profile() {
                           data-testid="button-request-password-change"
                         >
                           {requestPasswordChangeMutation.isPending ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
+                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Sending...</>
                           ) : (
-                            <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
+                            <><Send className="h-3.5 w-3.5 mr-2" /> Send link</>
                           )}
                         </Button>
                       </div>
@@ -771,21 +771,21 @@ export default function Profile() {
                 <Card className="border-destructive/30">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="h-4 w-4" /> Zone de danger
+                      <AlertTriangle className="h-4 w-4" /> Danger Zone
                     </CardTitle>
-                    <CardDescription>Actions irreversibles sur votre compte</CardDescription>
+                    <CardDescription>Irreversible actions on your account</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        La suppression de votre compte est definitive. Toutes vos donnees, achats et informations seront perdus.
+                        Deleting your account is permanent. All your data, purchases, and information will be lost.
                       </p>
                       {activePurchasesData?.hasActivePurchases ? (
                         <div className="space-y-2">
                           <Alert>
                             <AlertCircle className="h-4 w-4" />
                             <AlertDescription>
-                              Vous ne pouvez pas supprimer votre compte tant que vous avez un abonnement actif. Veuillez d'abord annuler votre abonnement dans la section "Mes abonnements".
+                              You cannot delete your account while you have an active subscription. Please cancel your subscription first in the "My Subscriptions" section.
                             </AlertDescription>
                           </Alert>
                           <Button 
@@ -794,7 +794,7 @@ export default function Profile() {
                             disabled
                             data-testid="button-delete-account"
                           >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete my account
                           </Button>
                         </div>
                       ) : (
@@ -804,7 +804,7 @@ export default function Profile() {
                           onClick={() => setShowDeleteConfirmation(true)}
                           data-testid="button-delete-account"
                         >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete my account
                         </Button>
                       )}
                     </div>
@@ -820,8 +820,8 @@ export default function Profile() {
               <div className="flex items-center gap-3">
                 <Users className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Mon equipe</h2>
-                  <p className="text-muted-foreground">Gerez les membres de votre equipe</p>
+                  <h2 className="text-2xl font-bold">My Team</h2>
+                  <p className="text-muted-foreground">Manage your team members</p>
                 </div>
               </div>
 
@@ -834,13 +834,13 @@ export default function Profile() {
                   <CardContent className="pt-6">
                     <div className="text-center py-8">
                       <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <h3 className="text-lg font-medium mb-2">Fonctionnalite reservee</h3>
+                      <h3 className="text-lg font-medium mb-2">Feature restricted</h3>
                       <p className="text-muted-foreground mb-4">
-                        Vous devez avoir au moins un toolkit pour creer une equipe.
+                        You need to have at least one toolkit to create a team.
                       </p>
                       <Link href="/#toolkits">
                         <Button data-testid="button-browse-toolkits-team">
-                          Decouvrir nos toolkits
+                          Discover our toolkits
                         </Button>
                       </Link>
                     </div>
@@ -851,23 +851,23 @@ export default function Profile() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Plus className="h-5 w-5" />
-                      Creer votre equipe
+                      Create your team
                     </CardTitle>
                     <CardDescription>
-                      Creez une equipe pour suivre les audits de securite de votre parc informatique
+                      Create a team to track security audits for your IT infrastructure
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={(e) => { e.preventDefault(); if (teamName.trim()) createTeamMutation.mutate(teamName); }} className="flex gap-3">
                       <Input
-                        placeholder="Nom de l'equipe"
+                        placeholder="Team name"
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
                         data-testid="input-team-name"
                         className="max-w-sm"
                       />
                       <Button type="submit" disabled={createTeamMutation.isPending || !teamName.trim()} data-testid="button-create-team">
-                        {createTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Creer l'equipe"}
+                        {createTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create team"}
                       </Button>
                     </form>
                   </CardContent>
@@ -891,10 +891,10 @@ export default function Profile() {
                                 data-testid="input-edit-team-name"
                               />
                               <Button type="submit" size="sm" disabled={updateTeamMutation.isPending} data-testid="button-save-team-name">
-                                {updateTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sauver"}
+                                {updateTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                               </Button>
                               <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingTeamName(false); setTeamName(""); }} data-testid="button-cancel-edit">
-                                Annuler
+                                Cancel
                               </Button>
                             </form>
                           ) : (
@@ -906,7 +906,7 @@ export default function Profile() {
                                 </Button>
                               </CardTitle>
                               <CardDescription>
-                                Creee le {new Date(teamData.team.createdAt).toLocaleDateString('fr-FR')}
+                                Created on {new Date(teamData.team.createdAt).toLocaleDateString('en-US')}
                               </CardDescription>
                             </div>
                           )}
@@ -919,15 +919,15 @@ export default function Profile() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Supprimer l'equipe</AlertDialogTitle>
+                              <AlertDialogTitle>Delete team</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Voulez-vous vraiment supprimer cette equipe et tous ses membres ? Cette action est irreversible.
+                                Are you sure you want to delete this team and all its members? This action is irreversible.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction onClick={() => deleteTeamMutation.mutate(teamData.team!.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                Supprimer
+                                Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -941,21 +941,21 @@ export default function Profile() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <UserPlus className="h-5 w-5" />
-                        Ajouter un membre
+                        Add a member
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <form onSubmit={(e) => { e.preventDefault(); if (newMemberEmail.trim()) addMemberMutation.mutate({ teamId: teamData.team!.id, email: newMemberEmail, name: newMemberName || undefined, role: newMemberRole }); }} className="flex flex-wrap gap-3">
                         <Input
                           type="email"
-                          placeholder="Email du membre"
+                          placeholder="Member email"
                           value={newMemberEmail}
                           onChange={(e) => setNewMemberEmail(e.target.value)}
                           className="max-w-[240px]"
                           data-testid="input-member-email"
                         />
                         <Input
-                          placeholder="Nom (optionnel)"
+                          placeholder="Name (optional)"
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
                           className="max-w-[180px]"
@@ -967,11 +967,11 @@ export default function Profile() {
                           className="px-3 py-2 border rounded-md text-sm"
                           data-testid="select-member-role"
                         >
-                          <option value="member">Membre</option>
+                          <option value="member">Member</option>
                           <option value="admin">Admin</option>
                         </select>
                         <Button type="submit" disabled={addMemberMutation.isPending || !newMemberEmail.trim()} data-testid="button-add-member">
-                          {addMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}
+                          {addMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
                         </Button>
                       </form>
                     </CardContent>
@@ -981,15 +981,15 @@ export default function Profile() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        Membres ({teamData.members.length})
+                        Members ({teamData.members.length})
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {teamData.members.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          <p>Aucun membre dans l'equipe</p>
-                          <p className="text-sm">Ajoutez des membres pour commencer</p>
+                          <p>No members in the team</p>
+                          <p className="text-sm">Add members to get started</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1006,7 +1006,7 @@ export default function Profile() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                                  {member.role === "admin" ? "Admin" : "Membre"}
+                                  {member.role === "admin" ? "Admin" : "Member"}
                                 </Badge>
                                 <Button variant="ghost" size="icon" onClick={() => removeMemberMutation.mutate({ teamId: teamData.team!.id, memberId: member.id })} disabled={removeMemberMutation.isPending} data-testid={`button-remove-member-${member.id}`}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -1029,8 +1029,8 @@ export default function Profile() {
               <div className="flex items-center gap-3">
                 <ShoppingBag className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Historique des achats</h2>
-                  <p className="text-muted-foreground">Consultez vos factures et abonnements</p>
+                  <h2 className="text-2xl font-bold">Purchase History</h2>
+                  <p className="text-muted-foreground">View your invoices and subscriptions</p>
                 </div>
               </div>
 
@@ -1038,10 +1038,10 @@ export default function Profile() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Factures
+                    Invoices
                   </CardTitle>
                   <CardDescription>
-                    Toutes vos factures liees a vos abonnements
+                    All your invoices related to your subscriptions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1052,11 +1052,11 @@ export default function Profile() {
                   ) : !invoicesData?.invoices || invoicesData.invoices.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">Aucune facture disponible</p>
-                      <p className="text-sm mt-2">Vos factures apparaitront ici apres un achat</p>
+                      <p className="text-lg font-medium">No invoices available</p>
+                      <p className="text-sm mt-2">Your invoices will appear here after a purchase</p>
                       <Link href="/#toolkits">
                         <Button className="mt-6" data-testid="button-browse-toolkits">
-                          Decouvrir nos toolkits
+                          Discover our toolkits
                         </Button>
                       </Link>
                     </div>
@@ -1079,7 +1079,7 @@ export default function Profile() {
                               </div>
                               <div className="text-sm text-muted-foreground flex items-center gap-2">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(invoice.createdAt).toLocaleDateString('fr-FR', { 
+                                {new Date(invoice.createdAt).toLocaleDateString('en-US', { 
                                   day: 'numeric', 
                                   month: 'long', 
                                   year: 'numeric' 
@@ -1115,10 +1115,10 @@ export default function Profile() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Facture {viewingInvoice?.invoice.invoiceNumber}
+              Invoice {viewingInvoice?.invoice.invoiceNumber}
             </DialogTitle>
             <DialogDescription>
-              Details de la facture
+              Invoice details
             </DialogDescription>
           </DialogHeader>
 
@@ -1134,27 +1134,27 @@ export default function Profile() {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Statut</span>
+                <span className="text-muted-foreground">Status</span>
                 {getInvoiceStatusBadge(viewingInvoice.invoice.status)}
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Date</span>
-                <span>{new Date(viewingInvoice.invoice.createdAt).toLocaleDateString('fr-FR')}</span>
+                <span>{new Date(viewingInvoice.invoice.createdAt).toLocaleDateString('en-US')}</span>
               </div>
 
               {viewingInvoice.invoice.paidAt && (
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Payee le</span>
+                  <span className="text-muted-foreground">Paid on</span>
                   <span className="flex items-center gap-1 text-green-500">
                     <CreditCard className="h-4 w-4" />
-                    {new Date(viewingInvoice.invoice.paidAt).toLocaleDateString('fr-FR')}
+                    {new Date(viewingInvoice.invoice.paidAt).toLocaleDateString('en-US')}
                   </span>
                 </div>
               )}
 
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-3">Articles</h4>
+                <h4 className="font-medium mb-3">Items</h4>
                 <div className="space-y-2">
                   {viewingInvoice.items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
@@ -1167,11 +1167,11 @@ export default function Profile() {
 
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Sous-total HT</span>
+                  <span className="text-muted-foreground">Subtotal (excl. tax)</span>
                   <span>{formatCurrency(viewingInvoice.invoice.subtotalCents)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">TVA ({viewingInvoice.invoice.taxRate}%)</span>
+                  <span className="text-muted-foreground">VAT ({viewingInvoice.invoice.taxRate}%)</span>
                   <span>{formatCurrency(viewingInvoice.invoice.taxCents)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-2 border-t">
@@ -1191,11 +1191,11 @@ export default function Profile() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setViewingInvoice(null)}>
-              Fermer
+              Close
             </Button>
             <Button onClick={handlePrintInvoice} data-testid="button-print-invoice">
               <Printer className="h-4 w-4 mr-2" />
-              Imprimer
+              Print
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1206,28 +1206,28 @@ export default function Profile() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" /> Supprimer votre compte
+              <AlertTriangle className="h-5 w-5" /> Delete your account
             </DialogTitle>
             <DialogDescription>
-              Cette action est irreversible. Toutes vos donnees seront definitivement supprimees.
+              This action is irreversible. All your data will be permanently deleted.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Vous perdrez l'acces a tous vos achats, licences et donnees. Cette action ne peut pas etre annulee.
+                You will lose access to all your purchases, licenses, and data. This action cannot be undone.
               </AlertDescription>
             </Alert>
             <div className="space-y-2">
               <Label htmlFor="deleteConfirm" className="text-sm">
-                Pour confirmer, tapez <span className="font-bold">SUPPRIMER</span> ci-dessous :
+                To confirm, type <span className="font-bold">DELETE</span> below:
               </Label>
               <Input
                 id="deleteConfirm"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="SUPPRIMER"
+                placeholder="DELETE"
                 data-testid="input-delete-confirm"
               />
             </div>
@@ -1240,18 +1240,18 @@ export default function Profile() {
                 setDeleteConfirmText("");
               }}
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== "SUPPRIMER" || deleteAccountMutation.isPending}
+              disabled={deleteConfirmText !== "DELETE" || deleteAccountMutation.isPending}
               data-testid="button-confirm-delete"
             >
               {deleteAccountMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Suppression...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</>
               ) : (
-                <><Trash2 className="h-4 w-4 mr-2" /> Supprimer definitivement</>
+                <><Trash2 className="h-4 w-4 mr-2" /> Delete permanently</>
               )}
             </Button>
           </DialogFooter>

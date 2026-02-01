@@ -40,7 +40,7 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
   const includedScripts = scripts.filter(s => bundle.includedScriptIds.includes(s.id));
   
   // Check if any script is in development
-  const isInDevelopment = includedScripts.some(s => s.developmentStatus === "in_development");
+  const isInDevelopment = includedScripts.some(s => s.status === "development");
   
   // Calculate prices (prices are already HT)
   const totalMonthlyPrice = includedScripts.reduce((sum, s) => sum + s.monthlyPriceCents, 0);
@@ -81,8 +81,8 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
     onError: () => {
       toast({
         variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de creer la session de paiement. Veuillez reessayer.",
+        title: "Error",
+        description: "Unable to create payment session. Please try again.",
       });
     },
   });
@@ -91,8 +91,8 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
     if (!user) {
       toast({
         variant: "destructive",
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour effectuer un achat.",
+        title: "Login required",
+        description: "Please log in to make a purchase.",
       });
       return;
     }
@@ -117,7 +117,7 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
                   {bundle.name}
                 </h3>
                 <Badge variant="secondary" className="mt-1">
-                  -{bundle.discountPercent}% annuel
+                  -{bundle.discountPercent}% yearly
                 </Badge>
               </div>
             </div>
@@ -130,13 +130,13 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
           </p>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">Toolkits inclus:</p>
+            <p className="text-sm font-medium">Included toolkits:</p>
             <ul className="space-y-1">
               {includedScripts.map(script => (
                 <li key={script.id} className="flex items-center gap-2 text-sm">
                   <Check className="w-4 h-4 text-green-500" />
                   <span>{script.name}</span>
-                  <span className="text-muted-foreground">({formatPrice(script.monthlyPriceCents)} HT/mois)</span>
+                  <span className="text-muted-foreground">({formatPrice(script.monthlyPriceCents)} excl. VAT/month)</span>
                 </li>
               ))}
             </ul>
@@ -144,19 +144,19 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
 
           <div className="pt-4 border-t space-y-2">
             <div className="flex items-baseline justify-between">
-              <span className="text-sm text-muted-foreground">Prix normal:</span>
-              <span className="text-sm line-through text-muted-foreground">{formatPrice(annualPrice)} HT/an</span>
+              <span className="text-sm text-muted-foreground">Regular price:</span>
+              <span className="text-sm line-through text-muted-foreground">{formatPrice(annualPrice)} excl. VAT/year</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="font-medium">Votre prix:</span>
-              <span className="text-2xl font-bold text-primary">{formatPrice(discountedPrice)} HT/an</span>
+              <span className="font-medium">Your price:</span>
+              <span className="text-2xl font-bold text-primary">{formatPrice(discountedPrice)} excl. VAT/year</span>
             </div>
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-muted-foreground">Soit:</span>
-              <span className="text-muted-foreground">{formatPrice(monthlyEquivalent)} HT/mois</span>
+              <span className="text-muted-foreground">That is:</span>
+              <span className="text-muted-foreground">{formatPrice(monthlyEquivalent)} excl. VAT/month</span>
             </div>
             <div className="flex items-center justify-end gap-1 text-green-600">
-              <span className="text-sm font-medium">Economie: {formatPrice(savings)} HT</span>
+              <span className="text-sm font-medium">Savings: {formatPrice(savings)} excl. VAT</span>
             </div>
           </div>
         </CardContent>
@@ -166,18 +166,18 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
             <div className="w-full flex items-center justify-center">
               <Badge variant="secondary" className="bg-blue-500 text-white text-sm px-3 py-1">
                 <Clock className="w-3 h-3 mr-1.5" />
-                Prochainement disponible
+                Coming soon
               </Badge>
             </div>
           ) : hasAllScripts ? (
             <div className="w-full flex items-center justify-center gap-2 py-2 text-green-600">
               <Check className="w-5 h-5" />
-              <span className="font-medium">{isCompletePack ? "Pack Complet actif" : "Deja achete"}</span>
+              <span className="font-medium">{isCompletePack ? "Complete Pack active" : "Already purchased"}</span>
             </div>
           ) : lockedByCompletePack ? (
             <div className="w-full flex items-center justify-center gap-2 py-2 text-green-600">
               <Check className="w-5 h-5" />
-              <span className="font-medium">Inclus dans votre Pack Complet</span>
+              <span className="font-medium">Included in your Complete Pack</span>
             </div>
           ) : user ? (
             <Button
@@ -189,19 +189,19 @@ export function BundleCard({ bundle, scripts, index, lockedByCompletePack = fals
               {checkoutMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Chargement...
+                  Loading...
                 </>
               ) : (
                 <>
                   <Package className="w-4 h-4 mr-2" />
-                  Souscrire au pack
+                  Subscribe to pack
                 </>
               )}
             </Button>
           ) : (
             <Link href="/login" className="w-full">
               <Button className="w-full" variant="outline" data-testid={`bundle-login-${bundle.id}`}>
-                Se connecter pour acheter
+                Log in to purchase
               </Button>
             </Link>
           )}
