@@ -17,8 +17,6 @@ import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import type { Purchase, Script, AnnualBundle, ScriptVersion } from "@shared/schema";
 import { useState } from "react";
-import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
-import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 type PurchaseWithScript = Purchase & { script: Script };
 
@@ -1426,8 +1424,15 @@ export default function Purchases() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <div className="min-h-screen bg-background flex">
+        <div className="w-64 border-r bg-card p-4">
+          <Skeleton className="h-10 w-full mb-8" />
+          <Skeleton className="h-8 w-full mb-2" />
+          <Skeleton className="h-8 w-full mb-2" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+        <div className="flex-1 p-6">
+          <Skeleton className="h-8 w-48 mb-6" />
           <LoadingSkeleton />
         </div>
       </div>
@@ -1436,17 +1441,21 @@ export default function Purchases() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-16 px-4 max-w-4xl text-center">
-          <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Login required</h1>
-          <p className="text-muted-foreground mb-6">
-            Log in to access your purchases
-          </p>
-          <Button asChild data-testid="button-login-redirect">
-            <Link href="/">Back to home</Link>
-          </Button>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4">
+              <ShoppingBag className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle>My Products</CardTitle>
+            <CardDescription>Please log in to access your purchases.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button asChild data-testid="button-login-redirect">
+              <Link href="/auth">Log In</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -1459,61 +1468,119 @@ export default function Purchases() {
     ? groupPurchases(sharedData.purchases, scripts, annualBundles)
     : { annualBundlePurchases: [], toolkitBundles: [], standalone: [] };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
-        <Button variant="default" size="sm" asChild data-testid="link-home">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Home
-          </Link>
-        </Button>
-        {user.isAdmin && (
-          <Button variant="secondary" size="sm" asChild data-testid="link-admin">
-            <Link href="/admin">
-              <Settings className="h-4 w-4 mr-2" />
-              Admin
-            </Link>
-          </Button>
-        )}
-        <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur border hover-elevate cursor-pointer" data-testid="link-profile">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={user.profileImageUrl || undefined} />
-            <AvatarFallback>{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
-        </Link>
-        <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
-          <LogOut className="h-4 w-4" />
-        </Button>
-      </div>
+  const navItems = [
+    { id: "products" as const, label: "My Products", icon: ShoppingBag },
+  ];
+  const [activeTab] = useState("products");
 
-      <div className="relative h-64 md:h-80 w-full overflow-hidden">
-        <img 
-          src={bannerImg} 
-          alt="Security Infrastructure" 
-          className="w-full h-full object-cover brightness-[0.4]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-        <div className="absolute inset-0 flex items-start justify-start p-6">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <img 
-                src={logoImg} 
-                alt="IST Logo" 
-                className="w-56 h-56 drop-shadow-lg mix-blend-screen"
-              />
-            </Link>
-            <div>
-              <h1 className="text-2xl tracking-wider text-white drop-shadow-lg" style={{ fontFamily: "'Oxanium', sans-serif" }}>
-                My products
-              </h1>
+  const activePurchasesCount = toolkitBundles.filter(b => !b.expired).length + 
+    annualBundlePurchases.filter(b => !b.expired).length +
+    standalone.filter(p => !isExpired(p)).length;
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0">
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div className="overflow-hidden">
+              <h2 className="font-bold text-sm truncate">My Products</h2>
+              <p className="text-xs text-muted-foreground truncate">
+                {activePurchasesCount > 0 ? `${activePurchasesCount} active product${activePurchasesCount > 1 ? "s" : ""}` : "No active products"}
+              </p>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto py-8 px-4">
+        <nav className="flex-1 p-3 overflow-y-auto">
+          <div className="mb-6">
+            <p className="text-xs font-medium text-muted-foreground px-3 mb-2">Navigation</p>
+            <div className="space-y-1">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    activeTab === item.id 
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  data-testid={`nav-${item.id}`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {user.isAdmin && (
+            <div className="mb-6">
+              <p className="text-xs font-medium text-muted-foreground px-3 mb-2">Administration</p>
+              <div className="space-y-1">
+                <Link href="/admin">
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    data-testid="nav-admin"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Admin Panel
+                  </button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <div className="p-3 border-t space-y-1">
+          <Link href="/profile">
+            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={user.profileImageUrl || undefined} />
+                <AvatarFallback className="text-xs">{user.firstName?.[0] || user.email?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+              <span className="truncate">{user.firstName || user.email}</span>
+            </button>
+          </Link>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={() => logout()}
+            data-testid="button-logout"
+          >
+            <LogOut className="w-4 h-4 mr-3" />
+            Log out
+          </Button>
+          <Link href="/">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              data-testid="button-back-home"
+            >
+              <ArrowLeft className="w-4 h-4 mr-3" />
+              Back to site
+            </Button>
+          </Link>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-auto">
+        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold">My Products</h1>
+              <p className="text-sm text-muted-foreground">
+                {user?.isAdmin ? "Admin access - All toolkits available" : "Manage your purchased security toolkits"}
+              </p>
+            </div>
+            <Button asChild data-testid="button-browse-scripts">
+              <Link href="/">Browse Scripts</Link>
+            </Button>
+          </div>
+        </header>
+
+        <div className="p-6">
 
         {isLoading ? (
           <LoadingSkeleton />
@@ -1662,13 +1729,8 @@ export default function Purchases() {
             </CardContent>
           </Card>
         )}
-      </div>
-
-      <footer className="border-t border-border/40 py-8 mt-16">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Infra Shield Tools - Security Compliance Toolkit</p>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }
