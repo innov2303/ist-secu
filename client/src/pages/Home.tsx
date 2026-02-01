@@ -73,12 +73,14 @@ export default function Home() {
                 My Products
               </Link>
             </Button>
-            <Button variant="default" size="sm" asChild data-testid="link-support">
-              <Link href="/support">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Support
-              </Link>
-            </Button>
+            {!user.isAdmin && (
+              <Button variant="default" size="sm" asChild data-testid="link-support">
+                <Link href="/support">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Support
+                </Link>
+              </Button>
+            )}
             {user.isAdmin && (
               <Button variant="secondary" size="sm" asChild data-testid="link-admin">
                 <Link href="/admin">
