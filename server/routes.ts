@@ -779,23 +779,13 @@ export async function registerRoutes(
     }
   });
 
-  const requestEmailChangeSchema = z.object({
-    newEmail: z.string().email("Email invalide"),
-  });
-
+  // Request email change - sends link to CURRENT email
   app.post("/api/profile/request-email-change", isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non authentifie" });
       }
-
-      const result = requestEmailChangeSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ message: result.error.errors[0].message });
-      }
-
-      const { newEmail } = result.data;
 
       // Get current user
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -808,46 +798,93 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Le changement d'email n'est pas disponible pour les comptes Replit" });
       }
 
-      // Check if new email is already in use
-      const [existingUser] = await db.select().from(users).where(eq(users.email, newEmail)).limit(1);
-      if (existingUser && existingUser.id !== userId) {
-        return res.status(400).json({ message: "Cet email est deja utilise" });
-      }
-
-      // Generate verification token
+      // Generate token for email change authorization
       const token = crypto.randomBytes(32).toString('hex');
-      const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Save pending email change
+      // Save token (using pendingEmailToken field)
       await db
         .update(users)
         .set({ 
-          pendingEmail: newEmail,
           pendingEmailToken: token,
           pendingEmailExpires: expires,
           updatedAt: new Date() 
         })
         .where(eq(users.id, userId));
 
-      // Send confirmation email to the new email address
+      // Send link to CURRENT email address
       const baseUrl = process.env.REPLIT_DEV_DOMAIN 
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : 'https://ist-security.fr';
-      const confirmationUrl = `${baseUrl}/confirm-email-change?token=${token}`;
+      const changeUrl = `${baseUrl}/change-email?token=${token}`;
       
       await sendEmailChangeConfirmationEmail({
-        email: newEmail,
+        email: user.email!,
         firstName: user.firstName || 'Utilisateur',
-        newEmail,
-        confirmationUrl,
+        newEmail: '',
+        confirmationUrl: changeUrl,
       });
 
       res.json({ 
-        message: "Un lien de confirmation a ete envoye a votre nouvelle adresse email.",
+        message: "Un lien a ete envoye a votre adresse email actuelle.",
       });
     } catch (error) {
       console.error("Email change request error:", error);
       res.status(500).json({ message: "Erreur lors de la demande de changement d'email" });
+    }
+  });
+
+  // Submit new email after clicking the link
+  const submitNewEmailSchema = z.object({
+    token: z.string().min(1, "Token requis"),
+    newEmail: z.string().email("Email invalide"),
+  });
+
+  app.post("/api/profile/submit-new-email", async (req, res) => {
+    try {
+      const result = submitNewEmailSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: result.error.errors[0].message });
+      }
+
+      const { token, newEmail } = result.data;
+
+      // Find user with this token
+      const [user] = await db.select().from(users)
+        .where(eq(users.pendingEmailToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Token invalide ou expire" });
+      }
+
+      // Check if token is expired
+      if (user.pendingEmailExpires && new Date() > new Date(user.pendingEmailExpires)) {
+        return res.status(400).json({ message: "Le lien a expire. Veuillez demander un nouveau lien depuis votre profil." });
+      }
+
+      // Check if new email is already in use
+      const [existingUser] = await db.select().from(users).where(eq(users.email, newEmail)).limit(1);
+      if (existingUser && existingUser.id !== user.id) {
+        return res.status(400).json({ message: "Cet email est deja utilise par un autre compte" });
+      }
+
+      // Update the email
+      await db.update(users)
+        .set({
+          email: newEmail,
+          pendingEmail: null,
+          pendingEmailToken: null,
+          pendingEmailExpires: null,
+          isEmailVerified: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, message: "Votre adresse email a ete modifiee avec succes" });
+    } catch (error) {
+      console.error("Submit new email error:", error);
+      res.status(500).json({ message: "Erreur lors du changement d'email" });
     }
   });
 

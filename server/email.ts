@@ -433,7 +433,7 @@ export async function sendEmailChangeConfirmationEmail(data: EmailChangeConfirma
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirmation de changement d'email - Infra Shield Tools</title>
+  <title>Changement d'adresse email - Infra Shield Tools</title>
 </head>
 <body style="margin: 0; padding: 20px; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <div style="max-width: 600px; margin: 0 auto;">
@@ -443,19 +443,19 @@ export async function sendEmailChangeConfirmationEmail(data: EmailChangeConfirma
     </div>
     
     <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-      <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 20px;">Confirmation de changement d'email</h2>
+      <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 20px;">Changement d'adresse email</h2>
       
       <p style="margin: 0 0 20px 0;">Bonjour ${data.firstName},</p>
       
-      <p style="margin: 0 0 20px 0;">Vous avez demande a changer votre adresse email vers : <strong>${data.newEmail}</strong></p>
+      <p style="margin: 0 0 20px 0;">Vous avez demande a modifier l'adresse email associee a votre compte Infra Shield Tools.</p>
       
-      <p style="margin: 0 0 20px 0;">Pour confirmer ce changement, veuillez cliquer sur le bouton ci-dessous :</p>
+      <p style="margin: 0 0 20px 0;">Pour continuer et renseigner votre nouvelle adresse email, veuillez cliquer sur le bouton ci-dessous :</p>
       
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${data.confirmationUrl}" style="display: inline-block; background: #4b5563; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Confirmer le changement</a>
+        <a href="${data.confirmationUrl}" style="display: inline-block; background: #4b5563; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Modifier mon email</a>
       </div>
       
-      <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">Ce lien est valable pendant 24 heures. Si vous n'avez pas demande ce changement, vous pouvez ignorer cet email.</p>
+      <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">Ce lien est valable pendant 1 heure. Si vous n'avez pas demande ce changement, vous pouvez ignorer cet email.</p>
       
       <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
       <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 12px; word-break: break-all;">${data.confirmationUrl}</p>
@@ -473,8 +473,8 @@ export async function sendEmailChangeConfirmationEmail(data: EmailChangeConfirma
 
     const result = await client.emails.send({
       from: fromEmail || 'Infra Shield Tools <noreply@ist-security.fr>',
-      to: data.newEmail,
-      subject: 'Confirmez votre nouvelle adresse email - Infra Shield Tools',
+      to: data.email,
+      subject: 'Modifier votre adresse email - Infra Shield Tools',
       html,
     });
 
