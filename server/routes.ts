@@ -13,7 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
-import { sendInvoiceEmail, sendPasswordResetEmail } from "./email";
+import { sendInvoiceEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from "./email";
 import { injectLicense } from "./license";
 
 // Server-side CAPTCHA challenge storage
@@ -296,7 +296,11 @@ export async function registerRoutes(
       const allUsers = await db.select().from(users).limit(1);
       const isFirstUser = allUsers.length === 0;
 
-      // Create user
+      // Generate email verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Create user with verification token
       const [newUser] = await db.insert(users).values({
         email,
         password: hashedPassword,
@@ -312,7 +316,28 @@ export async function registerRoutes(
         billingPostalCode: billingAddressSameAsAddress ? postalCode : billingPostalCode,
         billingCity: billingAddressSameAsAddress ? city : billingCity,
         isAdmin: isFirstUser,
+        isEmailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
+        isLocalAuth: true,
       }).returning();
+
+      // Send verification email
+      const baseUrl = process.env.REPL_SLUG 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER?.toLowerCase()}.repl.co`
+        : 'https://ist-security.fr';
+      const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+      
+      try {
+        await sendEmailVerificationEmail({
+          email: newUser.email!,
+          firstName: newUser.firstName || 'Utilisateur',
+          verificationUrl,
+        });
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        // Continue with registration even if email fails
+      }
 
       // Regenerate session to prevent session fixation attacks
       const session = req.session as any;
@@ -339,12 +364,100 @@ export async function registerRoutes(
             firstName: newUser.firstName,
             lastName: newUser.lastName,
             isAdmin: newUser.isAdmin,
+            isEmailVerified: newUser.isEmailVerified,
+            message: "Un email de verification a ete envoye a votre adresse email.",
           });
         });
       });
     } catch (error) {
       console.error("Registration error:", error);
       res.status(500).json({ message: "Erreur lors de l'inscription" });
+    }
+  });
+
+  // Email verification endpoint
+  app.get("/api/auth/verify-email", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Token de verification manquant" });
+      }
+
+      // Find user with this token
+      const [user] = await db.select().from(users)
+        .where(eq(users.emailVerificationToken, token))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Token de verification invalide" });
+      }
+
+      // Check if token is expired
+      if (user.emailVerificationExpires && new Date() > new Date(user.emailVerificationExpires)) {
+        return res.status(400).json({ message: "Le lien de verification a expire. Veuillez demander un nouveau lien." });
+      }
+
+      // Mark email as verified
+      await db.update(users)
+        .set({
+          isEmailVerified: true,
+          emailVerificationToken: null,
+          emailVerificationExpires: null,
+        })
+        .where(eq(users.id, user.id));
+
+      res.json({ success: true, message: "Votre email a ete verifie avec succes" });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).json({ message: "Erreur lors de la verification de l'email" });
+    }
+  });
+
+  // Resend verification email endpoint
+  app.post("/api/auth/resend-verification", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Non authentifie" });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user) {
+        return res.status(404).json({ message: "Utilisateur non trouve" });
+      }
+
+      if (user.isEmailVerified) {
+        return res.status(400).json({ message: "Votre email est deja verifie" });
+      }
+
+      // Generate new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      await db.update(users)
+        .set({
+          emailVerificationToken: verificationToken,
+          emailVerificationExpires: verificationExpires,
+        })
+        .where(eq(users.id, user.id));
+
+      // Send verification email
+      const baseUrl = process.env.REPL_SLUG 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER?.toLowerCase()}.repl.co`
+        : 'https://ist-security.fr';
+      const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+      
+      await sendEmailVerificationEmail({
+        email: user.email!,
+        firstName: user.firstName || 'Utilisateur',
+        verificationUrl,
+      });
+
+      res.json({ success: true, message: "Un nouvel email de verification a ete envoye" });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ message: "Erreur lors de l'envoi de l'email" });
     }
   });
 
