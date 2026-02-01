@@ -1808,7 +1808,11 @@ export async function registerRoutes(
           eq(scriptControls.enabled, 1)
         ));
       
-      // Add all bundled scripts to the archive with dynamic controls
+      // Get purchase expiration date for license injection
+      const bundlePurchase = await storage.getActivePurchase(userId, id);
+      const bundleExpiresAt = bundlePurchase?.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // Default 1 year for admins
+      
+      // Add all bundled scripts to the archive with dynamic controls and license
       for (const bundledScript of bundledScripts) {
         if (bundledScript) {
           // Fetch controls for this specific script AND include bundle-level controls
@@ -1831,6 +1835,19 @@ export async function registerRoutes(
               ? '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n'
               : '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n';
             finalContent = bundledScript.content + separator + controlsSection;
+          }
+          
+          // Inject license into each bundled script
+          if (user) {
+            finalContent = injectLicense(
+              finalContent,
+              user.id,
+              user.email || 'unknown@ist-security.fr',
+              bundledScript.id,
+              bundledScript.name,
+              bundleExpiresAt,
+              bundledScript.filename
+            );
           }
           
           archive.append(finalContent, { name: bundledScript.filename });
