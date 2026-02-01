@@ -880,8 +880,10 @@ case $SSL_CHOICE in
         print_info "Configuration du certificat SSL personnalisé"
         echo "Copiez vos fichiers sur le serveur avant de continuer."
         echo ""
-        read -p "Chemin vers le certificat (fullchain.pem) : " SSL_CERT_PATH
-        read -p "Chemin vers la clé privée (privkey.pem) : " SSL_KEY_PATH
+        echo "Formats acceptés : .pem, .crt, .cer, .key"
+        echo ""
+        read -p "Chemin vers le certificat (.crt, .pem ou fullchain) : " SSL_CERT_PATH
+        read -p "Chemin vers la clé privée (.key ou privkey.pem) : " SSL_KEY_PATH
         
         if [ ! -f "$SSL_CERT_PATH" ] || [ ! -f "$SSL_KEY_PATH" ]; then
             print_warning "Fichiers non trouvés. Configuration SSL ignorée."
