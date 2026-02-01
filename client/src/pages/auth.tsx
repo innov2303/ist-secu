@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, Mail, Lock, User, MapPin, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowLeft, Mail, Lock, User, MapPin, Eye, EyeOff, Building2, Briefcase } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
@@ -24,6 +25,8 @@ export default function AuthPage() {
     confirmPassword: "",
     firstName: "", 
     lastName: "",
+    companyName: "",
+    profession: "",
     street: "",
     postalCode: "",
     city: "",
@@ -205,6 +208,49 @@ export default function AuthPage() {
                         onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
                         data-testid="input-register-lastname"
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="register-company">Societe</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="register-company"
+                          type="text"
+                          placeholder="Nom de votre societe"
+                          className="pl-10"
+                          value={registerData.companyName}
+                          onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
+                          data-testid="input-register-company"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-profession">Profession</Label>
+                      <Select
+                        value={registerData.profession}
+                        onValueChange={(value) => setRegisterData({ ...registerData, profession: value })}
+                      >
+                        <SelectTrigger id="register-profession" className="w-full" data-testid="select-register-profession">
+                          <Briefcase className="h-4 w-4 text-muted-foreground mr-2" />
+                          <SelectValue placeholder="Selectionnez..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin_sys">Administrateur Systeme</SelectItem>
+                          <SelectItem value="admin_reseau">Administrateur Reseau</SelectItem>
+                          <SelectItem value="ingenieur_infra">Ingenieur Infrastructure</SelectItem>
+                          <SelectItem value="devops">DevOps / SRE</SelectItem>
+                          <SelectItem value="rssi">RSSI / Responsable Securite</SelectItem>
+                          <SelectItem value="analyste_secu">Analyste Securite</SelectItem>
+                          <SelectItem value="chef_projet">Chef de Projet IT</SelectItem>
+                          <SelectItem value="dsi">DSI / Directeur IT</SelectItem>
+                          <SelectItem value="consultant">Consultant IT</SelectItem>
+                          <SelectItem value="tech_support">Technicien Support</SelectItem>
+                          <SelectItem value="architecte">Architecte IT</SelectItem>
+                          <SelectItem value="autre">Autre</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="space-y-2">
