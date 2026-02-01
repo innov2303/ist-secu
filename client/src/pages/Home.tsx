@@ -254,13 +254,9 @@ export default function Home() {
             <div className="flex gap-6">
               <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Privacy Policy</Link>
               <Link href="/documentation" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-documentation">Documentation</Link>
-              <span 
-                className="hover:text-primary cursor-pointer transition-colors" 
-                onClick={() => setSupportOpen(true)}
-                data-testid="button-support"
-              >
+              <Link href="/support" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-support-footer">
                 Support
-              </span>
+              </Link>
             </div>
           </div>
         </div>
