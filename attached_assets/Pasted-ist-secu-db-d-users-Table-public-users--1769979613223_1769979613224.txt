@@ -1,0 +1,35 @@
+ist_secu_db=> \d users
+                                           Table "public.users"
+             Column              |            Type             | Collation | Nullable |      Default
+---------------------------------+-----------------------------+-----------+----------+-------------------
+ id                              | character varying           |           | not null | gen_random_uuid()
+ email                           | character varying           |           |          |
+ password                        | character varying           |           |          |
+ first_name                      | character varying           |           |          |
+ last_name                       | character varying           |           |          |
+ company_name                    | character varying           |           |          |
+ profession                      | character varying           |           |          |
+ street                          | character varying           |           |          |
+ postal_code                     | character varying           |           |          |
+ city                            | character varying           |           |          |
+ billing_street                  | character varying           |           |          |
+ billing_postal_code             | character varying           |           |          |
+ billing_city                    | character varying           |           |          |
+ billing_address_same_as_address | boolean                     |           |          | true
+ profile_image_url               | character varying           |           |          |
+ is_admin                        | boolean                     |           |          | false
+ stripe_customer_id              | character varying           |           |          |
+ pending_email                   | character varying           |           |          |
+ pending_email_token             | character varying           |           |          |
+ pending_email_expires           | timestamp without time zone |           |          |
+ password_reset_token            | character varying           |           |          |
+ password_reset_expires          | timestamp without time zone |           |          |
+ is_email_verified               | boolean                     |           |          | false
+ email_verification_token        | character varying           |           |          |
+ email_verification_expires      | timestamp without time zone |           |          |
+ is_local_auth                   | boolean                     |           |          | false
+ created_at                      | timestamp without time zone |           |          | now()
+ updated_at                      | timestamp without time zone |           |          | now()
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "users_email_unique" UNIQUE CONSTRAINT, btree (email)
