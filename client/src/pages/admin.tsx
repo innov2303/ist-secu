@@ -19,8 +19,9 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
   FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode,
-  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle
+  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle, BarChart3, TrendingUp, Euro
 } from "lucide-react";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
 import type { ContactRequest, Script, Invoice, InvoiceItem, AnnualBundle } from "@shared/schema";
@@ -38,7 +39,7 @@ const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "defa
 
 const ITEMS_PER_PAGE = 10;
 
-type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles" | "logs";
+type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles" | "logs" | "stats";
 type ScriptStatus = "active" | "offline" | "maintenance" | "development";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
@@ -171,6 +172,69 @@ export default function AdminPage() {
     queryKey: ["/api/admin/logs/stats"],
     enabled: !!user?.isAdmin && activeSection === "logs",
   });
+
+  // Statistics section state
+  const [userStatsPeriod, setUserStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
+  const [revenueStatsPeriod, setRevenueStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
+  const [ticketStatsPeriod, setTicketStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
+
+  const { data: overviewStats } = useQuery<{
+    users: { total: number; thisMonth: number };
+    revenue: { total: number; thisMonth: number };
+    tickets: { pending: number; thisMonth: number };
+    purchases: { total: number };
+  }>({
+    queryKey: ["/api/admin/stats/overview"],
+    enabled: !!user?.isAdmin && activeSection === "stats",
+  });
+
+  const { data: userStats } = useQuery<{
+    data: { date: string; count: number }[];
+    total: number;
+  }>({
+    queryKey: ["/api/admin/stats/users", userStatsPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/stats/users?period=${userStatsPeriod}`);
+      if (!res.ok) throw new Error("Failed to fetch user stats");
+      return res.json();
+    },
+    enabled: !!user?.isAdmin && activeSection === "stats",
+  });
+
+  const { data: toolkitStats } = useQuery<{
+    data: { toolkit_name: string; os: string; purchase_count: number }[];
+  }>({
+    queryKey: ["/api/admin/stats/toolkits"],
+    enabled: !!user?.isAdmin && activeSection === "stats",
+  });
+
+  const { data: revenueStats } = useQuery<{
+    data: { date: string; revenue: number }[];
+    total: number;
+  }>({
+    queryKey: ["/api/admin/stats/revenue", revenueStatsPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/stats/revenue?period=${revenueStatsPeriod}`);
+      if (!res.ok) throw new Error("Failed to fetch revenue stats");
+      return res.json();
+    },
+    enabled: !!user?.isAdmin && activeSection === "stats",
+  });
+
+  const { data: ticketStats } = useQuery<{
+    received: { date: string; count: number }[];
+    processed: { date: string; count: number }[];
+    byStatus: { status: string; count: number }[];
+  }>({
+    queryKey: ["/api/admin/stats/tickets", ticketStatsPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/stats/tickets?period=${ticketStatsPeriod}`);
+      if (!res.ok) throw new Error("Failed to fetch ticket stats");
+      return res.json();
+    },
+    enabled: !!user?.isAdmin && activeSection === "stats",
+  });
+
   const [showCreateBundleDialog, setShowCreateBundleDialog] = useState(false);
   const [newBundleName, setNewBundleName] = useState("");
   const [newBundleDescription, setNewBundleDescription] = useState("");
@@ -807,6 +871,7 @@ export default function AdminPage() {
     { id: "bundles" as AdminSection, label: "Packs Annuels", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Facturation", icon: FileText, count: allInvoices.length },
     { id: "logs" as AdminSection, label: "Evenements", icon: Activity, count: logStats?.last24h },
+    { id: "stats" as AdminSection, label: "Statistiques", icon: BarChart3, count: undefined },
   ];
 
   const formatPrice = (cents: number) => {
@@ -2121,6 +2186,301 @@ export default function AdminPage() {
                       >
                         Suivant <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Statistics Section */}
+          {activeSection === "stats" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold">Statistiques</h2>
+                  <p className="text-muted-foreground">Tableau de bord et analyses</p>
+                </div>
+              </div>
+
+              {/* Overview Cards */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                    <CardTitle className="text-sm font-medium">Utilisateurs</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{overviewStats?.users.total || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      +{overviewStats?.users.thisMonth || 0} ce mois
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                    <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
+                    <Euro className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatPrice(overviewStats?.revenue.total || 0)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      +{formatPrice(overviewStats?.revenue.thisMonth || 0)} ce mois
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                    <CardTitle className="text-sm font-medium">Tickets en attente</CardTitle>
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{overviewStats?.tickets.pending || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {overviewStats?.tickets.thisMonth || 0} ce mois
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                    <CardTitle className="text-sm font-medium">Achats total</CardTitle>
+                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{overviewStats?.purchases.total || 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Tous les achats
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* User Registration Evolution Chart */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Evolution des inscriptions
+                      </CardTitle>
+                      <CardDescription>Nouveaux comptes utilisateurs</CardDescription>
+                    </div>
+                    <Select value={userStatsPeriod} onValueChange={(v) => setUserStatsPeriod(v as typeof userStatsPeriod)}>
+                      <SelectTrigger className="w-32" data-testid="select-user-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Jour</SelectItem>
+                        <SelectItem value="week">Semaine</SelectItem>
+                        <SelectItem value="month">Mois</SelectItem>
+                        <SelectItem value="year">Annee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {userStats?.data && userStats.data.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={userStats.data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="date" 
+                          className="text-xs"
+                          tick={{ fill: 'currentColor' }}
+                          tickFormatter={(value) => {
+                            if (userStatsPeriod === "year") return value.slice(5);
+                            if (userStatsPeriod === "day") return value.slice(11, 16);
+                            return value.slice(5);
+                          }}
+                        />
+                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                          labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="count" 
+                          name="Inscriptions"
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          dot={{ fill: 'hsl(var(--primary))' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Aucune donnee disponible pour cette periode
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Toolkit Purchases Pie Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Repartition des achats par toolkit
+                  </CardTitle>
+                  <CardDescription>Distribution des achats de toolkits</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {toolkitStats?.data && toolkitStats.data.some(t => Number(t.purchase_count) > 0) ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={toolkitStats.data.filter(t => Number(t.purchase_count) > 0)}
+                          dataKey="purchase_count"
+                          nameKey="toolkit_name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          label={({ toolkit_name, purchase_count }) => `${toolkit_name}: ${purchase_count}`}
+                          labelLine={false}
+                        >
+                          {toolkitStats.data.filter(t => Number(t.purchase_count) > 0).map((_, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'][index % 5]} 
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Aucun achat de toolkit enregistre
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Revenue Evolution Chart */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Euro className="h-5 w-5" />
+                        Evolution du chiffre d'affaires
+                      </CardTitle>
+                      <CardDescription>Revenus bases sur les factures payees</CardDescription>
+                    </div>
+                    <Select value={revenueStatsPeriod} onValueChange={(v) => setRevenueStatsPeriod(v as typeof revenueStatsPeriod)}>
+                      <SelectTrigger className="w-32" data-testid="select-revenue-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Jour</SelectItem>
+                        <SelectItem value="week">Semaine</SelectItem>
+                        <SelectItem value="month">Mois</SelectItem>
+                        <SelectItem value="year">Annee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {revenueStats?.data && revenueStats.data.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={revenueStats.data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="date" 
+                          className="text-xs"
+                          tick={{ fill: 'currentColor' }}
+                          tickFormatter={(value) => {
+                            if (revenueStatsPeriod === "year") return value.slice(5);
+                            if (revenueStatsPeriod === "day") return value.slice(11, 16);
+                            return value.slice(5);
+                          }}
+                        />
+                        <YAxis 
+                          className="text-xs" 
+                          tick={{ fill: 'currentColor' }}
+                          tickFormatter={(value) => `${(value / 100).toFixed(0)}€`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                          formatter={(value: number) => [formatPrice(value), 'Revenus']}
+                        />
+                        <Bar 
+                          dataKey="revenue" 
+                          name="Revenus"
+                          fill="hsl(var(--primary))" 
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Aucune donnee de revenus pour cette periode
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Ticket Statistics Chart */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5" />
+                        Tickets support
+                      </CardTitle>
+                      <CardDescription>Tickets recus et traites</CardDescription>
+                    </div>
+                    <Select value={ticketStatsPeriod} onValueChange={(v) => setTicketStatsPeriod(v as typeof ticketStatsPeriod)}>
+                      <SelectTrigger className="w-32" data-testid="select-ticket-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Jour</SelectItem>
+                        <SelectItem value="week">Semaine</SelectItem>
+                        <SelectItem value="month">Mois</SelectItem>
+                        <SelectItem value="year">Annee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {ticketStats?.received && ticketStats.received.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={ticketStats.received.map((r, i) => ({
+                        date: r.date,
+                        received: Number(r.count),
+                        processed: Number(ticketStats.processed[i]?.count || 0)
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis 
+                          dataKey="date" 
+                          className="text-xs"
+                          tick={{ fill: 'currentColor' }}
+                          tickFormatter={(value) => {
+                            if (ticketStatsPeriod === "year") return value.slice(5);
+                            if (ticketStatsPeriod === "day") return value.slice(11, 16);
+                            return value.slice(5);
+                          }}
+                        />
+                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                        />
+                        <Legend />
+                        <Bar dataKey="received" name="Recus" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="processed" name="Traites" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      Aucun ticket pour cette periode
                     </div>
                   )}
                 </CardContent>

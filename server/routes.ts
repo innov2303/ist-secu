@@ -4410,6 +4410,242 @@ export async function registerRoutes(
   });
 
   // ============================================
+  // Admin Statistics Routes
+  // ============================================
+
+  // Get user account creation statistics
+  app.get("/api/admin/stats/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { period = "month" } = req.query;
+      
+      let dateFormat: string;
+      let interval: string;
+      
+      switch (period) {
+        case "day":
+          dateFormat = "YYYY-MM-DD HH24:00";
+          interval = "24 hours";
+          break;
+        case "week":
+          dateFormat = "YYYY-MM-DD";
+          interval = "7 days";
+          break;
+        case "year":
+          dateFormat = "YYYY-MM";
+          interval = "12 months";
+          break;
+        case "month":
+        default:
+          dateFormat = "YYYY-MM-DD";
+          interval = "30 days";
+      }
+      
+      const stats = await db.execute(sql`
+        SELECT 
+          TO_CHAR(created_at, ${dateFormat}) as date,
+          COUNT(*) as count
+        FROM users
+        WHERE created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
+        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        ORDER BY date ASC
+      `);
+      
+      const totalUsers = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
+      
+      res.json({
+        data: stats.rows,
+        total: totalUsers.rows[0]?.count || 0
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ message: "Error fetching user statistics" });
+    }
+  });
+
+  // Get toolkit purchases distribution
+  app.get("/api/admin/stats/toolkits", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const stats = await db.execute(sql`
+        SELECT 
+          s.name as toolkit_name,
+          s.os,
+          COUNT(p.id) as purchase_count
+        FROM scripts s
+        LEFT JOIN purchases p ON s.id = p.script_id
+        WHERE s.bundled_script_ids IS NOT NULL AND array_length(s.bundled_script_ids, 1) > 0
+        GROUP BY s.id, s.name, s.os
+        ORDER BY purchase_count DESC
+      `);
+      
+      res.json({ data: stats.rows });
+    } catch (error) {
+      console.error("Error fetching toolkit stats:", error);
+      res.status(500).json({ message: "Error fetching toolkit statistics" });
+    }
+  });
+
+  // Get revenue statistics from invoices
+  app.get("/api/admin/stats/revenue", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { period = "month" } = req.query;
+      
+      let dateFormat: string;
+      let interval: string;
+      
+      switch (period) {
+        case "day":
+          dateFormat = "YYYY-MM-DD HH24:00";
+          interval = "24 hours";
+          break;
+        case "week":
+          dateFormat = "YYYY-MM-DD";
+          interval = "7 days";
+          break;
+        case "year":
+          dateFormat = "YYYY-MM";
+          interval = "12 months";
+          break;
+        case "month":
+        default:
+          dateFormat = "YYYY-MM-DD";
+          interval = "30 days";
+      }
+      
+      const stats = await db.execute(sql`
+        SELECT 
+          TO_CHAR(paid_at, ${dateFormat}) as date,
+          SUM(total_cents) as revenue
+        FROM invoices
+        WHERE status = 'paid' AND paid_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
+        GROUP BY TO_CHAR(paid_at, ${dateFormat})
+        ORDER BY date ASC
+      `);
+      
+      const totalRevenue = await db.execute(sql`
+        SELECT SUM(total_cents) as total FROM invoices WHERE status = 'paid'
+      `);
+      
+      res.json({
+        data: stats.rows,
+        total: totalRevenue.rows[0]?.total || 0
+      });
+    } catch (error) {
+      console.error("Error fetching revenue stats:", error);
+      res.status(500).json({ message: "Error fetching revenue statistics" });
+    }
+  });
+
+  // Get support ticket statistics
+  app.get("/api/admin/stats/tickets", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { period = "month" } = req.query;
+      
+      let dateFormat: string;
+      let interval: string;
+      
+      switch (period) {
+        case "day":
+          dateFormat = "YYYY-MM-DD HH24:00";
+          interval = "24 hours";
+          break;
+        case "week":
+          dateFormat = "YYYY-MM-DD";
+          interval = "7 days";
+          break;
+        case "year":
+          dateFormat = "YYYY-MM";
+          interval = "12 months";
+          break;
+        case "month":
+        default:
+          dateFormat = "YYYY-MM-DD";
+          interval = "30 days";
+      }
+      
+      const received = await db.execute(sql`
+        SELECT 
+          TO_CHAR(created_at, ${dateFormat}) as date,
+          COUNT(*) as count
+        FROM contact_requests
+        WHERE created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
+        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        ORDER BY date ASC
+      `);
+      
+      const processed = await db.execute(sql`
+        SELECT 
+          TO_CHAR(created_at, ${dateFormat}) as date,
+          COUNT(*) as count
+        FROM contact_requests
+        WHERE status = 'resolved' AND created_at >= NOW() - INTERVAL '1 ${sql.raw(interval)}'
+        GROUP BY TO_CHAR(created_at, ${dateFormat})
+        ORDER BY date ASC
+      `);
+      
+      const statusStats = await db.execute(sql`
+        SELECT status, COUNT(*) as count FROM contact_requests GROUP BY status
+      `);
+      
+      res.json({
+        received: received.rows,
+        processed: processed.rows,
+        byStatus: statusStats.rows
+      });
+    } catch (error) {
+      console.error("Error fetching ticket stats:", error);
+      res.status(500).json({ message: "Error fetching ticket statistics" });
+    }
+  });
+
+  // Get overall admin dashboard stats
+  app.get("/api/admin/stats/overview", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const [totalUsers] = await db.execute(sql`SELECT COUNT(*) as count FROM users`).then(r => r.rows);
+      const [newUsersThisMonth] = await db.execute(sql`
+        SELECT COUNT(*) as count FROM users WHERE created_at >= DATE_TRUNC('month', NOW())
+      `).then(r => r.rows);
+      
+      const [totalRevenue] = await db.execute(sql`
+        SELECT COALESCE(SUM(total_cents), 0) as total FROM invoices WHERE status = 'paid'
+      `).then(r => r.rows);
+      const [revenueThisMonth] = await db.execute(sql`
+        SELECT COALESCE(SUM(total_cents), 0) as total FROM invoices 
+        WHERE status = 'paid' AND paid_at >= DATE_TRUNC('month', NOW())
+      `).then(r => r.rows);
+      
+      const [pendingTickets] = await db.execute(sql`
+        SELECT COUNT(*) as count FROM contact_requests WHERE status = 'pending'
+      `).then(r => r.rows);
+      const [ticketsThisMonth] = await db.execute(sql`
+        SELECT COUNT(*) as count FROM contact_requests WHERE created_at >= DATE_TRUNC('month', NOW())
+      `).then(r => r.rows);
+      
+      const [totalPurchases] = await db.execute(sql`SELECT COUNT(*) as count FROM purchases`).then(r => r.rows);
+      
+      res.json({
+        users: {
+          total: totalUsers?.count || 0,
+          thisMonth: newUsersThisMonth?.count || 0
+        },
+        revenue: {
+          total: totalRevenue?.total || 0,
+          thisMonth: revenueThisMonth?.total || 0
+        },
+        tickets: {
+          pending: pendingTickets?.count || 0,
+          thisMonth: ticketsThisMonth?.count || 0
+        },
+        purchases: {
+          total: totalPurchases?.count || 0
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching overview stats:", error);
+      res.status(500).json({ message: "Error fetching overview statistics" });
+    }
+  });
+
+  // ============================================
   // Fleet Tracking Routes (Suivi du Parc)
   // ============================================
 
