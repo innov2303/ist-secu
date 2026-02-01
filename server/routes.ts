@@ -1051,7 +1051,7 @@ export async function registerRoutes(
       await db.delete(purchases).where(eq(purchases.userId, userId));
 
       // Delete user's sessions (using raw SQL since sessions table is managed by connect-pg-simple)
-      await db.execute(sql`DELETE FROM session WHERE sess->>'userId' = ${userId}`);
+      await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${userId}`);
 
       // Finally delete the user
       await db.delete(users).where(eq(users.id, userId));
