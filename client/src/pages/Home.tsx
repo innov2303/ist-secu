@@ -73,7 +73,7 @@ export default function Home() {
                 My Products
               </Link>
             </Button>
-            <Button variant="outline" size="sm" asChild data-testid="link-support">
+            <Button variant="default" size="sm" asChild data-testid="link-support">
               <Link href="/support">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Support
