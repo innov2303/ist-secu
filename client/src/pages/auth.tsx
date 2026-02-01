@@ -42,8 +42,10 @@ export default function AuthPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginCaptchaVerified, setLoginCaptchaVerified] = useState(false);
   const [loginCaptchaData, setLoginCaptchaData] = useState<{ challengeId: string; selectedIndices: number[] } | null>(null);
+  const [loginCaptchaKey, setLoginCaptchaKey] = useState(0);
   const [registerCaptchaVerified, setRegisterCaptchaVerified] = useState(false);
   const [registerCaptchaData, setRegisterCaptchaData] = useState<{ challengeId: string; selectedIndices: number[] } | null>(null);
+  const [registerCaptchaKey, setRegisterCaptchaKey] = useState(0);
 
   if (user) {
     setLocation("/");
@@ -71,6 +73,7 @@ export default function AuthPage() {
       setError(err.message);
       setLoginCaptchaVerified(false);
       setLoginCaptchaData(null);
+      setLoginCaptchaKey(k => k + 1);
     }
   };
 
@@ -100,6 +103,7 @@ export default function AuthPage() {
       setError(err.message);
       setRegisterCaptchaVerified(false);
       setRegisterCaptchaData(null);
+      setRegisterCaptchaKey(k => k + 1);
     }
   };
 
@@ -196,6 +200,7 @@ export default function AuthPage() {
                     </Link>
                   </div>
                   <ImageCaptcha
+                    key={loginCaptchaKey}
                     onVerify={(isValid, challengeId, selectedIndices) => {
                       setLoginCaptchaVerified(isValid);
                       if (isValid && challengeId) {
@@ -481,6 +486,7 @@ export default function AuthPage() {
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}
                   <ImageCaptcha
+                    key={registerCaptchaKey}
                     onVerify={(isValid, challengeId, selectedIndices) => {
                       setRegisterCaptchaVerified(isValid);
                       if (isValid && challengeId) {
