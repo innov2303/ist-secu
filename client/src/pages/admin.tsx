@@ -2470,11 +2470,6 @@ export default function AdminPage() {
                           dataKey="date" 
                           className="text-xs"
                           tick={{ fill: 'currentColor' }}
-                          tickFormatter={(value) => {
-                            if (userStatsPeriod === "year") return value.slice(5);
-                            if (userStatsPeriod === "day") return value.slice(11, 16);
-                            return value.slice(5);
-                          }}
                         />
                         <YAxis className="text-xs" tick={{ fill: 'currentColor' }} allowDecimals={false} />
                         <Tooltip 
@@ -2574,11 +2569,6 @@ export default function AdminPage() {
                           dataKey="date" 
                           className="text-xs"
                           tick={{ fill: 'currentColor' }}
-                          tickFormatter={(value) => {
-                            if (revenueStatsPeriod === "year") return value.slice(5);
-                            if (revenueStatsPeriod === "day") return value.slice(11, 16);
-                            return value.slice(5);
-                          }}
                         />
                         <YAxis 
                           className="text-xs" 
@@ -2642,13 +2632,8 @@ export default function AdminPage() {
                           dataKey="date" 
                           className="text-xs"
                           tick={{ fill: 'currentColor' }}
-                          tickFormatter={(value) => {
-                            if (ticketStatsPeriod === "year") return value.slice(5);
-                            if (ticketStatsPeriod === "day") return value.slice(11, 16);
-                            return value.slice(5);
-                          }}
                         />
-                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} />
+                        <YAxis className="text-xs" tick={{ fill: 'currentColor' }} allowDecimals={false} />
                         <Tooltip 
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />

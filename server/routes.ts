@@ -4526,21 +4526,21 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "YYYY-MM-DD HH24:00";
+          dateFormat = "HH24:00";
           interval = "24 hours";
           break;
         case "week":
-          dateFormat = "YYYY-MM-DD";
+          dateFormat = "Dy DD/MM";
           interval = "7 days";
           break;
         case "year":
-          dateFormat = "YYYY-MM";
+          dateFormat = "Mon YYYY";
           interval = "12 months";
           break;
         case "month":
         default:
-          dateFormat = "YYYY-MM-DD";
-          interval = "30 days";
+          dateFormat = "\"Sem\" IW";
+          interval = "5 weeks";
       }
       
       const stats = await db.execute(sql`
@@ -4597,21 +4597,21 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "YYYY-MM-DD HH24:00";
+          dateFormat = "HH24:00";
           interval = "24 hours";
           break;
         case "week":
-          dateFormat = "YYYY-MM-DD";
+          dateFormat = "Dy DD/MM";
           interval = "7 days";
           break;
         case "year":
-          dateFormat = "YYYY-MM";
+          dateFormat = "Mon YYYY";
           interval = "12 months";
           break;
         case "month":
         default:
-          dateFormat = "YYYY-MM-DD";
-          interval = "30 days";
+          dateFormat = "\"Sem\" IW";
+          interval = "5 weeks";
       }
       
       const stats = await db.execute(sql`
@@ -4648,21 +4648,21 @@ export async function registerRoutes(
       
       switch (period) {
         case "day":
-          dateFormat = "YYYY-MM-DD HH24:00";
+          dateFormat = "HH24:00";
           interval = "24 hours";
           break;
         case "week":
-          dateFormat = "YYYY-MM-DD";
+          dateFormat = "Dy DD/MM";
           interval = "7 days";
           break;
         case "year":
-          dateFormat = "YYYY-MM";
+          dateFormat = "Mon YYYY";
           interval = "12 months";
           break;
         case "month":
         default:
-          dateFormat = "YYYY-MM-DD";
-          interval = "30 days";
+          dateFormat = "\"Sem\" IW";
+          interval = "5 weeks";
       }
       
       const received = await db.execute(sql`
