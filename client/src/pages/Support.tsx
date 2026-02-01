@@ -206,6 +206,14 @@ export default function Support() {
         description="Get help with Infra Shield Tools"
       />
       <div className="container max-w-6xl mx-auto py-8 px-4">
+        <div className="mb-4">
+          <Link href="/">
+            <Button variant="ghost" size="sm" data-testid="button-back-home">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </div>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <MessageSquare className="h-8 w-8 text-primary" />
