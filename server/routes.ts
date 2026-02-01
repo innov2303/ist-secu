@@ -205,7 +205,7 @@ function recordLoginAttempt(ip: string, success: boolean) {
 
 // Middleware to check if user is admin
 const isAdmin = async (req: any, res: any, next: any) => {
-  const userId = req.user?.claims?.sub;
+  const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -1311,7 +1311,7 @@ export async function registerRoutes(
   // Check if user has any active purchases (required to create a team)
   app.get("/api/teams/can-create", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
       }
@@ -1336,7 +1336,7 @@ export async function registerRoutes(
   // Get user's team
   app.get("/api/teams/my-team", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
       }
@@ -1358,7 +1358,7 @@ export async function registerRoutes(
   // Create a team
   app.post("/api/teams", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
       }
@@ -1398,7 +1398,7 @@ export async function registerRoutes(
   // Update team name
   app.patch("/api/teams/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const teamId = parseInt(req.params.id);
       
       if (!userId) {
@@ -1428,7 +1428,7 @@ export async function registerRoutes(
   // Delete team
   app.delete("/api/teams/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const teamId = parseInt(req.params.id);
       
       if (!userId) {
@@ -1456,7 +1456,7 @@ export async function registerRoutes(
   // Add team member
   app.post("/api/teams/:id/members", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const teamId = parseInt(req.params.id);
       
       if (!userId) {
@@ -1509,7 +1509,7 @@ export async function registerRoutes(
   // Update team member
   app.patch("/api/teams/:teamId/members/:memberId", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const teamId = parseInt(req.params.teamId);
       const memberId = parseInt(req.params.memberId);
       
@@ -1544,7 +1544,7 @@ export async function registerRoutes(
   // Remove team member
   app.delete("/api/teams/:teamId/members/:memberId", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const teamId = parseInt(req.params.teamId);
       const memberId = parseInt(req.params.memberId);
       
@@ -1572,7 +1572,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const memberId = parseInt(req.params.memberId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1605,7 +1605,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const memberId = parseInt(req.params.memberId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       const { groupId, canView, canEdit } = req.body;
       
       if (!userId) {
@@ -1672,7 +1672,7 @@ export async function registerRoutes(
       const teamId = parseInt(req.params.teamId);
       const memberId = parseInt(req.params.memberId);
       const permissionId = parseInt(req.params.permissionId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1704,7 +1704,7 @@ export async function registerRoutes(
   app.get("/api/teams/:teamId/machine-groups", isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1757,7 +1757,7 @@ export async function registerRoutes(
   app.get("/api/teams/:teamId/members-in-groups", isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1793,7 +1793,7 @@ export async function registerRoutes(
   app.get("/api/teams/:teamId/user-groups", isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1828,7 +1828,7 @@ export async function registerRoutes(
   app.post("/api/teams/:teamId/user-groups", isAuthenticated, async (req, res) => {
     try {
       const teamId = parseInt(req.params.teamId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1858,7 +1858,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1894,7 +1894,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1933,7 +1933,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -1984,7 +1984,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -2037,7 +2037,7 @@ export async function registerRoutes(
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
       const memberId = parseInt(req.params.memberId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -2070,7 +2070,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -2103,7 +2103,7 @@ export async function registerRoutes(
     try {
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -2174,7 +2174,7 @@ export async function registerRoutes(
       const teamId = parseInt(req.params.teamId);
       const groupId = parseInt(req.params.groupId);
       const permissionId = parseInt(req.params.permissionId);
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
@@ -2205,7 +2205,7 @@ export async function registerRoutes(
   // Get team membership info for the current user (if they're a member of any team)
   app.get("/api/teams/my-membership", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
       }
@@ -2251,7 +2251,7 @@ export async function registerRoutes(
   // Get team owner's purchases for team members
   app.get("/api/teams/shared-purchases", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = (req as any).session?.userId || (req as any).user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "Non autorise" });
       }
