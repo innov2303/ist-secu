@@ -836,7 +836,7 @@ export async function registerRoutes(
       const confirmationUrl = `${baseUrl}/confirm-email-change?token=${token}`;
       
       await sendEmailChangeConfirmationEmail({
-        email: user.email!,
+        email: newEmail,
         firstName: user.firstName || 'Utilisateur',
         newEmail,
         confirmationUrl,
