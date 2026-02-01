@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin, Printer, Users, UserPlus, Trash2, Edit2, Plus } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, Building2, FileText, Eye, Calendar, CreditCard, Loader2, Home, ShoppingBag, MapPin, Printer, Users, UserPlus, Trash2, Edit2, Plus, BadgeCheck, AlertTriangle, Send } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -190,6 +190,20 @@ export default function Profile() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/resend-verification", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Email envoye", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -552,9 +566,39 @@ export default function Profile() {
                       <div className="p-2 bg-muted rounded-lg">
                         <Mail className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-xs text-muted-foreground">Email</p>
-                        <p className="font-medium">{user.email}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{user.email}</p>
+                          {user.isEmailVerified ? (
+                            <Badge variant="outline" className="text-green-600 border-green-600/30 bg-green-50 dark:bg-green-900/20 gap-1" data-testid="badge-email-verified">
+                              <BadgeCheck className="h-3 w-3" />
+                              Verifie
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-amber-600 border-amber-600/30 bg-amber-50 dark:bg-amber-900/20 gap-1" data-testid="badge-email-not-verified">
+                                <AlertTriangle className="h-3 w-3" />
+                                Non verifie
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => resendVerificationMutation.mutate()}
+                                disabled={resendVerificationMutation.isPending}
+                                className="h-6 text-xs"
+                                data-testid="button-resend-verification"
+                              >
+                                {resendVerificationMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <Send className="h-3 w-3 mr-1" />
+                                )}
+                                Renvoyer
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
