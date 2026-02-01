@@ -709,6 +709,7 @@ export async function registerRoutes(
       billingCity: users.billingCity,
       profileImageUrl: users.profileImageUrl,
       isAdmin: users.isAdmin,
+      isEmailVerified: users.isEmailVerified,
     }).from(users).where(eq(users.id, userId)).limit(1);
 
     if (!user) {
