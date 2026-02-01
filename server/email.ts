@@ -241,6 +241,14 @@ export async function sendSubscriptionInvoiceEmail(data: SubscriptionInvoiceData
       Votre acces aux outils de securite reste actif. Vous pouvez telecharger vos scripts depuis votre espace client.
     </p>
     
+    <div style="background: #e0f2fe; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0284c7;">
+      <p style="margin: 0 0 8px 0; font-weight: 600; color: #0369a1;">Documentation</p>
+      <p style="margin: 0 0 12px 0; color: #0c4a6e; font-size: 14px;">
+        Consultez notre documentation pour apprendre a utiliser vos toolkits de securite.
+      </p>
+      <a href="https://ist-security.fr/documentation" style="display: inline-block; background: #0284c7; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px;">Voir la documentation</a>
+    </div>
+    
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
       <p style="margin: 0; color: #6b7280; font-size: 14px;">
         Merci pour votre confiance.
