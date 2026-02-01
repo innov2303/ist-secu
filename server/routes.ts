@@ -993,12 +993,16 @@ export async function registerRoutes(
           for (const site of orgSites) {
             const siteGroups = await db.select({ id: machineGroups.id }).from(machineGroups).where(eq(machineGroups.siteId, site.id));
             for (const group of siteGroups) {
-              const groupMachines = await db.select({ id: machines.id }).from(machines).where(eq(machines.machineGroupId, group.id));
+              const groupMachines = await db.select({ id: machines.id }).from(machines).where(eq(machines.groupId, group.id));
               for (const machine of groupMachines) {
-                await db.delete(controlCorrections).where(eq(controlCorrections.machineId, machine.id));
+                // Delete control corrections for this machine's reports
+                const machineReports = await db.select({ id: auditReports.id }).from(auditReports).where(eq(auditReports.machineId, machine.id));
+                for (const report of machineReports) {
+                  await db.delete(controlCorrections).where(eq(controlCorrections.reportId, report.id));
+                }
                 await db.delete(auditReports).where(eq(auditReports.machineId, machine.id));
               }
-              await db.delete(machines).where(eq(machines.machineGroupId, group.id));
+              await db.delete(machines).where(eq(machines.groupId, group.id));
             }
             await db.delete(machineGroups).where(eq(machineGroups.siteId, site.id));
           }
@@ -1028,8 +1032,8 @@ export async function registerRoutes(
       // Delete user's purchases
       await db.delete(purchases).where(eq(purchases.userId, userId));
 
-      // Delete user's sessions
-      await db.delete(sessions).where(eq(sessions.userId, userId));
+      // Delete user's sessions (using raw SQL since sessions table is managed by connect-pg-simple)
+      await db.execute(sql`DELETE FROM session WHERE sess->>'userId' = ${userId}`);
 
       // Finally delete the user
       await db.delete(users).where(eq(users.id, userId));
@@ -4341,22 +4345,7 @@ export async function registerRoutes(
       userGroupPermissions = await db.select().from(machineGroupPermissions).where(inArray(machineGroupPermissions.userGroupId, userGroupIds));
     }
     
-    // Get groups from hierarchy ownership (organization owner gets edit access to all groups under it)
-    const ownedGroupIds: number[] = [];
-    
-    // Check organizations owned by this user - owner gets edit access to all groups under the organization
-    const ownedOrgs = await db.select().from(organizations).where(eq(organizations.ownerId, userId));
-    if (ownedOrgs.length > 0) {
-      for (const org of ownedOrgs) {
-        const orgSites = await db.select().from(sites).where(eq(sites.organizationId, org.id));
-        for (const site of orgSites) {
-          const siteGroups = await db.select().from(machineGroups).where(eq(machineGroups.siteId, site.id));
-          ownedGroupIds.push(...siteGroups.map(g => g.id));
-        }
-      }
-    }
-    
-    // Combine all permissions
+    // Combine all permissions (direct + from user groups)
     const allPermissions = [...directPermissions, ...userGroupPermissions];
     
     // Filter by permission type and get unique group IDs
@@ -4366,9 +4355,6 @@ export async function registerRoutes(
     } else {
       groupIds = allPermissions.filter(p => p.canEdit).map(p => p.groupId);
     }
-    
-    // Add owned group IDs (owners have full edit access to their hierarchy)
-    groupIds.push(...ownedGroupIds);
     
     // If no permissions and no owned groups, member sees nothing
     if (groupIds.length === 0) return [];
