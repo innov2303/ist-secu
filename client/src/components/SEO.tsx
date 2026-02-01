@@ -59,7 +59,7 @@ export function ProductSchema({
   name, 
   description, 
   price, 
-  currency = 'EUR' 
+  currency = 'USD' 
 }: { 
   name: string; 
   description: string; 

@@ -19,7 +19,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
   FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode,
-  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle, BarChart3, TrendingUp, Euro
+  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle, BarChart3, TrendingUp, DollarSign
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Textarea } from "@/components/ui/textarea";
@@ -959,7 +959,7 @@ export default function AdminPage() {
   ];
 
   const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
   };
 
   return (
@@ -1426,7 +1426,7 @@ export default function AdminPage() {
                                 <div>
                                   <p className="font-medium">{script.name}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {script.os} - {(script.monthlyPriceCents / 100).toFixed(2)} EUR/month
+                                    {script.os} - {(script.monthlyPriceCents / 100).toFixed(2)} USD/month
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     Deleted on {script.deletedAt ? new Date(script.deletedAt).toLocaleDateString('en-US') : ""}
@@ -2402,7 +2402,7 @@ export default function AdminPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
                     <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-                    <Euro className="h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatPrice(overviewStats?.revenue.total || 0)}</div>
@@ -2548,7 +2548,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        <Euro className="h-5 w-5" />
+                        <DollarSign className="h-5 w-5" />
                         Revenue Trends
                       </CardTitle>
                       <CardDescription>Revenue based on paid invoices</CardDescription>
@@ -2579,7 +2579,7 @@ export default function AdminPage() {
                         <YAxis 
                           className="text-xs" 
                           tick={{ fill: 'currentColor' }}
-                          tickFormatter={(value) => `${(value / 100).toFixed(0)}€`}
+                          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
                         />
                         <Tooltip 
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
@@ -2683,9 +2683,9 @@ export default function AdminPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-price">Monthly Price (EUR)</Label>
+              <Label htmlFor="edit-price">Monthly Price (USD)</Label>
               <div className="relative">
-                <Euro className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="edit-price"
                   type="number"
@@ -2699,7 +2699,7 @@ export default function AdminPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Current price: {editingScript ? (editingScript.monthlyPriceCents / 100).toFixed(2) : "0.00"} EUR/month
+                Current price: {editingScript ? (editingScript.monthlyPriceCents / 100).toFixed(2) : "0.00"} USD/month
               </p>
             </div>
             <div className="space-y-2">
@@ -3218,7 +3218,7 @@ export default function AdminPage() {
                           type="number"
                           min={0}
                           step={0.01}
-                          placeholder="Price EUR"
+                          placeholder="Price USD"
                           value={item.unitPriceCents / 100}
                           onChange={e => updateItemInNewInvoice(index, 'unitPriceCents', Math.round(parseFloat(e.target.value) * 100) || 0)}
                         />

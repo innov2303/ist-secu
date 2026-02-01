@@ -287,7 +287,7 @@ export default function Profile() {
   };
 
   const formatCurrency = (cents: number) => {
-    return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' });
+    return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   };
 
   const handlePrintInvoice = () => {
@@ -370,8 +370,8 @@ export default function Profile() {
               <tr>
                 <td>${item.description}</td>
                 <td class="amount">${item.quantity}</td>
-                <td class="amount">${(item.unitPriceCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</td>
-                <td class="amount">${(item.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</td>
+                <td class="amount">${(item.unitPriceCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                <td class="amount">${(item.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -380,15 +380,15 @@ export default function Profile() {
         <div class="totals">
           <div class="total-row">
             <span>Subtotal (excl. tax)</span>
-            <span>${(invoice.subtotalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
+            <span>${(invoice.subtotalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
           </div>
           <div class="total-row">
             <span>VAT (${invoice.taxRate}%)</span>
-            <span>${(invoice.taxCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
+            <span>${(invoice.taxCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
           </div>
           <div class="total-row final">
             <span>Total</span>
-            <span>${(invoice.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'EUR' })}</span>
+            <span>${(invoice.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
           </div>
         </div>
         
