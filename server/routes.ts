@@ -4546,11 +4546,11 @@ export async function registerRoutes(
       let stats;
       
       if (period === "day") {
-        // Generate all hours for the last 12 hours
+        // Generate all hours for the last 24 hours
         stats = await db.execute(sql`
           WITH hours AS (
             SELECT generate_series(
-              DATE_TRUNC('hour', NOW() - INTERVAL '11 hours'),
+              DATE_TRUNC('hour', NOW() - INTERVAL '23 hours'),
               DATE_TRUNC('hour', NOW()),
               INTERVAL '1 hour'
             ) as hour
