@@ -2510,7 +2510,9 @@ export default function AdminPage() {
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
-                          data={toolkitStats.data.filter(t => Number(t.purchase_count) > 0)}
+                          data={toolkitStats.data
+                            .filter(t => Number(t.purchase_count) > 0)
+                            .map(t => ({ ...t, purchase_count: Number(t.purchase_count) }))}
                           dataKey="purchase_count"
                           nameKey="toolkit_name"
                           cx="50%"
