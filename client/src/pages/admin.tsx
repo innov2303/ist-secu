@@ -57,6 +57,10 @@ export default function AdminPage() {
   const [userPage, setUserPage] = useState(1);
   const [contactSearch, setContactSearch] = useState("");
   const [contactPage, setContactPage] = useState(1);
+  const [ticketSearch, setTicketSearch] = useState("");
+  const [ticketPage, setTicketPage] = useState(1);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [ticketReplyContent, setTicketReplyContent] = useState("");
   const [scriptSearch, setScriptSearch] = useState("");
   const [scriptPage, setScriptPage] = useState(1);
   
@@ -115,6 +119,47 @@ export default function AdminPage() {
   const { data: contactRequests, isLoading: contactLoading } = useQuery<ContactRequest[]>({
     queryKey: ["/api/admin/contact-requests"],
     enabled: !!user?.isAdmin,
+  });
+
+  // Support tickets types and queries
+  interface TicketUser {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    isAdmin?: boolean;
+  }
+  interface TicketMessage {
+    id: number;
+    ticketId: number;
+    userId: string;
+    content: string;
+    isAdminReply: number;
+    createdAt: string;
+    user: TicketUser | null;
+  }
+  interface SupportTicket {
+    id: number;
+    userId: string;
+    subject: string;
+    category: string;
+    priority: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    closedAt: string | null;
+    user?: TicketUser | null;
+    messages?: TicketMessage[];
+  }
+
+  const { data: supportTickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
+    queryKey: ["/api/tickets"],
+    enabled: !!user?.isAdmin && activeSection === "tickets",
+  });
+
+  const { data: selectedTicketDetails } = useQuery<SupportTicket>({
+    queryKey: ["/api/tickets", selectedTicketId],
+    enabled: !!selectedTicketId && !!user?.isAdmin,
   });
 
   const { data: scripts, isLoading: scriptsLoading } = useQuery<Script[]>({
@@ -317,6 +362,27 @@ export default function AdminPage() {
     return filteredContacts.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredContacts, contactPage]);
 
+  // Support tickets filtering and pagination
+  const filteredTickets = useMemo(() => {
+    if (!supportTickets) return [];
+    if (!ticketSearch.trim()) return supportTickets;
+    const search = ticketSearch.toLowerCase();
+    return supportTickets.filter(t => 
+      t.subject?.toLowerCase().includes(search) ||
+      t.user?.email?.toLowerCase().includes(search) ||
+      t.user?.firstName?.toLowerCase().includes(search) ||
+      t.user?.lastName?.toLowerCase().includes(search) ||
+      t.category?.toLowerCase().includes(search) ||
+      t.id.toString().includes(search)
+    );
+  }, [supportTickets, ticketSearch]);
+
+  const totalTicketPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
+  const paginatedTickets = useMemo(() => {
+    const start = (ticketPage - 1) * ITEMS_PER_PAGE;
+    return filteredTickets.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredTickets, ticketPage]);
+
   // Scripts filtering and pagination - only show toolkits (bundles with bundledScriptIds)
   const filteredScripts = useMemo(() => {
     if (!scripts) return [];
@@ -427,6 +493,38 @@ export default function AdminPage() {
     },
     onError: () => {
       toast({ title: "Error", description: "Unable to delete request", variant: "destructive" });
+    },
+  });
+
+  // Support ticket mutations
+  const updateTicketStatusMutation = useMutation({
+    mutationFn: async ({ id, status, priority }: { id: number; status?: string; priority?: string }) => {
+      const res = await apiRequest("PATCH", `/api/tickets/${id}`, { status, priority });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets", selectedTicketId] });
+      toast({ title: "Ticket updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Unable to update ticket", variant: "destructive" });
+    },
+  });
+
+  const addTicketReplyMutation = useMutation({
+    mutationFn: async ({ ticketId, content }: { ticketId: number; content: string }) => {
+      const res = await apiRequest("POST", `/api/tickets/${ticketId}/messages`, { content });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets", selectedTicketId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      setTicketReplyContent("");
+      toast({ title: "Reply sent" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Unable to send reply", variant: "destructive" });
     },
   });
 
@@ -950,7 +1048,7 @@ export default function AdminPage() {
 
   const sidebarItems = [
     { id: "users" as AdminSection, label: "Users", icon: Users, count: users?.length },
-    { id: "tickets" as AdminSection, label: "Support", icon: MessageSquare, count: contactRequests?.filter(c => c.status === "pending").length },
+    { id: "tickets" as AdminSection, label: "Support", icon: MessageSquare, count: supportTickets?.filter(t => t.status === "open" || t.status === "in_progress").length || contactRequests?.filter(c => c.status === "pending").length },
     { id: "toolkits" as AdminSection, label: "Toolkits", icon: Package, count: toolkitCount },
     { id: "bundles" as AdminSection, label: "Annual Bundles", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Invoices", icon: FileText, count: allInvoices.length },
@@ -1187,159 +1285,369 @@ export default function AdminPage() {
                 <MessageSquare className="h-8 w-8 text-primary" />
                 <div>
                   <h2 className="text-2xl font-bold">Support Tickets</h2>
-                  <p className="text-muted-foreground">Contact requests and support</p>
+                  <p className="text-muted-foreground">User support requests and conversations</p>
                 </div>
               </div>
 
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <CardTitle>Contact Requests</CardTitle>
-                      <CardDescription>
-                        {filteredContacts.filter(c => c.status === "pending").length} pending out of {filteredContacts.length} request(s)
-                      </CardDescription>
-                    </div>
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search..."
-                        value={contactSearch}
-                        onChange={(e) => { setContactSearch(e.target.value); setContactPage(1); }}
-                        className="pl-9"
-                        data-testid="input-contact-search"
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {contactLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : paginatedContacts.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      {contactSearch ? "No requests found" : "No contact requests"}
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {paginatedContacts.map((request) => (
-                        <div
-                          key={request.id}
-                          className="p-4 rounded-lg border bg-card"
-                          data-testid={`row-contact-${request.id}`}
+              {selectedTicketId && selectedTicketDetails ? (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setSelectedTicketId(null)}
+                            data-testid="button-back-to-tickets"
+                          >
+                            <ArrowLeft className="h-4 w-4 mr-1" />
+                            Back
+                          </Button>
+                        </div>
+                        <CardTitle className="text-lg">#{selectedTicketDetails.id} - {selectedTicketDetails.subject}</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Badge variant={selectedTicketDetails.status === "open" ? "outline" : selectedTicketDetails.status === "in_progress" ? "secondary" : "default"}>
+                            {selectedTicketDetails.status === "open" && <><AlertCircle className="h-3 w-3 mr-1" /> Open</>}
+                            {selectedTicketDetails.status === "in_progress" && <><Clock className="h-3 w-3 mr-1" /> In Progress</>}
+                            {selectedTicketDetails.status === "resolved" && <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>}
+                            {selectedTicketDetails.status === "closed" && <><CheckCircle className="h-3 w-3 mr-1" /> Closed</>}
+                          </Badge>
+                          <Badge variant={selectedTicketDetails.priority === "urgent" ? "destructive" : selectedTicketDetails.priority === "high" ? "secondary" : "outline"}>
+                            {selectedTicketDetails.priority}
+                          </Badge>
+                          <Badge variant="outline">{selectedTicketDetails.category}</Badge>
+                          {selectedTicketDetails.user && (
+                            <a href={`mailto:${selectedTicketDetails.user.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
+                              <Mail className="h-3 w-3" />
+                              {selectedTicketDetails.user.email}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Select 
+                          value={selectedTicketDetails.status}
+                          onValueChange={(value) => updateTicketStatusMutation.mutate({ id: selectedTicketDetails.id, status: value })}
                         >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
-                                <span className="font-medium">{request.name}</span>
-                                <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
-                                  <Mail className="h-3 w-3" />
-                                  {request.email}
-                                </a>
-                                <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
-                                  {request.status === "pending" ? (
-                                    <><Clock className="h-3 w-3 mr-1" /> Pending</>
-                                  ) : (
-                                    <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>
-                                  )}
-                                </Badge>
+                          <SelectTrigger className="w-32" data-testid="select-ticket-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 mb-4">
+                      {selectedTicketDetails.messages?.map((msg) => (
+                        <div 
+                          key={msg.id} 
+                          className={`flex gap-3 ${msg.isAdminReply ? "flex-row-reverse" : ""}`}
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className={msg.isAdminReply ? "bg-primary text-primary-foreground" : ""}>
+                              {msg.isAdminReply ? <Shield className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className={`flex-1 max-w-[80%] ${msg.isAdminReply ? "text-right" : ""}`}>
+                            <div className={`rounded-lg p-3 ${msg.isAdminReply ? "bg-primary/10 ml-auto" : "bg-muted"}`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">
+                                  {msg.isAdminReply ? "Support Team" : (msg.user?.firstName || msg.user?.email || "User")}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(msg.createdAt).toLocaleString('en-US')}
+                                </span>
                               </div>
-                              <div className="text-sm font-medium">{request.subject}</div>
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(request.createdAt).toLocaleString('en-US')}
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              {request.status === "pending" ? (
-                                <Button
-                                  size="sm"
-                                  onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "resolved" })}
-                                  disabled={updateContactStatusMutation.isPending}
-                                  data-testid={`button-resolve-${request.id}`}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Mark Resolved
-                                </Button>
-                              ) : (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
-                                    disabled={updateContactStatusMutation.isPending}
-                                    data-testid={`button-unresolve-${request.id}`}
-                                  >
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    Reopen
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button
-                                        variant="destructive"
-                                        size="sm"
-                                        disabled={deleteContactMutation.isPending}
-                                        data-testid={`button-delete-contact-${request.id}`}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Delete
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Are you sure you want to delete this contact request from {request.name}? This action is irreversible.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => deleteContactMutation.mutate(request.id)}
-                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        >
-                                          Delete
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </>
-                              )}
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                  {totalContactPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <p className="text-sm text-muted-foreground">Page {contactPage} of {totalContactPages}</p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setContactPage(p => Math.max(1, p - 1))}
-                          disabled={contactPage === 1}
+                    {selectedTicketDetails.status !== "closed" && (
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Type your reply..."
+                          value={ticketReplyContent}
+                          onChange={(e) => setTicketReplyContent(e.target.value)}
+                          className="flex-1 min-h-[80px]"
+                          data-testid="input-admin-ticket-reply"
+                        />
+                        <Button 
+                          onClick={() => addTicketReplyMutation.mutate({ ticketId: selectedTicketDetails.id, content: ticketReplyContent })}
+                          disabled={!ticketReplyContent.trim() || addTicketReplyMutation.isPending}
+                          data-testid="button-send-admin-reply"
                         >
-                          <ChevronLeft className="h-4 w-4 mr-1" />
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
-                          disabled={contactPage === totalContactPages}
-                        >
-                          Next
-                          <ChevronRight className="h-4 w-4 ml-1" />
+                          {addTicketReplyMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <CardTitle>Support Tickets</CardTitle>
+                        <CardDescription>
+                          {filteredTickets.filter(t => t.status === "open" || t.status === "in_progress").length} active out of {filteredTickets.length} ticket(s)
+                        </CardDescription>
+                      </div>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search tickets..."
+                          value={ticketSearch}
+                          onChange={(e) => { setTicketSearch(e.target.value); setTicketPage(1); }}
+                          className="pl-9"
+                          data-testid="input-ticket-search"
+                        />
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent>
+                    {ticketsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : paginatedTickets.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        {ticketSearch ? "No tickets found" : "No support tickets yet"}
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {paginatedTickets.map((ticket) => (
+                          <div
+                            key={ticket.id}
+                            className="p-4 rounded-lg border bg-card cursor-pointer hover-elevate"
+                            onClick={() => setSelectedTicketId(ticket.id)}
+                            data-testid={`row-ticket-${ticket.id}`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">#{ticket.id}</span>
+                                  <span className="text-sm">{ticket.subject}</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant={ticket.status === "open" ? "outline" : ticket.status === "in_progress" ? "secondary" : "default"} className="text-xs">
+                                    {ticket.status === "open" && <><AlertCircle className="h-3 w-3 mr-1" /> Open</>}
+                                    {ticket.status === "in_progress" && <><Clock className="h-3 w-3 mr-1" /> In Progress</>}
+                                    {ticket.status === "resolved" && <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>}
+                                    {ticket.status === "closed" && <><CheckCircle className="h-3 w-3 mr-1" /> Closed</>}
+                                  </Badge>
+                                  <Badge variant={ticket.priority === "urgent" ? "destructive" : ticket.priority === "high" ? "secondary" : "outline"} className="text-xs">
+                                    {ticket.priority}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">{ticket.category}</Badge>
+                                  {ticket.user && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {ticket.user.firstName || ticket.user.email}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Updated {new Date(ticket.updatedAt).toLocaleString('en-US')}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {totalTicketPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                        <p className="text-sm text-muted-foreground">Page {ticketPage} of {totalTicketPages}</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTicketPage(p => Math.max(1, p - 1))}
+                            disabled={ticketPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setTicketPage(p => Math.min(totalTicketPages, p + 1))}
+                            disabled={ticketPage === totalTicketPages}
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Legacy Contact Requests */}
+              {(contactRequests?.length ?? 0) > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <CardTitle>Legacy Contact Requests</CardTitle>
+                        <CardDescription>
+                          {filteredContacts.filter(c => c.status === "pending").length} pending out of {filteredContacts.length} request(s)
+                        </CardDescription>
+                      </div>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search..."
+                          value={contactSearch}
+                          onChange={(e) => { setContactSearch(e.target.value); setContactPage(1); }}
+                          className="pl-9"
+                          data-testid="input-contact-search"
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {contactLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : paginatedContacts.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        {contactSearch ? "No requests found" : "No contact requests"}
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {paginatedContacts.map((request) => (
+                          <div
+                            key={request.id}
+                            className="p-4 rounded-lg border bg-card"
+                            data-testid={`row-contact-${request.id}`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
+                                  <span className="font-medium">{request.name}</span>
+                                  <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
+                                    <Mail className="h-3 w-3" />
+                                    {request.email}
+                                  </a>
+                                  <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
+                                    {request.status === "pending" ? (
+                                      <><Clock className="h-3 w-3 mr-1" /> Pending</>
+                                    ) : (
+                                      <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>
+                                    )}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm font-medium">{request.subject}</div>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(request.createdAt).toLocaleString('en-US')}
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                {request.status === "pending" ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "resolved" })}
+                                    disabled={updateContactStatusMutation.isPending}
+                                    data-testid={`button-resolve-${request.id}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Mark Resolved
+                                  </Button>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
+                                      disabled={updateContactStatusMutation.isPending}
+                                      data-testid={`button-unresolve-${request.id}`}
+                                    >
+                                      <Clock className="h-4 w-4 mr-1" />
+                                      Reopen
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          disabled={deleteContactMutation.isPending}
+                                          data-testid={`button-delete-contact-${request.id}`}
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-1" />
+                                          Delete
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to delete this contact request from {request.name}? This action is irreversible.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => deleteContactMutation.mutate(request.id)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {totalContactPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                        <p className="text-sm text-muted-foreground">Page {contactPage} of {totalContactPages}</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setContactPage(p => Math.max(1, p - 1))}
+                            disabled={contactPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
+                            disabled={contactPage === totalContactPages}
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
