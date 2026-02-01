@@ -4543,15 +4543,81 @@ export async function registerRoutes(
           interval = "5 weeks";
       }
       
-      const stats = await db.execute(sql`
-        SELECT 
-          TO_CHAR(created_at, ${dateFormat}) as date,
-          COUNT(*) as count
-        FROM users
-        WHERE created_at >= NOW() - INTERVAL '${sql.raw(interval)}'
-        GROUP BY date
-        ORDER BY date ASC
-      `);
+      let stats;
+      
+      if (period === "day") {
+        // Generate all hours for the last 12 hours
+        stats = await db.execute(sql`
+          WITH hours AS (
+            SELECT generate_series(
+              DATE_TRUNC('hour', NOW() - INTERVAL '11 hours'),
+              DATE_TRUNC('hour', NOW()),
+              INTERVAL '1 hour'
+            ) as hour
+          )
+          SELECT 
+            TO_CHAR(h.hour, 'HH24"h"') as date,
+            COALESCE(COUNT(u.id), 0) as count
+          FROM hours h
+          LEFT JOIN users u ON DATE_TRUNC('hour', u.created_at) = h.hour
+          GROUP BY h.hour
+          ORDER BY h.hour ASC
+        `);
+      } else if (period === "week") {
+        // Generate all 7 days
+        stats = await db.execute(sql`
+          WITH days AS (
+            SELECT generate_series(
+              DATE_TRUNC('day', NOW() - INTERVAL '6 days'),
+              DATE_TRUNC('day', NOW()),
+              INTERVAL '1 day'
+            ) as day
+          )
+          SELECT 
+            TO_CHAR(d.day, 'Dy DD/MM') as date,
+            COALESCE(COUNT(u.id), 0) as count
+          FROM days d
+          LEFT JOIN users u ON DATE_TRUNC('day', u.created_at) = d.day
+          GROUP BY d.day
+          ORDER BY d.day ASC
+        `);
+      } else if (period === "year") {
+        // Generate all 12 months
+        stats = await db.execute(sql`
+          WITH months AS (
+            SELECT generate_series(
+              DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+              DATE_TRUNC('month', NOW()),
+              INTERVAL '1 month'
+            ) as month
+          )
+          SELECT 
+            TO_CHAR(m.month, 'Mon YYYY') as date,
+            COALESCE(COUNT(u.id), 0) as count
+          FROM months m
+          LEFT JOIN users u ON DATE_TRUNC('month', u.created_at) = m.month
+          GROUP BY m.month
+          ORDER BY m.month ASC
+        `);
+      } else {
+        // Month: Generate 5 weeks
+        stats = await db.execute(sql`
+          WITH weeks AS (
+            SELECT generate_series(
+              DATE_TRUNC('week', NOW() - INTERVAL '4 weeks'),
+              DATE_TRUNC('week', NOW()),
+              INTERVAL '1 week'
+            ) as week
+          )
+          SELECT 
+            'Sem ' || TO_CHAR(w.week, 'IW') as date,
+            COALESCE(COUNT(u.id), 0) as count
+          FROM weeks w
+          LEFT JOIN users u ON DATE_TRUNC('week', u.created_at) = w.week
+          GROUP BY w.week
+          ORDER BY w.week ASC
+        `);
+      }
       
       const totalUsers = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
       
