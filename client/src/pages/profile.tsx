@@ -159,8 +159,8 @@ export default function Profile() {
   });
 
   const requestEmailChangeMutation = useMutation({
-    mutationFn: async (data: { newEmail: string }) => {
-      const res = await apiRequest("POST", "/api/profile/request-email-change", data);
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/profile/request-email-change", {});
       return res.json();
     },
     onSuccess: (data) => {
@@ -168,7 +168,6 @@ export default function Profile() {
         title: "Email envoye", 
         description: data.message 
       });
-      setNewEmail("");
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -221,13 +220,8 @@ export default function Profile() {
     });
   };
 
-  const handleRequestEmailChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEmail.trim()) {
-      toast({ title: "Erreur", description: "Veuillez entrer le nouvel email", variant: "destructive" });
-      return;
-    }
-    requestEmailChangeMutation.mutate({ newEmail: newEmail.trim() });
+  const handleRequestEmailChange = () => {
+    requestEmailChangeMutation.mutate();
   };
 
   const handleRequestPasswordChange = () => {
@@ -694,33 +688,20 @@ export default function Profile() {
                           <Mail className="h-3.5 w-3.5" /> Changer l'email
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          Un lien de confirmation sera envoye a votre nouvelle adresse email.
+                          Un lien sera envoye a votre adresse email actuelle pour renseigner votre nouvel email.
                         </p>
-                        <form onSubmit={handleRequestEmailChange} className="space-y-3">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="newEmail" className="text-xs">Nouvel email</Label>
-                            <Input
-                              id="newEmail"
-                              type="email"
-                              value={newEmail}
-                              onChange={(e) => setNewEmail(e.target.value)}
-                              placeholder="nouvelle@email.com"
-                              data-testid="input-new-email"
-                            />
-                          </div>
-                          <Button 
-                            type="submit" 
-                            size="sm"
-                            disabled={requestEmailChangeMutation.isPending}
-                            data-testid="button-request-email-change"
-                          >
-                            {requestEmailChangeMutation.isPending ? (
-                              <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
-                            ) : (
-                              <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
-                            )}
-                          </Button>
-                        </form>
+                        <Button 
+                          size="sm"
+                          onClick={handleRequestEmailChange}
+                          disabled={requestEmailChangeMutation.isPending}
+                          data-testid="button-request-email-change"
+                        >
+                          {requestEmailChangeMutation.isPending ? (
+                            <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Envoi...</>
+                          ) : (
+                            <><Send className="h-3.5 w-3.5 mr-2" /> Envoyer le lien</>
+                          )}
+                        </Button>
                       </div>
 
                       {/* Password Change */}
