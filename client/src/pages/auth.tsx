@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
-import { Turnstile } from "@/components/Turnstile";
+import { MathCaptcha } from "@/components/MathCaptcha";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -40,10 +40,10 @@ export default function AuthPage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loginTurnstileToken, setLoginTurnstileToken] = useState<string | null>(null);
-  const [registerTurnstileToken, setRegisterTurnstileToken] = useState<string | null>(null);
-  
-  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+  const [loginCaptchaVerified, setLoginCaptchaVerified] = useState(false);
+  const [loginCaptchaData, setLoginCaptchaData] = useState<{ challengeId: string; answer: number } | null>(null);
+  const [registerCaptchaVerified, setRegisterCaptchaVerified] = useState(false);
+  const [registerCaptchaData, setRegisterCaptchaData] = useState<{ challengeId: string; answer: number } | null>(null);
 
   if (user) {
     setLocation("/");
@@ -54,17 +54,22 @@ export default function AuthPage() {
     e.preventDefault();
     setError(null);
     
-    if (turnstileSiteKey && !loginTurnstileToken) {
+    if (!loginCaptchaVerified || !loginCaptchaData) {
       setError("Veuillez completer la verification de securite");
       return;
     }
     
     try {
-      await login({ ...loginData, turnstileToken: loginTurnstileToken || undefined });
+      await login({ 
+        ...loginData, 
+        captchaChallengeId: loginCaptchaData.challengeId, 
+        captchaAnswer: loginCaptchaData.answer 
+      });
       setLocation("/");
     } catch (err: any) {
       setError(err.message);
-      setLoginTurnstileToken(null);
+      setLoginCaptchaVerified(false);
+      setLoginCaptchaData(null);
     }
   };
 
@@ -77,17 +82,22 @@ export default function AuthPage() {
       return;
     }
     
-    if (turnstileSiteKey && !registerTurnstileToken) {
+    if (!registerCaptchaVerified || !registerCaptchaData) {
       setError("Veuillez completer la verification de securite");
       return;
     }
     
     try {
-      await register({ ...registerData, turnstileToken: registerTurnstileToken || undefined });
+      await register({ 
+        ...registerData, 
+        captchaChallengeId: registerCaptchaData.challengeId, 
+        captchaAnswer: registerCaptchaData.answer 
+      });
       setLocation("/");
     } catch (err: any) {
       setError(err.message);
-      setRegisterTurnstileToken(null);
+      setRegisterCaptchaVerified(false);
+      setRegisterCaptchaData(null);
     }
   };
 
@@ -183,17 +193,17 @@ export default function AuthPage() {
                       Mot de passe oublie ?
                     </Link>
                   </div>
-                  {turnstileSiteKey && (
-                    <div className="flex justify-center">
-                      <Turnstile
-                        siteKey={turnstileSiteKey}
-                        onVerify={setLoginTurnstileToken}
-                        onExpire={() => setLoginTurnstileToken(null)}
-                        theme="auto"
-                      />
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full" disabled={isLoggingIn || (turnstileSiteKey && !loginTurnstileToken)} data-testid="button-login-submit">
+                  <MathCaptcha
+                    onVerify={(isValid, challengeId, answer) => {
+                      setLoginCaptchaVerified(isValid);
+                      if (isValid && challengeId) {
+                        setLoginCaptchaData({ challengeId, answer });
+                      } else {
+                        setLoginCaptchaData(null);
+                      }
+                    }}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoggingIn || !loginCaptchaVerified} data-testid="button-login-submit">
                     {isLoggingIn ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -468,17 +478,17 @@ export default function AuthPage() {
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}
-                  {turnstileSiteKey && (
-                    <div className="flex justify-center">
-                      <Turnstile
-                        siteKey={turnstileSiteKey}
-                        onVerify={setRegisterTurnstileToken}
-                        onExpire={() => setRegisterTurnstileToken(null)}
-                        theme="auto"
-                      />
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full" disabled={isRegistering || (turnstileSiteKey && !registerTurnstileToken)} data-testid="button-register-submit">
+                  <MathCaptcha
+                    onVerify={(isValid, challengeId, answer) => {
+                      setRegisterCaptchaVerified(isValid);
+                      if (isValid && challengeId) {
+                        setRegisterCaptchaData({ challengeId, answer });
+                      } else {
+                        setRegisterCaptchaData(null);
+                      }
+                    }}
+                  />
+                  <Button type="submit" className="w-full" disabled={isRegistering || !registerCaptchaVerified} data-testid="button-register-submit">
                     {isRegistering ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />

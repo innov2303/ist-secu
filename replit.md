@@ -115,6 +115,8 @@ Preferred communication style: Simple, everyday language.
 - Session-based authentication with PostgreSQL session store
 - Protected routes use `isAuthenticated` middleware
 - Profile page at /profile for updating name/email/password (local users only)
+- **Bot Protection**: Math CAPTCHA on login/register forms (no external dependencies)
+- **Rate Limiting**: 5 login attempts max, then 15-minute lockout
 - **TODO**: Email verification for email changes requires Resend integration to be configured
 
 ### Payment Integration

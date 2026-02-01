@@ -68,13 +68,15 @@ export const registerSchema = z.object({
   billingStreet: z.string().optional(),
   billingPostalCode: z.string().optional(),
   billingCity: z.string().optional(),
-  turnstileToken: z.string().optional(),
+  captchaChallengeId: z.string().min(1, "Verification de securite requise"),
+  captchaAnswer: z.number({ required_error: "Reponse CAPTCHA requise" }),
 });
 
 export const loginSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(1, "Mot de passe requis"),
-  turnstileToken: z.string().optional(),
+  captchaChallengeId: z.string().min(1, "Verification de securite requise"),
+  captchaAnswer: z.number({ required_error: "Reponse CAPTCHA requise" }),
 });
 
 export type RegisterData = z.infer<typeof registerSchema>;

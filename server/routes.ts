@@ -16,31 +16,73 @@ import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./st
 import { sendInvoiceEmail, sendPasswordResetEmail } from "./email";
 import { injectLicense } from "./license";
 
-// Turnstile verification
-async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  if (!secretKey) {
-    console.log("Turnstile secret key not configured, skipping verification");
-    return true; // Skip verification if not configured
+// Server-side CAPTCHA challenge storage
+const captchaChallenges = new Map<string, { answer: number; expiresAt: number }>();
+const CAPTCHA_EXPIRY = 5 * 60 * 1000; // 5 minutes
+
+function generateCaptchaChallenge(): { challengeId: string; question: string } {
+  const operations = ["+", "-", "*"];
+  const operation = operations[Math.floor(Math.random() * operations.length)];
+  
+  let num1: number, num2: number, answer: number;
+  
+  switch (operation) {
+    case "+":
+      num1 = Math.floor(Math.random() * 50) + 1;
+      num2 = Math.floor(Math.random() * 50) + 1;
+      answer = num1 + num2;
+      break;
+    case "-":
+      num1 = Math.floor(Math.random() * 50) + 20;
+      num2 = Math.floor(Math.random() * 20) + 1;
+      answer = num1 - num2;
+      break;
+    case "*":
+      num1 = Math.floor(Math.random() * 12) + 1;
+      num2 = Math.floor(Math.random() * 12) + 1;
+      answer = num1 * num2;
+      break;
+    default:
+      num1 = 5;
+      num2 = 3;
+      answer = 8;
   }
+  
+  const operationSymbol = operation === "*" ? "x" : operation;
+  const question = `${num1} ${operationSymbol} ${num2} = ?`;
+  
+  const challengeId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  captchaChallenges.set(challengeId, { answer, expiresAt: Date.now() + CAPTCHA_EXPIRY });
+  
+  // Clean up expired challenges periodically
+  if (captchaChallenges.size > 1000) {
+    const now = Date.now();
+    for (const [id, challenge] of captchaChallenges.entries()) {
+      if (challenge.expiresAt < now) {
+        captchaChallenges.delete(id);
+      }
+    }
+  }
+  
+  return { challengeId, question };
+}
 
-  try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        secret: secretKey,
-        response: token,
-        remoteip: ip,
-      }),
-    });
-
-    const data = await response.json() as { success: boolean };
-    return data.success;
-  } catch (error) {
-    console.error("Turnstile verification error:", error);
+function verifyCaptchaChallenge(challengeId: string, userAnswer: number, consume: boolean = true): boolean {
+  const challenge = captchaChallenges.get(challengeId);
+  if (!challenge) {
     return false;
   }
+  
+  if (Date.now() > challenge.expiresAt) {
+    captchaChallenges.delete(challengeId);
+    return false;
+  }
+  
+  const isCorrect = challenge.answer === userAnswer;
+  if (isCorrect && consume) {
+    captchaChallenges.delete(challengeId); // One-time use - only delete when consuming
+  }
+  return isCorrect;
 }
 
 // Rate limiting for login attempts
@@ -108,6 +150,22 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  // CAPTCHA endpoints
+  app.get("/api/captcha/challenge", (req, res) => {
+    const challenge = generateCaptchaChallenge();
+    res.json(challenge);
+  });
+
+  app.post("/api/captcha/verify", (req, res) => {
+    const { challengeId, answer } = req.body;
+    if (!challengeId || typeof answer !== "number") {
+      return res.status(400).json({ success: false, message: "Donnees invalides" });
+    }
+    // Don't consume - just check if answer is correct (consume=false)
+    const isValid = verifyCaptchaChallenge(challengeId, answer, false);
+    res.json({ success: isValid });
+  });
+
   // Local auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -120,16 +178,12 @@ export async function registerRoutes(
         email, password, firstName, lastName, companyName, profession,
         street, postalCode, city, 
         billingAddressSameAsAddress, billingStreet, billingPostalCode, billingCity,
-        turnstileToken
+        captchaChallengeId, captchaAnswer
       } = result.data;
 
-      // Verify Turnstile token if provided
-      if (turnstileToken) {
-        const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-        const isValidToken = await verifyTurnstileToken(turnstileToken, clientIp);
-        if (!isValidToken) {
-          return res.status(400).json({ message: "Verification de securite echouee. Veuillez reessayer." });
-        }
+      // Verify CAPTCHA (required)
+      if (!verifyCaptchaChallenge(captchaChallengeId, captchaAnswer)) {
+        return res.status(400).json({ message: "Verification de securite incorrecte ou expiree. Veuillez reessayer." });
       }
 
       // Check if user already exists
@@ -213,14 +267,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { email, password, turnstileToken } = result.data;
+      const { email, password, captchaChallengeId, captchaAnswer } = result.data;
 
-      // Verify Turnstile token if provided
-      if (turnstileToken) {
-        const isValidToken = await verifyTurnstileToken(turnstileToken, clientIp);
-        if (!isValidToken) {
-          return res.status(400).json({ message: "Verification de securite echouee. Veuillez reessayer." });
-        }
+      // Verify CAPTCHA (required)
+      if (!verifyCaptchaChallenge(captchaChallengeId, captchaAnswer)) {
+        return res.status(400).json({ message: "Verification de securite incorrecte ou expiree. Veuillez reessayer." });
       }
 
       // Find user
