@@ -12,6 +12,7 @@ import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Invoice, InvoiceItem, Team, TeamMember } from "@shared/schema";
 
@@ -901,9 +902,27 @@ export default function Profile() {
                             </div>
                           )}
                         </div>
-                        <Button variant="destructive" size="sm" onClick={() => { if (confirm("Supprimer cette equipe et tous ses membres ?")) deleteTeamMutation.mutate(teamData.team!.id); }} disabled={deleteTeamMutation.isPending} data-testid="button-delete-team">
-                          {deleteTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={deleteTeamMutation.isPending} data-testid="button-delete-team">
+                              {deleteTeamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer l'equipe</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Voulez-vous vraiment supprimer cette equipe et tous ses membres ? Cette action est irreversible.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteTeamMutation.mutate(teamData.team!.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </CardHeader>
                   </Card>

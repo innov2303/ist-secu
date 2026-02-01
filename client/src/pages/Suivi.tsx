@@ -70,6 +70,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface TeamMembership {
   teamId: number;
@@ -1587,13 +1598,27 @@ export default function Suivi() {
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  size="icon" 
-                                  variant="ghost" 
-                                  onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer l'organisation "${org.name}" ?`)) deleteOrgMutation.mutate(org.id); }}
-                                >
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Voulez-vous vraiment supprimer l'organisation "{org.name}" ? Cette action est irreversible.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => deleteOrgMutation.mutate(org.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        Supprimer
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             )}
                           </div>
@@ -1645,13 +1670,27 @@ export default function Suivi() {
                                           >
                                             <Pencil className="w-3 h-3" />
                                           </Button>
-                                          <Button 
-                                            size="icon" 
-                                            variant="ghost" 
-                                            onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le site "${site.name}" ?`)) deleteSiteMutation.mutate(site.id); }}
-                                          >
-                                            <Trash2 className="w-3 h-3 text-destructive" />
-                                          </Button>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                                <Trash2 className="w-3 h-3 text-destructive" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Voulez-vous vraiment supprimer le site "{site.name}" ? Cette action est irreversible.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteSiteMutation.mutate(site.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                  Supprimer
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
                                         </div>
                                       )}
                                     </div>
@@ -1692,13 +1731,27 @@ export default function Suivi() {
                                                     >
                                                       <Pencil className="w-3 h-3" />
                                                     </Button>
-                                                    <Button 
-                                                      size="icon" 
-                                                      variant="ghost" 
-                                                      onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le groupe "${group.name}" ?`)) deleteGroupMutation.mutate(group.id); }}
-                                                    >
-                                                      <Trash2 className="w-3 h-3 text-destructive" />
-                                                    </Button>
+                                                    <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                        <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                                          <Trash2 className="w-3 h-3 text-destructive" />
+                                                        </Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                                        <AlertDialogHeader>
+                                                          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                          <AlertDialogDescription>
+                                                            Voulez-vous vraiment supprimer le groupe "{group.name}" ? Cette action est irreversible.
+                                                          </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                          <AlertDialogAction onClick={() => deleteGroupMutation.mutate(group.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                            Supprimer
+                                                          </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                    </AlertDialog>
                                                   </div>
                                                 )}
                                               </div>
@@ -1742,14 +1795,27 @@ export default function Suivi() {
                                                               >
                                                                 <MoveHorizontal className="w-4 h-4" />
                                                               </Button>
-                                                              <Button 
-                                                                size="icon" 
-                                                                variant="ghost"
-                                                                onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
-                                                                data-testid={`button-delete-machine-${machine.id}`}
-                                                              >
-                                                                <Trash2 className="w-4 h-4 text-destructive" />
-                                                              </Button>
+                                                              <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                  <Button size="icon" variant="ghost" data-testid={`button-delete-machine-${machine.id}`}>
+                                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                                  </Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                  <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                      Voulez-vous vraiment supprimer "{machine.hostname}" ? Cette action est irreversible.
+                                                                    </AlertDialogDescription>
+                                                                  </AlertDialogHeader>
+                                                                  <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => deleteMachineMutation.mutate(machine.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                                      Supprimer
+                                                                    </AlertDialogAction>
+                                                                  </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                              </AlertDialog>
                                                             </div>
                                                           )}
                                                         </div>
@@ -1818,14 +1884,27 @@ export default function Suivi() {
                                     >
                                       <MoveHorizontal className="w-4 h-4" />
                                     </Button>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost"
-                                      onClick={() => { if (confirm(`Supprimer "${machine.hostname}" ?`)) deleteMachineMutation.mutate(machine.id); }}
-                                      data-testid={`button-delete-unassigned-${machine.id}`}
-                                    >
-                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" data-testid={`button-delete-unassigned-${machine.id}`}>
+                                          <Trash2 className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Voulez-vous vraiment supprimer "{machine.hostname}" ? Cette action est irreversible.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteMachineMutation.mutate(machine.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Supprimer
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                   </div>
                                 )}
                               </div>
@@ -1952,18 +2031,27 @@ export default function Suivi() {
                                   <Shield className="w-4 h-4" />
                                 </Button>
                                 {hasFullAccess && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => {
-                                      if (confirm("Supprimer ce rapport ?")) {
-                                        deleteReportMutation.mutate(report.id);
-                                      }
-                                    }}
-                                    data-testid={`button-delete-report-${report.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" data-testid={`button-delete-report-${report.id}`}>
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Voulez-vous vraiment supprimer ce rapport ? Cette action est irreversible.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteReportMutation.mutate(report.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                          Supprimer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 )}
                               </div>
                             </TableCell>
@@ -2139,18 +2227,27 @@ export default function Suivi() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                if (confirm(`Supprimer le groupe "${userGroup.name}" ?`)) {
-                                  deleteUserGroupMutation.mutate(userGroup.id);
-                                }
-                              }}
-                              data-testid={`btn-delete-group-${userGroup.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`btn-delete-group-${userGroup.id}`}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Voulez-vous vraiment supprimer le groupe "{userGroup.name}" ? Cette action est irreversible.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteUserGroupMutation.mutate(userGroup.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}
@@ -2440,15 +2537,32 @@ export default function Suivi() {
                           </TableCell>
                           <TableCell>
                             {permission && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deletePermissionMutation.mutate(permission.id)}
-                                className="text-destructive hover:text-destructive"
-                                data-testid={`btn-remove-permission-${group.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    data-testid={`btn-remove-permission-${group.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Retirer l'acces</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Voulez-vous vraiment retirer l'acces de ce membre au groupe "{group.name}" ?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deletePermissionMutation.mutate(permission.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Retirer
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </TableCell>
                         </TableRow>
