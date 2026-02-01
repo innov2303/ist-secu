@@ -268,7 +268,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
         )}
 
         <div className="mt-auto space-y-2">
-          {!user && (
+          {!user && !isInDevelopment && (
             <Button asChild className="w-full" data-testid={`button-login-${script.id}`}>
               <a href="/auth">
                 Connectez-vous pour acheter
