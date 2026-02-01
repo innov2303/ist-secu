@@ -20,6 +20,7 @@ import Suivi from "@/pages/Suivi";
 import VerifyEmail from "@/pages/verify-email";
 import ConfirmEmailChange from "@/pages/confirm-email-change";
 import ChangeEmail from "@/pages/change-email";
+import Support from "@/pages/Support";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/suivi" component={Suivi} />
+      <Route path="/support" component={Support} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route component={NotFound} />

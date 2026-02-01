@@ -22,7 +22,7 @@ const CONTACT_SUBJECTS = [
   { value: "billing", label: "Billing", description: "Questions about payments, invoices or subscriptions" },
   { value: "feedback", label: "Feedback", description: "Ideas for improvements or new features" },
 ];
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle, BarChart3 } from "lucide-react";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle, BarChart3, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -92,6 +92,12 @@ export default function Home() {
               <Link href="/purchases">
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 My Products
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild data-testid="link-support">
+              <Link href="/support">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Support
               </Link>
             </Button>
             {user.isAdmin && (
