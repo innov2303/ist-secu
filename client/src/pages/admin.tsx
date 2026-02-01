@@ -2437,6 +2437,9 @@ export default function AdminPage() {
                 </Card>
               </div>
 
+              {/* Charts Grid - 2 columns */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
               {/* User Registration Evolution Chart */}
               <Card>
                 <CardHeader>
@@ -2651,6 +2654,7 @@ export default function AdminPage() {
                   )}
                 </CardContent>
               </Card>
+              </div>
             </div>
           )}
         </div>
