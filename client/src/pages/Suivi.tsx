@@ -931,60 +931,7 @@ export default function Suivi() {
   const hasTeamAccess = isAdmin || isTeamOwner || isTeamMember;
   const hasFullAccess = isAdmin || isTeamOwner || memberRole === "admin";
 
-  if (!hasTeamAccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-lg"
-        >
-          <Card className="border-primary/20">
-            <CardContent className="pt-8 pb-8 text-center">
-              <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mx-auto mb-6">
-                <Server className="w-10 h-10 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold mb-2">Suivi de votre parc</h1>
-              <p className="text-muted-foreground mb-6">
-                Tableau de bord de suivi de vos audits de securite
-              </p>
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
-                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 mb-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="font-medium text-sm">Acces requis</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Pour acceder au service de suivi du parc, vous devez :
-                </p>
-                <ul className="text-sm text-muted-foreground text-left space-y-2 mb-2">
-                  <li className="flex items-start gap-2">
-                    <Shield className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                    <span>Vous abonner a au moins un toolkit de securite</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Users className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                    <span>Ou demander des droits d'acces a l'administrateur principal de votre societe</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="flex gap-3 justify-center flex-wrap">
-                <Button asChild variant="outline">
-                  <Link href="/">Voir les toolkits</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/profile">
-                    <Users className="w-4 h-4 mr-2" />
-                    Gerer mon equipe
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
+  const showAccessRequiredDialog = !hasTeamAccess;
 
   const navItems = [
     { id: "dashboard" as TabType, label: "Tableau de bord", icon: LayoutDashboard },
@@ -1007,6 +954,51 @@ export default function Suivi() {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Dialog d'acces requis */}
+      <Dialog open={showAccessRequiredDialog}>
+        <DialogContent className="sm:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4">
+              <Server className="w-8 h-8 text-primary" />
+            </div>
+            <DialogTitle className="text-center text-xl">Suivi de votre parc</DialogTitle>
+            <DialogDescription className="text-center">
+              Tableau de bord de suivi de vos audits de securite
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 my-4">
+            <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 mb-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium text-sm">Acces requis</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Pour acceder au service de suivi du parc, vous devez :
+            </p>
+            <ul className="text-sm text-muted-foreground text-left space-y-2">
+              <li className="flex items-start gap-2">
+                <Shield className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                <span>Vous abonner a au moins un toolkit de securite</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Users className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                <span>Ou demander des droits d'acces a l'administrateur principal de votre societe</span>
+              </li>
+            </ul>
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-center">
+            <Button asChild variant="outline">
+              <Link href="/">Voir les toolkits</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/profile">
+                <Users className="w-4 h-4 mr-2" />
+                Gerer mon equipe
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Sidebar fixe */}
       <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0">
         {/* Header sidebar */}
