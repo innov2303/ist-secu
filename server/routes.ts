@@ -958,8 +958,53 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Les comptes administrateurs ne peuvent pas etre supprimes" });
       }
 
-      // Delete user's team memberships
-      await db.delete(teamMembers).where(eq(teamMembers.userId, userId));
+      // Delete teams owned by the user and all related data
+      const ownedTeams = await db.select({ id: teams.id }).from(teams).where(eq(teams.ownerId, userId));
+      for (const team of ownedTeams) {
+        // Delete machine group permissions for team members
+        const teamMembersList = await db.select({ id: teamMembers.id }).from(teamMembers).where(eq(teamMembers.teamId, team.id));
+        for (const member of teamMembersList) {
+          await db.delete(machineGroupPermissions).where(eq(machineGroupPermissions.teamMemberId, member.id));
+        }
+        
+        // Delete user group members and user groups
+        const teamUserGroups = await db.select({ id: userGroups.id }).from(userGroups).where(eq(userGroups.teamId, team.id));
+        for (const ug of teamUserGroups) {
+          await db.delete(userGroupMembers).where(eq(userGroupMembers.userGroupId, ug.id));
+        }
+        await db.delete(userGroups).where(eq(userGroups.teamId, team.id));
+        
+        // Delete control corrections, audit reports, machines, machine groups, sites, organizations
+        const teamOrgs = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.teamId, team.id));
+        for (const org of teamOrgs) {
+          const orgSites = await db.select({ id: sites.id }).from(sites).where(eq(sites.organizationId, org.id));
+          for (const site of orgSites) {
+            const siteGroups = await db.select({ id: machineGroups.id }).from(machineGroups).where(eq(machineGroups.siteId, site.id));
+            for (const group of siteGroups) {
+              const groupMachines = await db.select({ id: machines.id }).from(machines).where(eq(machines.machineGroupId, group.id));
+              for (const machine of groupMachines) {
+                await db.delete(controlCorrections).where(eq(controlCorrections.machineId, machine.id));
+                await db.delete(auditReports).where(eq(auditReports.machineId, machine.id));
+              }
+              await db.delete(machines).where(eq(machines.machineGroupId, group.id));
+            }
+            await db.delete(machineGroups).where(eq(machineGroups.siteId, site.id));
+          }
+          await db.delete(sites).where(eq(sites.organizationId, org.id));
+        }
+        await db.delete(organizations).where(eq(organizations.teamId, team.id));
+        
+        // Delete team members
+        await db.delete(teamMembers).where(eq(teamMembers.teamId, team.id));
+        
+        // Delete team
+        await db.delete(teams).where(eq(teams.id, team.id));
+      }
+
+      // Delete user's team memberships (for teams they don't own, using email)
+      if (user.email) {
+        await db.delete(teamMembers).where(eq(teamMembers.email, user.email));
+      }
 
       // Delete user's invoices and invoice items
       const userInvoices = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.userId, userId));

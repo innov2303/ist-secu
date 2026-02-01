@@ -36,6 +36,8 @@ export default function Profile() {
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("member");
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Fetch team eligibility
   const { data: canCreateTeamData, isLoading: canCreateLoading } = useQuery<{ canCreate: boolean }>({
@@ -203,6 +205,26 @@ export default function Profile() {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/profile/delete-account", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Compte supprime", description: "Votre compte a ete supprime avec succes." });
+      window.location.href = "/";
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDeleteAccount = () => {
+    if (deleteConfirmText === "SUPPRIMER") {
+      deleteAccountMutation.mutate();
+    }
+  };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -729,6 +751,31 @@ export default function Profile() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Danger Zone - Delete Account */}
+              <Card className="border-destructive/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" /> Zone de danger
+                  </CardTitle>
+                  <CardDescription>Actions irreversibles sur votre compte</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      La suppression de votre compte est definitive. Toutes vos donnees, achats et informations seront perdus.
+                    </p>
+                    <Button 
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirmation(true)}
+                      data-testid="button-delete-account"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer mon compte
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -1096,6 +1143,63 @@ export default function Profile() {
             <Button onClick={handlePrintInvoice} data-testid="button-print-invoice">
               <Printer className="h-4 w-4 mr-2" />
               Imprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Supprimer votre compte
+            </DialogTitle>
+            <DialogDescription>
+              Cette action est irreversible. Toutes vos donnees seront definitivement supprimees.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Vous perdrez l'acces a tous vos achats, licences et donnees. Cette action ne peut pas etre annulee.
+              </AlertDescription>
+            </Alert>
+            <div className="space-y-2">
+              <Label htmlFor="deleteConfirm" className="text-sm">
+                Pour confirmer, tapez <span className="font-bold">SUPPRIMER</span> ci-dessous :
+              </Label>
+              <Input
+                id="deleteConfirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="SUPPRIMER"
+                data-testid="input-delete-confirm"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirmation(false);
+                setDeleteConfirmText("");
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmText !== "SUPPRIMER" || deleteAccountMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteAccountMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Suppression...</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" /> Supprimer definitivement</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
