@@ -507,3 +507,118 @@ export async function sendEmailChangeConfirmationEmail(data: EmailChangeConfirma
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+interface TicketNotificationData {
+  ticketId: number;
+  ticketSubject: string;
+  customerEmail: string;
+  customerName: string;
+  notificationType: 'new_reply' | 'status_change';
+  replyContent?: string;
+  newStatus?: string;
+  previousStatus?: string;
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'open': return 'Open';
+    case 'in_progress': return 'In Progress';
+    case 'resolved': return 'Resolved';
+    case 'closed': return 'Closed';
+    default: return status;
+  }
+}
+
+export async function sendTicketNotification(data: TicketNotificationData): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    let subject: string;
+    let contentSection: string;
+
+    if (data.notificationType === 'new_reply') {
+      subject = `New reply to your ticket #${data.ticketId} - Infra Shield Tools`;
+      contentSection = `
+        <p style="margin: 0 0 20px 0;">Our support team has replied to your ticket:</p>
+        
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+          <p style="margin: 0; color: #374151; white-space: pre-wrap;">${data.replyContent}</p>
+        </div>
+        
+        <p style="margin: 20px 0 0 0;">You can view and respond to this ticket by logging into your account.</p>
+      `;
+    } else {
+      subject = `Ticket #${data.ticketId} status updated - Infra Shield Tools`;
+      contentSection = `
+        <p style="margin: 0 0 20px 0;">The status of your ticket has been updated:</p>
+        
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0;"><strong>Previous status:</strong> ${getStatusLabel(data.previousStatus || '')}</p>
+          <p style="margin: 0;"><strong>New status:</strong> ${getStatusLabel(data.newStatus || '')}</p>
+        </div>
+        
+        ${data.newStatus === 'resolved' ? '<p style="margin: 20px 0 0 0; color: #059669;">Your issue has been marked as resolved. If you need further assistance, please reply to this ticket.</p>' : ''}
+        ${data.newStatus === 'closed' ? '<p style="margin: 20px 0 0 0; color: #6b7280;">This ticket has been closed. If you need further assistance, please create a new ticket.</p>' : ''}
+      `;
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 20px; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <div style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%); padding: 30px; border-radius: 12px 12px 0 0;">
+      <h1 style="color: white; margin: 0; text-align: center; font-size: 24px;">Infra Shield Tools</h1>
+      <p style="color: #9ca3af; margin: 10px 0 0 0; text-align: center; font-size: 14px;">Support Ticket Update</p>
+    </div>
+    
+    <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+      <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 14px; color: #6b7280;">
+          <strong style="color: #374151;">Ticket #${data.ticketId}</strong> - ${data.ticketSubject}
+        </p>
+      </div>
+      
+      <p style="margin: 0 0 20px 0;">Hello ${data.customerName},</p>
+      
+      ${contentSection}
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://ist-secu.com/support" style="display: inline-block; background: #374151; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">View Ticket</a>
+      </div>
+      
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+        <p style="margin: 0; color: #6b7280; font-size: 12px;">
+          Infra Shield Tools - ist-secu.com
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    const result = await client.emails.send({
+      from: fromEmail || 'Infra Shield Tools <noreply@ist-secu.com>',
+      to: data.customerEmail,
+      subject,
+      html,
+    });
+
+    if (result.error) {
+      console.error('Resend error:', result.error);
+      return { success: false, error: result.error.message };
+    }
+
+    console.log('Ticket notification sent successfully:', result.data?.id);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending ticket notification:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}

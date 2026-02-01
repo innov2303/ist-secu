@@ -14,7 +14,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
-import { sendInvoiceEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendEmailChangeConfirmationEmail } from "./email";
+import { sendInvoiceEmail, sendPasswordResetEmail, sendEmailVerificationEmail, sendEmailChangeConfirmationEmail, sendTicketNotification } from "./email";
 import { injectLicense } from "./license";
 
 // Server-side CAPTCHA challenge storage
@@ -6527,6 +6527,21 @@ export async function registerRoutes(
       }
       await db.update(supportTickets).set(updateData).where(eq(supportTickets.id, ticketId));
 
+      // Send email notification to user when admin replies
+      if (user.isAdmin && ticket.userId !== userId) {
+        const ticketOwner = await authStorage.getUser(ticket.userId);
+        if (ticketOwner?.email) {
+          sendTicketNotification({
+            ticketId,
+            ticketSubject: ticket.subject,
+            customerEmail: ticketOwner.email,
+            customerName: ticketOwner.firstName || ticketOwner.email.split('@')[0],
+            notificationType: 'new_reply',
+            replyContent: content,
+          }).catch(err => console.error('Failed to send ticket notification:', err));
+        }
+      }
+
       res.status(201).json({
         ...newMessage,
         user: {
@@ -6563,6 +6578,12 @@ export async function registerRoutes(
 
       const { status, priority } = req.body;
 
+      // Get current ticket to compare status
+      const [currentTicket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+      if (!currentTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
       const updateData: any = { updatedAt: new Date() };
       if (status) {
         updateData.status = status;
@@ -6581,6 +6602,22 @@ export async function registerRoutes(
 
       if (!updatedTicket) {
         return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Send email notification to user when status changes
+      if (status && status !== currentTicket.status) {
+        const ticketOwner = await authStorage.getUser(currentTicket.userId);
+        if (ticketOwner?.email) {
+          sendTicketNotification({
+            ticketId,
+            ticketSubject: currentTicket.subject,
+            customerEmail: ticketOwner.email,
+            customerName: ticketOwner.firstName || ticketOwner.email.split('@')[0],
+            notificationType: 'status_change',
+            previousStatus: currentTicket.status,
+            newStatus: status,
+          }).catch(err => console.error('Failed to send ticket notification:', err));
+        }
       }
 
       await logAdmin(userId, "update_ticket", `Updated ticket #${ticketId} status to ${status || 'unchanged'}`);
