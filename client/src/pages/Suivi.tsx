@@ -303,10 +303,12 @@ export default function Suivi() {
   const team = teamData?.team;
   const teamMembers = teamData?.members || [];
 
-  const { data: membership, isLoading: membershipLoading } = useQuery<TeamMembership>({
+  const { data: membershipResponse, isLoading: membershipLoading } = useQuery<{ membership: TeamMembership | null }>({
     queryKey: ["/api/teams/my-membership"],
     enabled: !!user,
   });
+  
+  const membership = membershipResponse?.membership;
 
   const { data: stats } = useQuery<FleetStats>({
     queryKey: ["/api/fleet/stats"],
