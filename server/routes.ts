@@ -18,7 +18,81 @@ import { injectLicense } from "./license";
 
 // Server-side CAPTCHA challenge storage
 const captchaChallenges = new Map<string, { answer: number; expiresAt: number }>();
+const imageCaptchaChallenges = new Map<string, { targetIndices: number[]; expiresAt: number }>();
 const CAPTCHA_EXPIRY = 5 * 60 * 1000; // 5 minutes
+
+// Image CAPTCHA icons and categories
+const CAPTCHA_ICONS = ["shield", "lock", "key", "server", "database", "cloud", "wifi", "monitor", "cpu", "harddrive", "globe", "mail", "user", "camera", "music", "heart", "star", "zap", "bell"];
+const TARGET_CATEGORIES = [
+  { icon: "shield", label: "boucliers" },
+  { icon: "lock", label: "cadenas" },
+  { icon: "key", label: "cles" },
+  { icon: "server", label: "serveurs" },
+  { icon: "database", label: "bases de donnees" },
+  { icon: "cloud", label: "nuages" },
+  { icon: "globe", label: "globes" },
+  { icon: "star", label: "etoiles" },
+];
+
+function generateImageCaptchaChallenge(): { challengeId: string; targetCategory: string; targetLabel: string; grid: string[] } {
+  const targetCat = TARGET_CATEGORIES[Math.floor(Math.random() * TARGET_CATEGORIES.length)];
+  const targetIcon = targetCat.icon;
+  
+  const otherIcons = CAPTCHA_ICONS.filter(i => i !== targetIcon);
+  const grid: string[] = [];
+  const targetIndices: number[] = [];
+  
+  const numTargets = Math.floor(Math.random() * 3) + 2;
+  
+  for (let i = 0; i < 9; i++) {
+    if (targetIndices.length < numTargets && Math.random() < 0.4) {
+      grid.push(targetIcon);
+      targetIndices.push(i);
+    } else {
+      grid.push(otherIcons[Math.floor(Math.random() * otherIcons.length)]);
+    }
+  }
+  
+  while (targetIndices.length < numTargets) {
+    const idx = Math.floor(Math.random() * 9);
+    if (!targetIndices.includes(idx)) {
+      grid[idx] = targetIcon;
+      targetIndices.push(idx);
+    }
+  }
+  
+  const challengeId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  imageCaptchaChallenges.set(challengeId, { targetIndices: targetIndices.sort((a, b) => a - b), expiresAt: Date.now() + CAPTCHA_EXPIRY });
+  
+  if (imageCaptchaChallenges.size > 1000) {
+    const now = Date.now();
+    for (const [id, challenge] of imageCaptchaChallenges.entries()) {
+      if (challenge.expiresAt < now) {
+        imageCaptchaChallenges.delete(id);
+      }
+    }
+  }
+  
+  return { challengeId, targetCategory: targetIcon, targetLabel: targetCat.label, grid };
+}
+
+function verifyImageCaptchaChallenge(challengeId: string, selectedIndices: number[], consume: boolean = true): boolean {
+  const challenge = imageCaptchaChallenges.get(challengeId);
+  if (!challenge) return false;
+  
+  if (Date.now() > challenge.expiresAt) {
+    imageCaptchaChallenges.delete(challengeId);
+    return false;
+  }
+  
+  const sortedSelected = [...selectedIndices].sort((a, b) => a - b);
+  const isCorrect = JSON.stringify(sortedSelected) === JSON.stringify(challenge.targetIndices);
+  
+  if (isCorrect && consume) {
+    imageCaptchaChallenges.delete(challengeId);
+  }
+  return isCorrect;
+}
 
 function generateCaptchaChallenge(): { challengeId: string; question: string } {
   const operations = ["+", "-", "*"];
@@ -166,6 +240,22 @@ export async function registerRoutes(
     res.json({ success: isValid });
   });
 
+  // Image CAPTCHA endpoints
+  app.get("/api/captcha/image-challenge", (req, res) => {
+    const challenge = generateImageCaptchaChallenge();
+    res.json(challenge);
+  });
+
+  app.post("/api/captcha/image-verify", (req, res) => {
+    const { challengeId, selectedIndices } = req.body;
+    if (!challengeId || !Array.isArray(selectedIndices)) {
+      return res.status(400).json({ success: false, message: "Donnees invalides" });
+    }
+    // Don't consume - just check if selection is correct (consume=false)
+    const isValid = verifyImageCaptchaChallenge(challengeId, selectedIndices, false);
+    res.json({ success: isValid });
+  });
+
   // Local auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -178,11 +268,18 @@ export async function registerRoutes(
         email, password, firstName, lastName, companyName, profession,
         street, postalCode, city, 
         billingAddressSameAsAddress, billingStreet, billingPostalCode, billingCity,
-        captchaChallengeId, captchaAnswer
+        captchaChallengeId, captchaType, captchaAnswer, captchaSelectedIndices
       } = result.data;
 
       // Verify CAPTCHA (required)
-      if (!verifyCaptchaChallenge(captchaChallengeId, captchaAnswer)) {
+      let captchaValid = false;
+      if (captchaType === "math" && typeof captchaAnswer === "number") {
+        captchaValid = verifyCaptchaChallenge(captchaChallengeId, captchaAnswer, true);
+      } else if (captchaType === "image" && Array.isArray(captchaSelectedIndices)) {
+        captchaValid = verifyImageCaptchaChallenge(captchaChallengeId, captchaSelectedIndices, true);
+      }
+      
+      if (!captchaValid) {
         return res.status(400).json({ message: "Verification de securite incorrecte ou expiree. Veuillez reessayer." });
       }
 
@@ -267,10 +364,17 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { email, password, captchaChallengeId, captchaAnswer } = result.data;
+      const { email, password, captchaChallengeId, captchaType, captchaAnswer, captchaSelectedIndices } = result.data;
 
       // Verify CAPTCHA (required)
-      if (!verifyCaptchaChallenge(captchaChallengeId, captchaAnswer)) {
+      let captchaValid = false;
+      if (captchaType === "math" && typeof captchaAnswer === "number") {
+        captchaValid = verifyCaptchaChallenge(captchaChallengeId, captchaAnswer, true);
+      } else if (captchaType === "image" && Array.isArray(captchaSelectedIndices)) {
+        captchaValid = verifyImageCaptchaChallenge(captchaChallengeId, captchaSelectedIndices, true);
+      }
+      
+      if (!captchaValid) {
         return res.status(400).json({ message: "Verification de securite incorrecte ou expiree. Veuillez reessayer." });
       }
 

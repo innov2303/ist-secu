@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
-import { MathCaptcha } from "@/components/MathCaptcha";
+import { ImageCaptcha } from "@/components/ImageCaptcha";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -41,9 +41,9 @@ export default function AuthPage() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginCaptchaVerified, setLoginCaptchaVerified] = useState(false);
-  const [loginCaptchaData, setLoginCaptchaData] = useState<{ challengeId: string; answer: number } | null>(null);
+  const [loginCaptchaData, setLoginCaptchaData] = useState<{ challengeId: string; selectedIndices: number[] } | null>(null);
   const [registerCaptchaVerified, setRegisterCaptchaVerified] = useState(false);
-  const [registerCaptchaData, setRegisterCaptchaData] = useState<{ challengeId: string; answer: number } | null>(null);
+  const [registerCaptchaData, setRegisterCaptchaData] = useState<{ challengeId: string; selectedIndices: number[] } | null>(null);
 
   if (user) {
     setLocation("/");
@@ -63,7 +63,8 @@ export default function AuthPage() {
       await login({ 
         ...loginData, 
         captchaChallengeId: loginCaptchaData.challengeId, 
-        captchaAnswer: loginCaptchaData.answer 
+        captchaType: "image" as const,
+        captchaSelectedIndices: loginCaptchaData.selectedIndices 
       });
       setLocation("/");
     } catch (err: any) {
@@ -91,7 +92,8 @@ export default function AuthPage() {
       await register({ 
         ...registerData, 
         captchaChallengeId: registerCaptchaData.challengeId, 
-        captchaAnswer: registerCaptchaData.answer 
+        captchaType: "image" as const,
+        captchaSelectedIndices: registerCaptchaData.selectedIndices 
       });
       setLocation("/");
     } catch (err: any) {
@@ -193,11 +195,11 @@ export default function AuthPage() {
                       Mot de passe oublie ?
                     </Link>
                   </div>
-                  <MathCaptcha
-                    onVerify={(isValid, challengeId, answer) => {
+                  <ImageCaptcha
+                    onVerify={(isValid, challengeId, selectedIndices) => {
                       setLoginCaptchaVerified(isValid);
                       if (isValid && challengeId) {
-                        setLoginCaptchaData({ challengeId, answer });
+                        setLoginCaptchaData({ challengeId, selectedIndices });
                       } else {
                         setLoginCaptchaData(null);
                       }
@@ -478,11 +480,11 @@ export default function AuthPage() {
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}
-                  <MathCaptcha
-                    onVerify={(isValid, challengeId, answer) => {
+                  <ImageCaptcha
+                    onVerify={(isValid, challengeId, selectedIndices) => {
                       setRegisterCaptchaVerified(isValid);
                       if (isValid && challengeId) {
-                        setRegisterCaptchaData({ challengeId, answer });
+                        setRegisterCaptchaData({ challengeId, selectedIndices });
                       } else {
                         setRegisterCaptchaData(null);
                       }
