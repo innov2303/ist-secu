@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, Mail, Lock, User, MapPin } from "lucide-react";
+import { Loader2, ArrowLeft, Mail, Lock, User, MapPin, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
@@ -33,6 +33,9 @@ export default function AuthPage() {
     billingCity: ""
   });
   const [error, setError] = useState<string | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (user) {
     setLocation("/");
@@ -133,14 +136,22 @@ export default function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="login-password"
-                        type="password"
+                        type={showLoginPassword ? "text" : "password"}
                         placeholder="••••••••"
-                        className="pl-10"
+                        className="pl-10 pr-10"
                         value={loginData.password}
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                         required
                         data-testid="input-login-password"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="button-toggle-login-password"
+                      >
+                        {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                   {error && (
@@ -219,15 +230,23 @@ export default function AuthPage() {
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="register-password"
-                          type="password"
+                          type={showRegisterPassword ? "text" : "password"}
                           placeholder="••••••••"
-                          className="pl-10"
+                          className="pl-10 pr-10"
                           value={registerData.password}
                           onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                           required
                           minLength={6}
                           data-testid="input-register-password"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid="button-toggle-register-password"
+                        >
+                          {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                       <p className="text-xs text-muted-foreground">Min. 8 car., majuscule, chiffre, special</p>
                     </div>
@@ -237,15 +256,23 @@ export default function AuthPage() {
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="register-confirm-password"
-                          type="password"
+                          type={showConfirmPassword ? "text" : "password"}
                           placeholder="••••••••"
-                          className="pl-10"
+                          className="pl-10 pr-10"
                           value={registerData.confirmPassword}
                           onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                           required
                           minLength={6}
                           data-testid="input-register-confirm-password"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid="button-toggle-confirm-password"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
                     </div>
                   </div>
