@@ -24,7 +24,7 @@ import {
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
-import type { ContactRequest, Script, Invoice, InvoiceItem, AnnualBundle } from "@shared/schema";
+import type { Script, Invoice, InvoiceItem, AnnualBundle } from "@shared/schema";
 import { Link } from "wouter";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "overdue";
@@ -55,8 +55,6 @@ export default function AdminPage() {
   const [activeSection, setActiveSection] = useState<AdminSection>("users");
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
-  const [contactSearch, setContactSearch] = useState("");
-  const [contactPage, setContactPage] = useState(1);
   const [ticketSearch, setTicketSearch] = useState("");
   const [ticketPage, setTicketPage] = useState(1);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
@@ -116,10 +114,6 @@ export default function AdminPage() {
     enabled: !!user?.isAdmin,
   });
 
-  const { data: contactRequests, isLoading: contactLoading } = useQuery<ContactRequest[]>({
-    queryKey: ["/api/admin/contact-requests"],
-    enabled: !!user?.isAdmin,
-  });
 
   // Support tickets types and queries
   interface TicketUser {
@@ -343,25 +337,6 @@ export default function AdminPage() {
     return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredUsers, userPage]);
 
-  // Contact requests filtering and pagination
-  const filteredContacts = useMemo(() => {
-    if (!contactRequests) return [];
-    if (!contactSearch.trim()) return contactRequests;
-    const search = contactSearch.toLowerCase();
-    return contactRequests.filter(c => 
-      c.name?.toLowerCase().includes(search) ||
-      c.email?.toLowerCase().includes(search) ||
-      c.subject?.toLowerCase().includes(search) ||
-      c.ticketNumber?.toLowerCase().includes(search)
-    );
-  }, [contactRequests, contactSearch]);
-
-  const totalContactPages = Math.ceil(filteredContacts.length / ITEMS_PER_PAGE);
-  const paginatedContacts = useMemo(() => {
-    const start = (contactPage - 1) * ITEMS_PER_PAGE;
-    return filteredContacts.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredContacts, contactPage]);
-
   // Support tickets filtering and pagination
   const filteredTickets = useMemo(() => {
     if (!supportTickets) return [];
@@ -468,33 +443,6 @@ export default function AdminPage() {
     if (!scripts) return 0;
     return scripts.filter(s => s.bundledScriptIds && s.bundledScriptIds.length > 0).length;
   }, [scripts]);
-
-  // Mutations
-  const updateContactStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      await apiRequest("PATCH", `/api/admin/contact-requests/${id}`, { status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-requests"] });
-      toast({ title: "Status updated" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Unable to update status", variant: "destructive" });
-    },
-  });
-
-  const deleteContactMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/admin/contact-requests/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/contact-requests"] });
-      toast({ title: "Request deleted" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Unable to delete request", variant: "destructive" });
-    },
-  });
 
   // Support ticket mutations
   const updateTicketStatusMutation = useMutation({
@@ -1048,7 +996,7 @@ export default function AdminPage() {
 
   const sidebarItems = [
     { id: "users" as AdminSection, label: "Users", icon: Users, count: users?.length },
-    { id: "tickets" as AdminSection, label: "Support", icon: MessageSquare, count: supportTickets?.filter(t => t.status === "open" || t.status === "in_progress").length || contactRequests?.filter(c => c.status === "pending").length },
+    { id: "tickets" as AdminSection, label: "Support", icon: MessageSquare, count: supportTickets?.filter(t => t.status === "open" || t.status === "in_progress").length },
     { id: "toolkits" as AdminSection, label: "Toolkits", icon: Package, count: toolkitCount },
     { id: "bundles" as AdminSection, label: "Annual Bundles", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Invoices", icon: FileText, count: allInvoices.length },
@@ -1496,158 +1444,6 @@ export default function AdminPage() {
                 </Card>
               )}
 
-              {/* Legacy Contact Requests */}
-              {(contactRequests?.length ?? 0) > 0 && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <CardTitle>Legacy Contact Requests</CardTitle>
-                        <CardDescription>
-                          {filteredContacts.filter(c => c.status === "pending").length} pending out of {filteredContacts.length} request(s)
-                        </CardDescription>
-                      </div>
-                      <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search..."
-                          value={contactSearch}
-                          onChange={(e) => { setContactSearch(e.target.value); setContactPage(1); }}
-                          className="pl-9"
-                          data-testid="input-contact-search"
-                        />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {contactLoading ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : paginatedContacts.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">
-                        {contactSearch ? "No requests found" : "No contact requests"}
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        {paginatedContacts.map((request) => (
-                          <div
-                            key={request.id}
-                            className="p-4 rounded-lg border bg-card"
-                            data-testid={`row-contact-${request.id}`}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="text-xs font-mono">{request.ticketNumber}</Badge>
-                                  <span className="font-medium">{request.name}</span>
-                                  <a href={`mailto:${request.email}`} className="text-sm text-primary flex items-center gap-1 hover:underline">
-                                    <Mail className="h-3 w-3" />
-                                    {request.email}
-                                  </a>
-                                  <Badge variant={request.status === "pending" ? "secondary" : "default"} className="text-xs">
-                                    {request.status === "pending" ? (
-                                      <><Clock className="h-3 w-3 mr-1" /> Pending</>
-                                    ) : (
-                                      <><CheckCircle className="h-3 w-3 mr-1" /> Resolved</>
-                                    )}
-                                  </Badge>
-                                </div>
-                                <div className="text-sm font-medium">{request.subject}</div>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{request.description}</p>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(request.createdAt).toLocaleString('en-US')}
-                                </div>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                {request.status === "pending" ? (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "resolved" })}
-                                    disabled={updateContactStatusMutation.isPending}
-                                    data-testid={`button-resolve-${request.id}`}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Mark Resolved
-                                  </Button>
-                                ) : (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => updateContactStatusMutation.mutate({ id: request.id, status: "pending" })}
-                                      disabled={updateContactStatusMutation.isPending}
-                                      data-testid={`button-unresolve-${request.id}`}
-                                    >
-                                      <Clock className="h-4 w-4 mr-1" />
-                                      Reopen
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          variant="destructive"
-                                          size="sm"
-                                          disabled={deleteContactMutation.isPending}
-                                          data-testid={`button-delete-contact-${request.id}`}
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-1" />
-                                          Delete
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Are you sure you want to delete this contact request from {request.name}? This action is irreversible.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            onClick={() => deleteContactMutation.mutate(request.id)}
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          >
-                                            Delete
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {totalContactPages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                        <p className="text-sm text-muted-foreground">Page {contactPage} of {totalContactPages}</p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setContactPage(p => Math.max(1, p - 1))}
-                            disabled={contactPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Previous
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setContactPage(p => Math.min(totalContactPages, p + 1))}
-                            disabled={contactPage === totalContactPages}
-                          >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
 

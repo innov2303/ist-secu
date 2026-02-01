@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Hero } from "@/components/Hero";
 import { ScriptCard } from "@/components/ScriptCard";
 import { BundleCard } from "@/components/BundleCard";
@@ -9,34 +8,14 @@ import { AnnualBundle } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { SEO, OrganizationSchema } from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-
-const CONTACT_SUBJECTS = [
-  { value: "question", label: "General Question", description: "Inquiries about our products or services" },
-  { value: "technical", label: "Technical Support", description: "Help with script installation or usage" },
-  { value: "billing", label: "Billing", description: "Questions about payments, invoices or subscriptions" },
-  { value: "feedback", label: "Feedback", description: "Ideas for improvements or new features" },
-];
-import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send, CheckCircle, BarChart3, MessageSquare } from "lucide-react";
+import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, BarChart3, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const { data: scripts, isLoading, error } = useScripts();
   const { user, isLoading: authLoading, logout } = useAuth();
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", description: "" });
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [ticketNumber, setTicketNumber] = useState("");
-  const { toast } = useToast();
 
   // Fetch annual bundles
   const { data: bundles } = useQuery<AnnualBundle[]>({
@@ -261,133 +240,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      <Dialog open={supportOpen} onOpenChange={(open) => {
-        setSupportOpen(open);
-        if (!open) {
-          setSent(false);
-          setTicketNumber("");
-          setContactForm({ name: "", email: "", subject: "", description: "" });
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
-              Contact Us
-            </DialogTitle>
-            <DialogDescription>
-              Send us a message and we'll get back to you shortly.
-            </DialogDescription>
-          </DialogHeader>
-          {sent ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Message Sent</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                We have received your message and will respond as soon as possible.
-              </p>
-              <div className="bg-muted px-4 py-2 rounded-md">
-                <p className="text-xs text-muted-foreground mb-1">Ticket Number</p>
-                <p className="font-mono font-semibold text-primary">{ticketNumber}</p>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setSending(true);
-              try {
-                const subjectLabel = CONTACT_SUBJECTS.find(s => s.value === contactForm.subject)?.label || contactForm.subject;
-                const response = await apiRequest("POST", "/api/contact", {
-                  ...contactForm,
-                  subject: subjectLabel,
-                  userId: user?.id || null,
-                  name: contactForm.name || user?.firstName || "",
-                  email: contactForm.email || user?.email || "",
-                });
-                const data = await response.json();
-                setTicketNumber(data.ticketNumber);
-                setSent(true);
-                toast({ title: "Message Sent", description: `Ticket: ${data.ticketNumber}` });
-              } catch (error) {
-                toast({ title: "Error", description: "Unable to send the message.", variant: "destructive" });
-              } finally {
-                setSending(false);
-              }
-            }} className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="contact-name">Name</Label>
-                <Input
-                  id="contact-name"
-                  value={contactForm.name || user?.firstName || ""}
-                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                  placeholder="Your name"
-                  required
-                  data-testid="input-contact-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact-email">Email</Label>
-                <Input
-                  id="contact-email"
-                  type="email"
-                  value={contactForm.email || user?.email || ""}
-                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                  placeholder="your@email.com"
-                  required
-                  data-testid="input-contact-email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact-subject">Subject</Label>
-                <Select
-                  value={contactForm.subject}
-                  onValueChange={(value) => setContactForm({ ...contactForm, subject: value })}
-                >
-                  <SelectTrigger data-testid="select-contact-subject">
-                    <SelectValue placeholder="Select a subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONTACT_SUBJECTS.map((subject) => (
-                      <SelectItem key={subject.value} value={subject.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{subject.label}</span>
-                          <span className="text-xs text-muted-foreground">{subject.description}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact-description">Description</Label>
-                <Textarea
-                  id="contact-description"
-                  value={contactForm.description}
-                  onChange={(e) => setContactForm({ ...contactForm, description: e.target.value })}
-                  placeholder="Describe your request..."
-                  rows={4}
-                  required
-                  data-testid="input-contact-description"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={sending} data-testid="button-send-contact">
-                {sending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Send
-                  </>
-                )}
-              </Button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
