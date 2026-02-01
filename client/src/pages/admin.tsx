@@ -2481,6 +2481,7 @@ export default function AdminPage() {
                           name="Inscriptions"
                           fill="hsl(var(--primary))" 
                           radius={[4, 4, 0, 0]}
+                          maxBarSize={40}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -2584,6 +2585,7 @@ export default function AdminPage() {
                           name="Revenus"
                           fill="hsl(var(--primary))" 
                           radius={[4, 4, 0, 0]}
+                          maxBarSize={40}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -2638,8 +2640,8 @@ export default function AdminPage() {
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />
                         <Legend />
-                        <Bar dataKey="received" name="Recus" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="processed" name="Traites" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="received" name="Recus" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="processed" name="Traites" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
