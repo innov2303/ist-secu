@@ -956,7 +956,7 @@ export default function Suivi() {
     <div className="min-h-screen bg-background flex">
       {/* Dialog d'acces requis */}
       <Dialog open={showAccessRequiredDialog}>
-        <DialogContent className="sm:max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-lg [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4">
               <Server className="w-8 h-8 text-primary" />
