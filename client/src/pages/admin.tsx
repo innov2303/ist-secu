@@ -178,7 +178,7 @@ export default function AdminPage() {
 
   // Statistics section state
   const [userStatsPeriod, setUserStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
-  const [revenueStatsPeriod, setRevenueStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
+  const [revenueYear, setRevenueYear] = useState<number>(new Date().getFullYear());
   const [ticketStatsPeriod, setTicketStatsPeriod] = useState<"day" | "week" | "month" | "year">("month");
 
   const { data: overviewStats } = useQuery<{
@@ -215,9 +215,9 @@ export default function AdminPage() {
     data: { date: string; revenue: number }[];
     total: number;
   }>({
-    queryKey: ["/api/admin/stats/revenue", revenueStatsPeriod],
+    queryKey: ["/api/admin/stats/revenue", revenueYear],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/stats/revenue?period=${revenueStatsPeriod}`);
+      const res = await fetch(`/api/admin/stats/revenue?year=${revenueYear}`);
       if (!res.ok) throw new Error("Failed to fetch revenue stats");
       return res.json();
     },
@@ -2551,15 +2551,15 @@ export default function AdminPage() {
                       </CardTitle>
                       <CardDescription>Revenus bases sur les factures payees</CardDescription>
                     </div>
-                    <Select value={revenueStatsPeriod} onValueChange={(v) => setRevenueStatsPeriod(v as typeof revenueStatsPeriod)}>
-                      <SelectTrigger className="w-32" data-testid="select-revenue-period">
+                    <Select value={String(revenueYear)} onValueChange={(v) => setRevenueYear(Number(v))}>
+                      <SelectTrigger className="w-32" data-testid="select-revenue-year">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="day">Jour</SelectItem>
-                        <SelectItem value="week">Semaine</SelectItem>
-                        <SelectItem value="month">Mois</SelectItem>
-                        <SelectItem value="year">Annee</SelectItem>
+                        {[...Array(5)].map((_, i) => {
+                          const year = new Date().getFullYear() - i;
+                          return <SelectItem key={year} value={String(year)}>{year}</SelectItem>;
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

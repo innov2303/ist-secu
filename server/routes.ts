@@ -4653,45 +4653,36 @@ export async function registerRoutes(
     }
   });
 
-  // Get revenue statistics from invoices
+  // Get revenue statistics from invoices - by year with all 12 months
   app.get("/api/admin/stats/revenue", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { period = "month" } = req.query;
+      const year = Number(req.query.year) || new Date().getFullYear();
       
-      let dateFormat: string;
-      let interval: string;
-      
-      switch (period) {
-        case "day":
-          dateFormat = "HH24\"h\"";
-          interval = "12 hours";
-          break;
-        case "week":
-          dateFormat = "Dy DD/MM";
-          interval = "7 days";
-          break;
-        case "year":
-          dateFormat = "Mon YYYY";
-          interval = "12 months";
-          break;
-        case "month":
-        default:
-          dateFormat = "\"Sem\" IW";
-          interval = "5 weeks";
-      }
-      
+      // Generate all 12 months for the selected year
       const stats = await db.execute(sql`
+        WITH months AS (
+          SELECT generate_series(
+            DATE '${sql.raw(String(year))}-01-01',
+            DATE '${sql.raw(String(year))}-12-01',
+            INTERVAL '1 month'
+          ) as month
+        )
         SELECT 
-          TO_CHAR(paid_at, ${dateFormat}) as date,
-          SUM(total_cents) as revenue
-        FROM invoices
-        WHERE status = 'paid' AND paid_at >= NOW() - INTERVAL '${sql.raw(interval)}'
-        GROUP BY date
-        ORDER BY date ASC
+          TO_CHAR(m.month, 'Mon') as date,
+          COALESCE(SUM(i.total_cents), 0) as revenue
+        FROM months m
+        LEFT JOIN invoices i ON 
+          DATE_TRUNC('month', i.paid_at) = m.month 
+          AND i.status = 'paid'
+        GROUP BY m.month
+        ORDER BY m.month ASC
       `);
       
       const totalRevenue = await db.execute(sql`
-        SELECT SUM(total_cents) as total FROM invoices WHERE status = 'paid'
+        SELECT COALESCE(SUM(total_cents), 0) as total 
+        FROM invoices 
+        WHERE status = 'paid' 
+          AND EXTRACT(YEAR FROM paid_at) = ${year}
       `);
       
       res.json({
