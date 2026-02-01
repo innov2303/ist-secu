@@ -68,11 +68,13 @@ export const registerSchema = z.object({
   billingStreet: z.string().optional(),
   billingPostalCode: z.string().optional(),
   billingCity: z.string().optional(),
+  turnstileToken: z.string().optional(),
 });
 
 export const loginSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(1, "Mot de passe requis"),
+  turnstileToken: z.string().optional(),
 });
 
 export type RegisterData = z.infer<typeof registerSchema>;

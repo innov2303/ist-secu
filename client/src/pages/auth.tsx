@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
+import { Turnstile } from "@/components/Turnstile";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -39,6 +40,10 @@ export default function AuthPage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginTurnstileToken, setLoginTurnstileToken] = useState<string | null>(null);
+  const [registerTurnstileToken, setRegisterTurnstileToken] = useState<string | null>(null);
+  
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
   if (user) {
     setLocation("/");
@@ -48,11 +53,18 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    if (turnstileSiteKey && !loginTurnstileToken) {
+      setError("Veuillez completer la verification de securite");
+      return;
+    }
+    
     try {
-      await login(loginData);
+      await login({ ...loginData, turnstileToken: loginTurnstileToken || undefined });
       setLocation("/");
     } catch (err: any) {
       setError(err.message);
+      setLoginTurnstileToken(null);
     }
   };
 
@@ -65,11 +77,17 @@ export default function AuthPage() {
       return;
     }
     
+    if (turnstileSiteKey && !registerTurnstileToken) {
+      setError("Veuillez completer la verification de securite");
+      return;
+    }
+    
     try {
-      await register(registerData);
+      await register({ ...registerData, turnstileToken: registerTurnstileToken || undefined });
       setLocation("/");
     } catch (err: any) {
       setError(err.message);
+      setRegisterTurnstileToken(null);
     }
   };
 
@@ -165,7 +183,17 @@ export default function AuthPage() {
                       Mot de passe oublie ?
                     </Link>
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-login-submit">
+                  {turnstileSiteKey && (
+                    <div className="flex justify-center">
+                      <Turnstile
+                        siteKey={turnstileSiteKey}
+                        onVerify={setLoginTurnstileToken}
+                        onExpire={() => setLoginTurnstileToken(null)}
+                        theme="auto"
+                      />
+                    </div>
+                  )}
+                  <Button type="submit" className="w-full" disabled={isLoggingIn || (turnstileSiteKey && !loginTurnstileToken)} data-testid="button-login-submit">
                     {isLoggingIn ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -440,7 +468,17 @@ export default function AuthPage() {
                   {error && (
                     <p className="text-sm text-destructive" data-testid="text-error">{error}</p>
                   )}
-                  <Button type="submit" className="w-full" disabled={isRegistering} data-testid="button-register-submit">
+                  {turnstileSiteKey && (
+                    <div className="flex justify-center">
+                      <Turnstile
+                        siteKey={turnstileSiteKey}
+                        onVerify={setRegisterTurnstileToken}
+                        onExpire={() => setRegisterTurnstileToken(null)}
+                        theme="auto"
+                      />
+                    </div>
+                  )}
+                  <Button type="submit" className="w-full" disabled={isRegistering || (turnstileSiteKey && !registerTurnstileToken)} data-testid="button-register-submit">
                     {isRegistering ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />

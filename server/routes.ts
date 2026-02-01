@@ -16,6 +16,33 @@ import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./st
 import { sendInvoiceEmail, sendPasswordResetEmail } from "./email";
 import { injectLicense } from "./license";
 
+// Turnstile verification
+async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  if (!secretKey) {
+    console.log("Turnstile secret key not configured, skipping verification");
+    return true; // Skip verification if not configured
+  }
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret: secretKey,
+        response: token,
+        remoteip: ip,
+      }),
+    });
+
+    const data = await response.json() as { success: boolean };
+    return data.success;
+  } catch (error) {
+    console.error("Turnstile verification error:", error);
+    return false;
+  }
+}
+
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -90,10 +117,20 @@ export async function registerRoutes(
       }
 
       const { 
-        email, password, firstName, lastName, 
+        email, password, firstName, lastName, companyName, profession,
         street, postalCode, city, 
-        billingAddressSameAsAddress, billingStreet, billingPostalCode, billingCity 
+        billingAddressSameAsAddress, billingStreet, billingPostalCode, billingCity,
+        turnstileToken
       } = result.data;
+
+      // Verify Turnstile token if provided
+      if (turnstileToken) {
+        const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+        const isValidToken = await verifyTurnstileToken(turnstileToken, clientIp);
+        if (!isValidToken) {
+          return res.status(400).json({ message: "Verification de securite echouee. Veuillez reessayer." });
+        }
+      }
 
       // Check if user already exists
       const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -114,6 +151,8 @@ export async function registerRoutes(
         password: hashedPassword,
         firstName,
         lastName,
+        companyName: companyName || null,
+        profession: profession || null,
         street,
         postalCode,
         city,
@@ -174,7 +213,15 @@ export async function registerRoutes(
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
-      const { email, password } = result.data;
+      const { email, password, turnstileToken } = result.data;
+
+      // Verify Turnstile token if provided
+      if (turnstileToken) {
+        const isValidToken = await verifyTurnstileToken(turnstileToken, clientIp);
+        if (!isValidToken) {
+          return res.status(400).json({ message: "Verification de securite echouee. Veuillez reessayer." });
+        }
+      }
 
       // Find user
       const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
