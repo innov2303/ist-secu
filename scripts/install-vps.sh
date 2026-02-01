@@ -844,42 +844,129 @@ print_status "Démarrage automatique configuré"
 
 print_header "Certificat SSL"
 
-read -p "Installer le certificat SSL Let's Encrypt ? (O/n): " INSTALL_SSL
+echo "Options SSL :"
+echo "  1) Let's Encrypt (génération automatique)"
+echo "  2) Certificat personnalisé (vous avez vos propres fichiers)"
+echo "  3) Ignorer pour le moment"
+read -p "Choix [1]: " SSL_CHOICE
+SSL_CHOICE=${SSL_CHOICE:-1}
 
-if [[ ! "$INSTALL_SSL" =~ ^[nN]$ ]]; then
-    echo ">>> Installation de Certbot..."
-    if [ "$PKG_MANAGER" = "apt" ]; then
-        pkg_install certbot python3-certbot-nginx
-    else
-        pkg_install certbot python3-certbot-nginx
-    fi
-    
-    echo ">>> Génération du certificat..."
-    if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
-        run_cmd certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
-            print_warning "Échec SSL automatique. Essayez manuellement :"
+case $SSL_CHOICE in
+    1)
+        echo ">>> Installation de Certbot..."
+        if [ "$PKG_MANAGER" = "apt" ]; then
+            pkg_install certbot python3-certbot-nginx
+        else
+            pkg_install certbot python3-certbot-nginx
+        fi
+        
+        echo ">>> Génération du certificat..."
+        if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
+            run_cmd certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
+                print_warning "Échec SSL automatique. Essayez manuellement :"
+                echo "  sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
+            }
+        else
+            run_cmd certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
+                print_warning "Échec SSL automatique. Essayez manuellement :"
+                echo "  sudo certbot --nginx -d $DOMAIN"
+            }
+        fi
+        print_status "SSL Let's Encrypt configuré"
+        INSTALL_SSL="yes"
+        ;;
+    2)
+        echo ""
+        print_info "Configuration du certificat SSL personnalisé"
+        echo "Copiez vos fichiers sur le serveur avant de continuer."
+        echo ""
+        read -p "Chemin vers le certificat (fullchain.pem) : " SSL_CERT_PATH
+        read -p "Chemin vers la clé privée (privkey.pem) : " SSL_KEY_PATH
+        
+        if [ ! -f "$SSL_CERT_PATH" ] || [ ! -f "$SSL_KEY_PATH" ]; then
+            print_warning "Fichiers non trouvés. Configuration SSL ignorée."
+            print_info "Placez vos fichiers SSL puis mettez à jour Nginx manuellement."
+            INSTALL_SSL="no"
+        else
+            # Mettre à jour la configuration Nginx avec SSL
+            if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
+                SERVER_NAMES="$DOMAIN www.$DOMAIN"
+            else
+                SERVER_NAMES="$DOMAIN"
+            fi
+            
+            run_cmd tee $NGINX_CONF_FILE > /dev/null << EOF
+# Redirection HTTP vers HTTPS
+server {
+    listen 80;
+    server_name $SERVER_NAMES;
+    return 301 https://\$server_name\$request_uri;
+}
+
+# Configuration HTTPS
+server {
+    listen 443 ssl http2;
+    server_name $SERVER_NAMES;
+
+    # Certificat SSL personnalisé
+    ssl_certificate $SSL_CERT_PATH;
+    ssl_certificate_key $SSL_KEY_PATH;
+
+    # Configuration SSL sécurisée
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    # HSTS (optionnel mais recommandé)
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    # Taille max upload
+    client_max_body_size 50M;
+
+    # Logs
+    access_log /var/log/nginx/${APP_NAME}_access.log;
+    error_log /var/log/nginx/${APP_NAME}_error.log;
+
+    location / {
+        proxy_pass http://localhost:$APP_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+EOF
+            run_cmd nginx -t && run_cmd systemctl reload nginx
+            print_status "SSL personnalisé configuré"
+            INSTALL_SSL="yes"
+        fi
+        ;;
+    3|*)
+        print_info "SSL ignoré. Vous pouvez l'installer plus tard avec :"
+        if [ "$PKG_MANAGER" = "apt" ]; then
+            echo "  sudo apt install certbot python3-certbot-nginx"
+        else
+            echo "  sudo dnf install certbot python3-certbot-nginx"
+        fi
+        if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
             echo "  sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
-        }
-    else
-        run_cmd certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN || {
-            print_warning "Échec SSL automatique. Essayez manuellement :"
+        else
             echo "  sudo certbot --nginx -d $DOMAIN"
-        }
-    fi
-    print_status "SSL configuré"
-else
-    print_info "SSL ignoré. Vous pouvez l'installer plus tard avec :"
-    if [ "$PKG_MANAGER" = "apt" ]; then
-        echo "  sudo apt install certbot python3-certbot-nginx"
-    else
-        echo "  sudo dnf install certbot python3-certbot-nginx"
-    fi
-    if [[ "$INCLUDE_WWW" =~ ^[oOyY]$ ]]; then
-        echo "  sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN"
-    else
-        echo "  sudo certbot --nginx -d $DOMAIN"
-    fi
-fi
+        fi
+        echo ""
+        echo "Ou pour un certificat personnalisé, éditez la configuration Nginx :"
+        echo "  sudo nano $NGINX_CONF_FILE"
+        INSTALL_SSL="no"
+        ;;
+esac
 
 # ==========================================
 # RÉSUMÉ FINAL
