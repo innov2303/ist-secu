@@ -138,7 +138,7 @@ export function ImageCaptcha({ onVerify, className }: ImageCaptchaProps) {
   }
 
   return (
-    <div className={`space-y-3 p-3 bg-muted/50 border rounded-md ${className}`}>
+    <div className={`space-y-2 p-2 bg-muted/50 border rounded ${className}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">Verification de securite</span>
         <Button
