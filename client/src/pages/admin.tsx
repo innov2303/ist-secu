@@ -2482,7 +2482,7 @@ export default function AdminPage() {
                         <Bar 
                           dataKey="count" 
                           name="Inscriptions"
-                          fill="hsl(var(--primary))" 
+                          fill="#10b981" 
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
                         />
@@ -2524,7 +2524,7 @@ export default function AdminPage() {
                           {toolkitStats.data.filter(t => Number(t.purchase_count) > 0).map((_, index) => (
                             <Cell 
                               key={`cell-${index}`} 
-                              fill={['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'][index % 5]} 
+                              fill={['#10b981', '#059669', '#047857', '#065f46', '#064e3b'][index % 5]} 
                             />
                           ))}
                         </Pie>
@@ -2588,7 +2588,7 @@ export default function AdminPage() {
                         <Bar 
                           dataKey="revenue" 
                           name="Revenus"
-                          fill="hsl(var(--primary))" 
+                          fill="#10b981" 
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
                         />
@@ -2645,7 +2645,7 @@ export default function AdminPage() {
                           contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />
                         <Legend />
-                        <Bar dataKey="received" name="Recus" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="received" name="Recus" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
                         <Bar dataKey="processed" name="Traites" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                       </BarChart>
                     </ResponsiveContainer>
