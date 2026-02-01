@@ -14,6 +14,7 @@ import crypto from "crypto";
 import archiver from "archiver";
 import { getControlsForToolkitOS, SecurityControl, StandardControls } from "./standards-controls";
 import { sendInvoiceEmail, sendPasswordResetEmail } from "./email";
+import { injectLicense } from "./license";
 
 // Rate limiting for login attempts
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -1858,6 +1859,23 @@ export async function registerRoutes(
         ? '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n'
         : '\n\n# ============================================\n# ADDITIONAL CONTROLS (Dynamically Added)\n# ============================================\n\n';
       finalContent = script.content + separator + controlsSection;
+    }
+
+    // Inject license into script content
+    if (user) {
+      // Get purchase expiration date
+      const purchase = await storage.getActivePurchase(userId, id);
+      const expiresAt = purchase?.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // Default 1 year for admins
+      
+      finalContent = injectLicense(
+        finalContent,
+        user.id,
+        user.email || 'unknown@ist-security.fr',
+        script.id,
+        script.name,
+        expiresAt,
+        script.filename
+      );
     }
 
     res.setHeader("Content-Disposition", `attachment; filename="${script.filename}"`);
