@@ -25,6 +25,7 @@ import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, Mail, Send,
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const { data: scripts, isLoading, error } = useScripts();
@@ -101,17 +102,21 @@ export default function Home() {
               </Avatar>
               <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
             </Link>
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout" className="text-white hover:text-white/80 hover:bg-transparent">
               <LogOut className="h-4 w-4" />
             </Button>
           </>
         ) : (
-          <Button asChild data-testid="button-login">
-            <Link href="/auth">
-              <LogIn className="h-4 w-4 mr-2" />
-              Connexion
-            </Link>
-          </Button>
+          <>
+            <ThemeToggle />
+            <Button asChild data-testid="button-login">
+              <Link href="/auth">
+                <LogIn className="h-4 w-4 mr-2" />
+                Connexion
+              </Link>
+            </Button>
+          </>
         )}
       </div>
 
