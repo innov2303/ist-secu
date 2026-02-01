@@ -387,8 +387,8 @@ export default function Documentation() {
                   <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Exemple de sortie</p>
                   <pre className="text-sm font-mono overflow-x-auto whitespace-pre-wrap">
 {`# Apres execution du script, vous obtiendrez :
-rapport_audit_hostname_2026-01-20.html  # Rapport lisible
-rapport_audit_hostname_2026-01-20.json  # Fichier a importer`}
+audit_base_20260119_005349.html  # Rapport lisible
+audit_base_20260119_005349.json  # Fichier a importer`}
                   </pre>
                 </div>
               </div>
