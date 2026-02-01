@@ -13,7 +13,7 @@ interface SEOProps {
 const SITE_NAME = 'Infra Shield Tools';
 const DEFAULT_DESCRIPTION = 'Scripts d\'audit de securite pour Windows, Linux, VMware ESXi, Containers et Web. Conformite ANSSI, CIS Benchmark. Rapports HTML/JSON detailles.';
 const DEFAULT_IMAGE = '/og-image.png';
-const BASE_URL = 'https://ist-security.fr';
+const BASE_URL = 'https://ist-secu.com';
 
 export function SEO({
   title,
@@ -101,7 +101,7 @@ export function OrganizationSchema() {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
-      email: 'contact@ist-security.fr',
+      email: 'contact@ist-secu.com',
     },
   };
 

@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://ist-security.fr/sitemap.xml
+Sitemap: https://ist-secu.com/sitemap.xml
 
 # Disallow admin and private pages
 Disallow: /admin
