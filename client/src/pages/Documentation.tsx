@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info, Upload, BarChart3, Server } from "lucide-react";
 import type { Script } from "@shared/schema";
 import { Footer } from "@/components/Footer";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
@@ -342,6 +342,185 @@ export default function Documentation() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Section Suivi du Parc - Upload de rapports JSON */}
+        <Card className="mt-8" id="suivi-parc">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Suivi du Parc - Importer un rapport JSON
+            </CardTitle>
+            <CardDescription>
+              Apprenez a importer vos rapports d'audit pour suivre l'evolution de la securite de votre parc informatique
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Introduction */}
+            <div className="p-4 rounded-lg border bg-muted/50">
+              <div className="flex items-start gap-3">
+                <BarChart3 className="h-5 w-5 mt-0.5 text-primary" />
+                <div>
+                  <h4 className="font-semibold">Qu'est-ce que le Suivi du Parc ?</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Le Suivi du Parc vous permet de centraliser tous les rapports d'audit de vos machines. 
+                    Vous pouvez suivre l'evolution des scores de conformite, identifier les controles defaillants 
+                    et gerer les corrections appliquees sur chaque machine.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Comment generer un rapport JSON */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <FileCode className="h-4 w-4" />
+                Etape 1 : Generer un rapport JSON
+              </h3>
+              <div className="pl-6 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Lors de l'execution d'un script d'audit, un fichier JSON est automatiquement genere dans le meme repertoire que le script.
+                  Ce fichier contient toutes les informations necessaires au suivi.
+                </p>
+                <div className="bg-muted p-4 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Exemple de sortie</p>
+                  <pre className="text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+{`# Apres execution du script, vous obtiendrez :
+rapport_audit_hostname_2026-01-20.html  # Rapport lisible
+rapport_audit_hostname_2026-01-20.json  # Fichier a importer`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            {/* Structure du fichier JSON */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Structure du fichier JSON
+              </h3>
+              <div className="pl-6 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Le fichier JSON contient les informations essentielles pour le suivi :
+                </p>
+                <div className="bg-muted p-4 rounded-md">
+                  <pre className="text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+{`{
+  "hostname": "serveur-web-01",
+  "os": "Ubuntu 22.04 LTS",
+  "auditDate": "2026-01-20T14:30:00Z",
+  "score": 78,
+  "totalControls": 115,
+  "passedControls": 90,
+  "failedControls": 25,
+  "controls": [
+    {
+      "id": "ANSSI-LIN-001",
+      "name": "Verification des permissions /etc/passwd",
+      "status": "passed",
+      "severity": "high",
+      "details": "Permissions correctes: 644"
+    },
+    {
+      "id": "CIS-LIN-042",
+      "name": "Desactivation de l'IPv6",
+      "status": "failed",
+      "severity": "medium",
+      "details": "IPv6 est encore actif sur eth0"
+    }
+  ]
+}`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            {/* Comment importer le rapport */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                Etape 2 : Importer le rapport dans le Suivi du Parc
+              </h3>
+              <div className="pl-6 space-y-3">
+                <ol className="space-y-3">
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary font-medium">1.</span>
+                    <span>Connectez-vous a votre compte et accedez a la page <strong>"Suivi de votre parc"</strong> depuis le menu principal</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary font-medium">2.</span>
+                    <span>Dans le menu de gauche, cliquez sur <strong>"Rapports"</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary font-medium">3.</span>
+                    <span>Cliquez sur le bouton <strong>"Importer un rapport"</strong> en haut de la liste</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary font-medium">4.</span>
+                    <span>Selectionnez votre fichier JSON genere par le script d'audit</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary font-medium">5.</span>
+                    <span>Le systeme detecte automatiquement la machine (via le hostname) ou en cree une nouvelle</span>
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Fonctionnalites du suivi */}
+            <div className="space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                Fonctionnalites du Suivi du Parc
+              </h3>
+              <div className="pl-6">
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Tableau de bord avec statistiques globales
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Historique des audits par machine
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Evolution des scores dans le temps
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Detail des controles passes/echoues
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Suivi des corrections appliquees
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Organisation hierarchique (Site, Groupe)
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Gestion des permissions d'equipe
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Export et partage des rapports
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Lien vers le suivi */}
+            <div className="pt-4 border-t">
+              <Button asChild data-testid="link-suivi-from-doc">
+                <Link href="/suivi">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Acceder au Suivi du Parc
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

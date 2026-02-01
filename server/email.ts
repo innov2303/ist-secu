@@ -249,6 +249,15 @@ export async function sendSubscriptionInvoiceEmail(data: SubscriptionInvoiceData
       <a href="https://ist-security.fr/documentation" style="display: inline-block; background: #0284c7; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px;">Voir la documentation</a>
     </div>
     
+    <div style="background: #f0fdf4; border-radius: 8px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #16a34a;">
+      <p style="margin: 0 0 8px 0; font-weight: 600; color: #166534;">Suivi du Parc</p>
+      <p style="margin: 0 0 12px 0; color: #14532d; font-size: 14px;">
+        Importez vos rapports d'audit JSON pour centraliser le suivi de securite de vos machines. 
+        Visualisez l'evolution des scores, gerez les corrections et organisez votre parc informatique.
+      </p>
+      <a href="https://ist-security.fr/documentation#suivi-parc" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px;">Comment importer un rapport</a>
+    </div>
+    
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
       <p style="margin: 0; color: #6b7280; font-size: 14px;">
         Merci pour votre confiance.
