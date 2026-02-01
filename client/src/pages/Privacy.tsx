@@ -2,12 +2,18 @@ import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Politique de Confidentialite"
+        description="Politique de confidentialite d'Infra Shield Tools. Decouvrez comment nous collectons, utilisons et protegeons vos donnees personnelles."
+        url="/privacy"
+      />
       {/* Header with logo */}
       <div className="relative h-32 md:h-40 w-full overflow-hidden">
         <img 

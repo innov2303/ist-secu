@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, FileText, BookOpen, FileCode, Terminal, CheckCircle, Play, Info, Upload, BarChart3, Server } from "lucide-react";
 import type { Script } from "@shared/schema";
 import { Footer } from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 
@@ -138,6 +139,11 @@ export default function Documentation() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Documentation"
+        description="Guide complet d'utilisation des scripts d'audit de securite Infra Shield Tools. Installation, configuration et interpretation des rapports."
+        url="/documentation"
+      />
       {/* Header with logo */}
       <div className="relative h-32 md:h-40 w-full overflow-hidden">
         <img 

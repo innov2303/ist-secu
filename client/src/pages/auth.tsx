@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
 import { ImageCaptcha } from "@/components/ImageCaptcha";
+import { SEO } from "@/components/SEO";
 import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
@@ -109,6 +110,11 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <SEO 
+        title="Connexion"
+        description="Connectez-vous ou creez votre compte Infra Shield Tools pour acceder aux scripts d'audit de securite."
+        url="/auth"
+      />
       {/* Header with logo */}
       <div className="relative h-32 md:h-40 w-full overflow-hidden">
         <img 

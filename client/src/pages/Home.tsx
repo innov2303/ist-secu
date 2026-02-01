@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { AnnualBundle } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { SEO, OrganizationSchema } from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Accueil"
+        description="Scripts d'audit de securite professionnels pour Windows, Linux, VMware ESXi, Containers et Web. Conformite ANSSI et CIS Benchmark avec rapports detailles."
+        url="/"
+      />
+      <OrganizationSchema />
       {/* Auth Header */}
       <div className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
         {authLoading ? (

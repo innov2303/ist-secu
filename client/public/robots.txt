@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://ist-security.fr/sitemap.xml
+
+# Disallow admin and private pages
+Disallow: /admin
+Disallow: /suivi
+Disallow: /purchases
+Disallow: /profile
+Disallow: /auth
+Disallow: /api/
+Disallow: /checkout-success
+Disallow: /checkout-cancel
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /change-email
+Disallow: /confirm-email-change

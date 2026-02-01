@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SEO } from "@/components/SEO";
 import type { Invoice, InvoiceItem, Team, TeamMember } from "@shared/schema";
 
 type ProfileSection = "personal" | "team" | "purchases";
@@ -447,6 +448,12 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background flex">
+      <SEO 
+        title="Mon Compte"
+        description="Gerez votre compte Infra Shield Tools, vos informations personnelles et votre historique d'achats."
+        url="/profile"
+        noindex={true}
+      />
       {/* Fixed Sidebar */}
       <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
         {/* Header */}
