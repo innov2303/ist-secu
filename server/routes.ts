@@ -4631,18 +4631,20 @@ export async function registerRoutes(
     }
   });
 
-  // Get toolkit purchases distribution
+  // Get toolkit purchases distribution - from paid invoices
   app.get("/api/admin/stats/toolkits", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      // Count from invoice_items linked to paid invoices
       const stats = await db.execute(sql`
         SELECT 
-          s.name as toolkit_name,
-          s.os,
-          COUNT(p.id) as purchase_count
-        FROM scripts s
-        LEFT JOIN purchases p ON s.id = p.script_id
-        WHERE s.bundled_script_ids IS NOT NULL AND array_length(s.bundled_script_ids, 1) > 0
-        GROUP BY s.id, s.name, s.os
+          COALESCE(s.name, ii.description) as toolkit_name,
+          COALESCE(s.os, 'Autre') as os,
+          COUNT(ii.id) as purchase_count
+        FROM invoice_items ii
+        JOIN invoices i ON ii.invoice_id = i.id
+        LEFT JOIN scripts s ON ii.script_id = s.id
+        WHERE i.status = 'paid'
+        GROUP BY COALESCE(s.name, ii.description), COALESCE(s.os, 'Autre')
         ORDER BY purchase_count DESC
       `);
       
