@@ -1,0 +1,54 @@
+/root/.pm2/logs/ist-secu-error.log last 20 lines:
+0|ist-secu |   code: '42P01',
+0|ist-secu |   detail: undefined,
+0|ist-secu |   hint: undefined,
+0|ist-secu |   position: '212',
+0|ist-secu |   internalPosition: undefined,
+0|ist-secu |   internalQuery: undefined,
+0|ist-secu |   where: undefined,
+0|ist-secu |   schema: undefined,
+0|ist-secu |   table: undefined,
+0|ist-secu |   column: undefined,
+0|ist-secu |   dataType: undefined,
+0|ist-secu |   constraint: undefined,
+0|ist-secu |   file: 'parse_relation.c',
+0|ist-secu |   line: '1449',
+0|ist-secu |   routine: 'parserOpenTable'
+0|ist-secu | }
+0|ist-secu |
+0|ist-secu | Node.js v20.20.0
+0|ist-secu | npm warn ".env" is being parsed as a normal command line argument.
+0|ist-secu | npm warn Unknown cli config "--env-file". This will stop working in the next major version of npm.
+
+/root/.pm2/logs/ist-secu-out.log last 20 lines:
+0|ist-secu | Stripe schema ready
+0|ist-secu | { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+0|ist-secu | Setting up managed webhook...
+0|ist-secu | Webhook setup skipped (no domain available)
+0|ist-secu | Syncing Stripe data...
+0|ist-secu | Replit Auth not available (REPL_ID not set) - using local auth only
+0|ist-secu | Stripe data synced
+0|ist-secu | Annual bundles already seeded
+0|ist-secu | 9:31:48 PM [express] serving on port 5000
+0|ist-secu | DATABASE_URL starts with: postgresql://ist_secu_user:SCW...
+0|ist-secu | Initializing Stripe schema...
+0|ist-secu | Stripe schema ready
+0|ist-secu | { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+0|ist-secu | Setting up managed webhook...
+0|ist-secu | Webhook setup skipped (no domain available)
+0|ist-secu | Syncing Stripe data...
+0|ist-secu | Replit Auth not available (REPL_ID not set) - using local auth only
+0|ist-secu | Stripe data synced
+0|ist-secu | Annual bundles already seeded
+0|ist-secu | 9:32:26 PM [express] serving on port 5000
+
+0|ist-secu  | Initializing Stripe schema...
+0|ist-secu  | Stripe schema ready
+0|ist-secu  | { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+0|ist-secu  | Setting up managed webhook...
+0|ist-secu  | Webhook setup skipped (no domain available)
+0|ist-secu  | Syncing Stripe data...
+0|ist-secu  | Replit Auth not available (REPL_ID not set) - using local auth only
+0|ist-secu  | Stripe data synced
+0|ist-secu  | Annual bundles already seeded
+0|ist-secu  | 9:33:12 PM [express] serving on port 5000
