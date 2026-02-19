@@ -160,22 +160,22 @@ function verifyCaptchaChallenge(challengeId: string, userAnswer: number, consume
   return isCorrect;
 }
 
-// Rate limiting for login attempts
+// Rate limiting for login attempts (per email, not per IP)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
 
-function checkRateLimit(ip: string): { allowed: boolean; remainingTime?: number } {
+function checkRateLimit(email: string): { allowed: boolean; remainingTime?: number } {
+  const key = email.toLowerCase().trim();
   const now = Date.now();
-  const attempts = loginAttempts.get(ip);
+  const attempts = loginAttempts.get(key);
   
   if (!attempts) {
     return { allowed: true };
   }
   
-  // Reset if lockout time has passed
   if (now - attempts.lastAttempt > LOCKOUT_TIME) {
-    loginAttempts.delete(ip);
+    loginAttempts.delete(key);
     return { allowed: true };
   }
   
@@ -187,19 +187,20 @@ function checkRateLimit(ip: string): { allowed: boolean; remainingTime?: number 
   return { allowed: true };
 }
 
-function recordLoginAttempt(ip: string, success: boolean) {
+function recordLoginAttempt(email: string, success: boolean) {
+  const key = email.toLowerCase().trim();
   if (success) {
-    loginAttempts.delete(ip);
+    loginAttempts.delete(key);
     return;
   }
   
   const now = Date.now();
-  const attempts = loginAttempts.get(ip);
+  const attempts = loginAttempts.get(key);
   
   if (!attempts || now - attempts.lastAttempt > LOCKOUT_TIME) {
-    loginAttempts.set(ip, { count: 1, lastAttempt: now });
+    loginAttempts.set(key, { count: 1, lastAttempt: now });
   } else {
-    loginAttempts.set(ip, { count: attempts.count + 1, lastAttempt: now });
+    loginAttempts.set(key, { count: attempts.count + 1, lastAttempt: now });
   }
 }
 
@@ -471,21 +472,20 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req, res) => {
     try {
-      // Rate limiting check
-      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
-      const rateCheck = checkRateLimit(clientIp);
-      if (!rateCheck.allowed) {
-        return res.status(429).json({ 
-          message: `Trop de tentatives de connexion. Réessayez dans ${rateCheck.remainingTime} minutes.` 
-        });
-      }
-
       const result = loginSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: result.error.errors[0].message });
       }
 
       const { email, password, captchaChallengeId, captchaType, captchaAnswer, captchaSelectedIndices } = result.data;
+
+      // Rate limiting check (per email)
+      const rateCheck = checkRateLimit(email);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ 
+          message: `Trop de tentatives de connexion. Réessayez dans ${rateCheck.remainingTime} minutes.` 
+        });
+      }
 
       // Verify CAPTCHA (required)
       let captchaValid = false;
@@ -502,19 +502,19 @@ export async function registerRoutes(
       // Find user
       const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (!user || !user.password) {
-        recordLoginAttempt(clientIp, false);
+        recordLoginAttempt(email, false);
         return res.status(401).json({ message: "Email ou mot de passe incorrect" });
       }
 
       // Verify password
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid) {
-        recordLoginAttempt(clientIp, false);
+        recordLoginAttempt(email, false);
         return res.status(401).json({ message: "Email ou mot de passe incorrect" });
       }
 
       // Successful login - clear rate limiting
-      recordLoginAttempt(clientIp, true);
+      recordLoginAttempt(email, true);
 
       // Log successful login
       await logAuth("login", `Connexion reussie pour ${email}`, user.id, email, req);
