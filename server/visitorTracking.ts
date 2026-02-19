@@ -52,6 +52,9 @@ export function visitorTrackingMiddleware(req: Request, res: Response, next: Nex
   if (skipExtensions.some(ext => path.endsWith(ext))) return next();
   if (path.includes("hot-update")) return next();
 
+  const user = req.user as any;
+  if (user?.isAdmin || user?.role === "admin") return next();
+
   const startTime = Date.now();
 
   res.on("finish", () => {
@@ -61,6 +64,8 @@ export function visitorTrackingMiddleware(req: Request, res: Response, next: Nex
     const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
     const referer = req.headers["referer"] || req.headers["referrer"] || null;
     const userId = (req.user as any)?.id || null;
+
+    if ((req.user as any)?.isAdmin) return;
 
     db.insert(visitorLogs).values({
       ipAddress,
