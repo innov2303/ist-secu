@@ -1,17 +1,54 @@
 import { motion } from "framer-motion";
-import { Lock, FileText, FileCode, Activity } from "lucide-react";
+import { Shield, FileText, Lock, Activity, ChevronRight } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 import logoImg from "@/assets/generated_images/ist_logo_white.png";
-import featureAudit from "@assets/images/feature-audit.png";
-import featureRapport from "@assets/images/feature-rapport.png";
-import featureSecure from "@assets/images/feature-secure-v5.png";
-import featureEvolution from "@assets/images/feature-evolution-v4.png";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Hero() {
+  const steps = [
+    {
+      icon: Shield,
+      title: "Audit",
+      subtitle: "Security Audit & Compliance",
+      desc: "ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker, CIS Kubernetes, OWASP",
+      color: "text-cyan-400",
+      bg: "bg-cyan-400/10",
+      border: "border-cyan-400/30",
+      glow: "shadow-cyan-400/20",
+    },
+    {
+      icon: FileText,
+      title: "Report",
+      subtitle: "Reports & Recommendations",
+      desc: "HTML/JSON reports with scores, grades and detailed remediation steps",
+      color: "text-blue-400",
+      bg: "bg-blue-400/10",
+      border: "border-blue-400/30",
+      glow: "shadow-blue-400/20",
+    },
+    {
+      icon: Lock,
+      title: "Harden",
+      subtitle: "Secure Configurations",
+      desc: "Hardening of sensitive system and network configurations",
+      color: "text-emerald-400",
+      bg: "bg-emerald-400/10",
+      border: "border-emerald-400/30",
+      glow: "shadow-emerald-400/20",
+    },
+    {
+      icon: Activity,
+      title: "Track",
+      subtitle: "Track Progress",
+      desc: "Monitor security posture evolution across all your audits",
+      color: "text-violet-400",
+      bg: "bg-violet-400/10",
+      border: "border-violet-400/30",
+      glow: "shadow-violet-400/20",
+    },
+  ];
+
   return (
     <div className="relative overflow-hidden">
-      {/* Banner Top */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <img 
           src={bannerImg} 
@@ -28,85 +65,48 @@ export function Hero() {
       </div>
 
       <div className="container relative z-10 px-4 mx-auto pt-12 pb-16 md:pb-24">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="max-w-5xl mx-auto"
         >
-          <div className="flex flex-col items-center">
-            <Card className="border-transparent py-2 max-w-xl w-full rounded-b-none" data-testid="card-audit-conformite">
-              <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center justify-center gap-2 text-base">
-                  <FileCode className="w-4 h-4 text-primary" />
-                  Security Audit & Compliance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground text-center">
-                  Standards ANSSI-BP-028, CIS Benchmark, DISA STIG, CIS Docker, CIS Kubernetes, OWASP.
-                </p>
-              </CardContent>
-            </Card>
-            <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureAudit} alt="Security Audit" className="w-full h-72 object-cover" />
-            </div>
-          </div>
+          <h2 className="text-center text-lg font-semibold text-muted-foreground mb-8 tracking-wide uppercase">Security Workflow</h2>
 
-          <div className="flex flex-col items-center">
-            <Card className="border-transparent py-2 max-w-xl w-full rounded-b-none" data-testid="card-rapport">
-              <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center justify-center gap-2 text-base">
-                  <FileText className="w-4 h-4 text-primary" />
-                  Reports & Recommendations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground text-center">
-                  HTML/PDF summary with scores and remediations.
-                </p>
-              </CardContent>
-            </Card>
-            <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureRapport} alt="Rapport & Recommendations" className="w-full h-72 object-cover" />
-            </div>
-          </div>
+          <div className="relative">
+            <div className="hidden md:block absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent -translate-y-1/2 z-0" />
 
-          <div className="flex flex-col items-center">
-            <Card className="border-transparent py-2 max-w-xl w-full rounded-b-none" data-testid="card-secure">
-              <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center justify-center gap-2 text-base">
-                  <Lock className="w-4 h-4 text-primary" />
-                  Secure
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground text-center">
-                  Hardening of sensitive configurations.
-                </p>
-              </CardContent>
-            </Card>
-            <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureSecure} alt="Secure" className="w-full h-72 object-cover" />
-            </div>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-3 relative z-10">
+              {steps.map((step, i) => (
+                <div key={step.title} className="flex items-center gap-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.15 * i }}
+                    className="flex-1"
+                    data-testid={`card-step-${step.title.toLowerCase()}`}
+                  >
+                    <div className={`relative rounded-md border ${step.border} ${step.bg} p-5 shadow-lg ${step.glow} transition-all group`}>
+                      <div className="flex flex-col items-center text-center gap-3">
+                        <div className={`flex items-center justify-center w-12 h-12 rounded-md ${step.bg} border ${step.border}`}>
+                          <step.icon className={`w-6 h-6 ${step.color}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <span className={`text-xs font-bold uppercase tracking-widest ${step.color}`}>
+                            Step {i + 1}
+                          </span>
+                          <h3 className="text-sm font-semibold">{step.subtitle}</h3>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
 
-          <div className="flex flex-col items-center">
-            <Card className="border-transparent py-2 max-w-xl w-full rounded-b-none" data-testid="card-evolution">
-              <CardHeader className="pb-1 pt-2">
-                <CardTitle className="flex items-center justify-center gap-2 text-base">
-                  <Activity className="w-4 h-4 text-primary" />
-                  Track Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <p className="text-xs text-muted-foreground text-center">
-                  Measure security across your audits.
-                </p>
-              </CardContent>
-            </Card>
-            <div className="rounded-t-none rounded-b-lg overflow-hidden border border-border/40 border-t-0 hover-elevate transition-all max-w-xl w-full">
-              <img src={featureEvolution} alt="Track Progress" className="w-full h-72 object-cover" />
+                  {i < steps.length - 1 && (
+                    <ChevronRight className="hidden md:block w-5 h-5 text-muted-foreground/40 flex-shrink-0" />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </motion.div>
