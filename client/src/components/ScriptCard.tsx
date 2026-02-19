@@ -189,7 +189,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           </div>
         </div>
         
-        <p className="text-muted-foreground text-xs leading-relaxed mb-3 flex-grow whitespace-pre-line line-clamp-3">
+        <p className="text-muted-foreground text-xs leading-relaxed mb-3 flex-grow whitespace-pre-line">
           {displayDescription}
         </p>
 
