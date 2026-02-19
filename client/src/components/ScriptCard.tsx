@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Script } from "@shared/schema";
-import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Calendar, Clock } from "lucide-react";
+import { Monitor, Server, Container, Download, FileCode, Check, Loader2, RefreshCw, ShoppingBag, AlertTriangle, Wrench, Globe, Calendar, Clock, Info, ShieldCheck, Cpu } from "lucide-react";
 import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -189,9 +189,34 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
           </div>
         </div>
         
-        <p className="text-muted-foreground text-xs leading-relaxed mb-3 flex-grow whitespace-pre-line">
-          {displayDescription}
-        </p>
+        <div className="text-xs mb-3 flex-grow space-y-2">
+          {(() => {
+            const parts = displayDescription.split(/\n\n+/);
+            const descPart = parts[0] || "";
+            const standardsPart = parts.find(p => p.toLowerCase().startsWith("standards"));
+            const compatPart = parts.find(p => p.toLowerCase().startsWith("compatible"));
+            return (
+              <>
+                <div className="flex items-start gap-2">
+                  <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground leading-relaxed">{descPart}</span>
+                </div>
+                {standardsPart && (
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground leading-relaxed">{standardsPart.replace(/^Standards:\s*/i, "")}</span>
+                  </div>
+                )}
+                {compatPart && (
+                  <div className="flex items-start gap-2">
+                    <Cpu className="w-3.5 h-3.5 text-violet-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-muted-foreground leading-relaxed">{compatPart.replace(/^Compatible\s*(with\s*)?/i, "")}</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
 
 
         {isMaintenance && !isInDevelopment && !hideMaintenanceBadge && (
