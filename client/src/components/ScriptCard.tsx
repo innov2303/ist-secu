@@ -199,18 +199,27 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               <>
                 <div className="flex items-start gap-2">
                   <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground leading-relaxed">{descPart}</span>
+                  <div>
+                    <span className="font-semibold text-blue-400 text-[10px] uppercase tracking-wide">Description</span>
+                    <p className="text-muted-foreground leading-relaxed">{descPart}</p>
+                  </div>
                 </div>
                 {standardsPart && (
                   <div className="flex items-start gap-2">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground leading-relaxed">{standardsPart.replace(/^Standards:\s*/i, "")}</span>
+                    <div>
+                      <span className="font-semibold text-emerald-400 text-[10px] uppercase tracking-wide">Standards</span>
+                      <p className="text-muted-foreground leading-relaxed">{standardsPart.replace(/^Standards:\s*/i, "")}</p>
+                    </div>
                   </div>
                 )}
                 {compatPart && (
                   <div className="flex items-start gap-2">
                     <Cpu className="w-3.5 h-3.5 text-violet-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-muted-foreground leading-relaxed">{compatPart.replace(/^Compatible\s*(with\s*)?/i, "")}</span>
+                    <div>
+                      <span className="font-semibold text-violet-400 text-[10px] uppercase tracking-wide">Compatibility</span>
+                      <p className="text-muted-foreground leading-relaxed">{compatPart.replace(/^Compatible\s*(with\s*)?/i, "")}</p>
+                    </div>
                   </div>
                 )}
               </>
