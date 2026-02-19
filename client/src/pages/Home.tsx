@@ -252,7 +252,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-mono">
             <div>
-              &copy; 2026 Innov Studio.
+              &copy; 2026 <a href="https://innov-studio.fr" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Innov Studio</a>.
             </div>
             <div className="flex gap-6">
               <Link href="/privacy" className="hover:text-primary cursor-pointer transition-colors" data-testid="link-privacy">Privacy Policy</Link>
