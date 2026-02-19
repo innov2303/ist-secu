@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
 import { SEO } from "@/components/SEO";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/ist_logo_white.png";
+import logoImg from "@/assets/generated_images/ist_logo_white.png";
 
 export default function Privacy() {
   return (

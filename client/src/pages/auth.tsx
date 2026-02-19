@@ -13,7 +13,7 @@ import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
 import { ImageCaptcha } from "@/components/ImageCaptcha";
 import { SEO } from "@/components/SEO";
-import logoImg from "@assets/generated_images/ist_logo_white.png";
+import logoImg from "@/assets/generated_images/ist_logo_white.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 export default function AuthPage() {
