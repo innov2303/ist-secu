@@ -217,45 +217,6 @@ export default function AdminPage() {
   });
 
   // Visitor activity state
-  const [visitorPage, setVisitorPage] = useState(1);
-  const [visitorBrowser, setVisitorBrowser] = useState("all");
-  const [visitorOS, setVisitorOS] = useState("all");
-  const [visitorDevice, setVisitorDevice] = useState("all");
-
-  type VisitorLog = {
-    id: number;
-    ipAddress: string;
-    userAgent: string | null;
-    referer: string | null;
-    path: string;
-    method: string;
-    browser: string | null;
-    os: string | null;
-    device: string | null;
-    statusCode: number | null;
-    responseTime: number | null;
-    userId: string | null;
-    createdAt: string;
-  };
-
-  const { data: visitorsData, isLoading: visitorsLoading } = useQuery<{
-    visitors: VisitorLog[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }>({
-    queryKey: ["/api/admin/visitors", visitorPage, visitorBrowser, visitorOS, visitorDevice],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("page", visitorPage.toString());
-      params.set("limit", "30");
-      if (visitorBrowser !== "all") params.set("browser", visitorBrowser);
-      if (visitorOS !== "all") params.set("os", visitorOS);
-      if (visitorDevice !== "all") params.set("device", visitorDevice);
-      const res = await fetch(`/api/admin/visitors?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch visitors");
-      return res.json();
-    },
-    enabled: !!user?.isAdmin && activeSection === "activity",
-  });
 
   const { data: visitorStats } = useQuery<{
     totalVisits: number;
@@ -2805,169 +2766,30 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
 
-              {/* Filters */}
+              {/* Daily Connections Chart (30 days) */}
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Filters</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm">Browser:</Label>
-                      <Select value={visitorBrowser} onValueChange={(v) => { setVisitorBrowser(v); setVisitorPage(1); }}>
-                        <SelectTrigger className="w-[130px]" data-testid="select-visitor-browser">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          <SelectItem value="Chrome">Chrome</SelectItem>
-                          <SelectItem value="Firefox">Firefox</SelectItem>
-                          <SelectItem value="Safari">Safari</SelectItem>
-                          <SelectItem value="Edge">Edge</SelectItem>
-                          <SelectItem value="Bot">Bot</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm">OS:</Label>
-                      <Select value={visitorOS} onValueChange={(v) => { setVisitorOS(v); setVisitorPage(1); }}>
-                        <SelectTrigger className="w-[140px]" data-testid="select-visitor-os">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          <SelectItem value="Windows 10/11">Windows</SelectItem>
-                          <SelectItem value="macOS">macOS</SelectItem>
-                          <SelectItem value="Linux">Linux</SelectItem>
-                          <SelectItem value="Android">Android</SelectItem>
-                          <SelectItem value="iOS">iOS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm">Device:</Label>
-                      <Select value={visitorDevice} onValueChange={(v) => { setVisitorDevice(v); setVisitorPage(1); }}>
-                        <SelectTrigger className="w-[120px]" data-testid="select-visitor-device">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          <SelectItem value="Desktop">Desktop</SelectItem>
-                          <SelectItem value="Mobile">Mobile</SelectItem>
-                          <SelectItem value="Tablet">Tablet</SelectItem>
-                          <SelectItem value="Bot">Bot</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Visitor Logs List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Connection Log
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Daily Connections (30 days)
                   </CardTitle>
-                  <CardDescription>
-                    {visitorsData?.pagination.total || 0} total connection(s)
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {visitorsLoading ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    </div>
-                  ) : !visitorsData?.visitors.length ? (
-                    <p className="text-center text-muted-foreground py-8">No connections recorded yet</p>
+                  {visitorStats?.dailyActivity?.length ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={visitorStats.dailyActivity.map(d => ({
+                        day: new Date(d.day).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
+                        visits: Number(d.count)
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="day" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="visits" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <div className="space-y-2">
-                      {visitorsData.visitors.map((v) => (
-                        <div key={v.id} className="p-3 rounded-lg border bg-muted/30" data-testid={`row-visitor-${v.id}`}>
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <div className={`p-1.5 rounded mt-0.5 ${
-                                v.method === "GET" ? "bg-green-500/20" :
-                                v.method === "POST" ? "bg-blue-500/20" :
-                                v.method === "DELETE" ? "bg-red-500/20" :
-                                "bg-yellow-500/20"
-                              }`}>
-                                {v.device === "Mobile" ? <Smartphone className="h-4 w-4 text-muted-foreground" /> :
-                                 v.device === "Tablet" ? <Tablet className="h-4 w-4 text-muted-foreground" /> :
-                                 <Monitor className="h-4 w-4 text-muted-foreground" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant={
-                                    v.method === "GET" ? "outline" :
-                                    v.method === "POST" ? "default" :
-                                    v.method === "DELETE" ? "destructive" : "secondary"
-                                  } className="text-xs">
-                                    {v.method}
-                                  </Badge>
-                                  <span className="font-mono text-sm truncate">{v.path}</span>
-                                  {v.statusCode && (
-                                    <Badge variant={v.statusCode >= 400 ? "destructive" : "outline"} className="text-xs">
-                                      {v.statusCode}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                                  <span className="font-mono">{v.ipAddress}</span>
-                                  {v.browser && <span>{v.browser}</span>}
-                                  {v.os && <span>{v.os}</span>}
-                                  {v.responseTime && <span>{v.responseTime}ms</span>}
-                                </div>
-                                {v.referer && (
-                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                                    <ExternalLink className="h-3 w-3 inline mr-1" />
-                                    {v.referer}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(v.createdAt).toLocaleString('en-US', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Pagination */}
-                  {visitorsData && visitorsData.pagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setVisitorPage(p => Math.max(1, p - 1))}
-                        disabled={visitorPage <= 1}
-                        data-testid="button-visitor-prev"
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Page {visitorPage} of {visitorsData.pagination.totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setVisitorPage(p => Math.min(visitorsData.pagination.totalPages, p + 1))}
-                        disabled={visitorPage >= visitorsData.pagination.totalPages}
-                        data-testid="button-visitor-next"
-                      >
-                        Next <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
+                    <p className="text-center text-muted-foreground py-8">No data yet</p>
                   )}
                 </CardContent>
               </Card>
