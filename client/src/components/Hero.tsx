@@ -49,7 +49,7 @@ export function Hero() {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="relative h-64 md:h-80 w-full overflow-hidden">
+      <div className="relative h-40 md:h-48 w-full overflow-hidden">
         <img 
           src={bannerImg} 
           alt="Security Infrastructure" 
