@@ -176,21 +176,20 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
     >
       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       
-      <div className="p-6 relative z-10 flex flex-col h-full">
-        <div className="flex items-start justify-between mb-4 gap-2">
-          <div className="p-3 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300 group-hover:shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]">
-            <Icon className="w-8 h-8" />
+      <div className="p-4 relative z-10 flex flex-col h-full">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300 group-hover:shadow-[0_0_15px_-3px_hsl(var(--primary)/0.3)]">
+            <Icon className="w-6 h-6" />
           </div>
-          <div className="px-2.5 py-1 rounded bg-secondary text-xs font-mono text-muted-foreground uppercase tracking-wider">
-            {script.os}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-bold font-mono group-hover:text-primary transition-colors truncate">
+              {script.name}
+            </h3>
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{script.os}</span>
           </div>
         </div>
-
-        <h3 className="text-xl font-bold mb-2 font-mono group-hover:text-primary transition-colors">
-          {script.name}
-        </h3>
         
-        <p className="text-muted-foreground text-sm leading-relaxed mb-4 flex-grow whitespace-pre-line">
+        <p className="text-muted-foreground text-xs leading-relaxed mb-3 flex-grow whitespace-pre-line line-clamp-3">
           {displayDescription}
         </p>
 
@@ -206,11 +205,11 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
 
 
         {user && !isInDevelopment && !isAdmin && canPurchase && (
-          <div className="bg-muted/50 rounded-lg p-4 mb-4">
-            <div className="flex gap-2 mb-3">
+          <div className="bg-muted/50 rounded-lg p-3 mb-3">
+            <div className="flex gap-1.5 mb-2">
               <button
                 onClick={() => setBillingCycle("monthly")}
-                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                className={`flex-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
                   billingCycle === "monthly" 
                     ? "bg-primary text-primary-foreground" 
                     : "bg-background hover:bg-muted"
@@ -222,7 +221,7 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
               </button>
               <button
                 onClick={() => setBillingCycle("yearly")}
-                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                className={`flex-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
                   billingCycle === "yearly" 
                     ? "bg-primary text-primary-foreground" 
                     : "bg-background hover:bg-muted"
@@ -233,28 +232,21 @@ export function ScriptCard({ script, index, lockedByCompletePack = false, hideMa
                 Yearly -15%
               </button>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                {billingCycle === "monthly" ? (
-                  <>
-                    <p className="text-lg font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
-                      {formatPrice(script.monthlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> excl. VAT/month</span>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-bold text-primary" data-testid={`text-price-yearly-${script.id}`}>
-                      {formatPrice(yearlyPriceCents)}<span className="text-sm font-normal text-muted-foreground"> excl. VAT/year</span>
-                    </p>
-                    <p className="text-xs text-green-600 dark:text-green-400">
-                      Save {formatPrice(monthlySavings)} excl. VAT
-                    </p>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground max-w-[120px] text-right">
-                Updates and support included
-              </p>
+            <div>
+              {billingCycle === "monthly" ? (
+                <p className="text-sm font-bold text-primary" data-testid={`text-price-monthly-${script.id}`}>
+                  {formatPrice(script.monthlyPriceCents)}<span className="text-[11px] font-normal text-muted-foreground"> excl. VAT/mo</span>
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-primary" data-testid={`text-price-yearly-${script.id}`}>
+                    {formatPrice(yearlyPriceCents)}<span className="text-[11px] font-normal text-muted-foreground"> excl. VAT/yr</span>
+                  </p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400">
+                    Save {formatPrice(monthlySavings)}
+                  </p>
+                </>
+              )}
             </div>
           </div>
         )}
