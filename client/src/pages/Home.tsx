@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, AlertCircle, LogIn, LogOut, Settings, ShoppingBag, BarChart3, MessageSquare, Server } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion } from "framer-motion";
 
 export default function Home() {
@@ -97,14 +96,12 @@ export default function Home() {
               </Avatar>
               <span className="text-sm font-medium hidden sm:inline">{user.firstName || user.email}</span>
             </Link>
-            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout" className="text-white hover:text-white/80 hover:bg-transparent">
               <LogOut className="h-4 w-4" />
             </Button>
           </>
         ) : (
           <>
-            <ThemeToggle />
             <Button asChild data-testid="button-login">
               <Link href="/auth">
                 <LogIn className="h-4 w-4 mr-2" />
