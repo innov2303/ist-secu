@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SEO } from "@/components/SEO";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -295,7 +296,7 @@ export default function Support() {
 
         <main className="flex-1 overflow-auto">
           <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 px-6 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <h1 className="text-xl font-bold">
                   {activeTab === "tickets" && (selectedTicket ? `Ticket #${selectedTicket.id}` : (isAdmin ? "All Tickets" : "My Tickets"))}
@@ -306,21 +307,24 @@ export default function Support() {
                   {activeTab === "new" && "Create a new support request"}
                 </p>
               </div>
-              {activeTab === "tickets" && !selectedTicket && (
-                <Button onClick={() => setActiveTab("new")} data-testid="button-new-ticket">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Ticket
-                </Button>
-              )}
-              {selectedTicket && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSelectedTicket(null)}
-                  data-testid="button-back-to-list"
-                >
-                  Back to list
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                {activeTab === "tickets" && !selectedTicket && (
+                  <Button onClick={() => setActiveTab("new")} data-testid="button-new-ticket">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Ticket
+                  </Button>
+                )}
+                {selectedTicket && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSelectedTicket(null)}
+                    data-testid="button-back-to-list"
+                  >
+                    Back to list
+                  </Button>
+                )}
+              </div>
             </div>
           </header>
 

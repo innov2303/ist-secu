@@ -17,6 +17,7 @@ import { SiLinux, SiNetapp } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import type { Purchase, Script, AnnualBundle, ScriptVersion } from "@shared/schema";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type PurchaseWithScript = Purchase & { script: Script };
 
@@ -1568,16 +1569,19 @@ export default function Purchases() {
 
       <main className="flex-1 overflow-auto">
         <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-xl font-bold">My Products</h1>
               <p className="text-sm text-muted-foreground">
                 {user?.isAdmin ? "Admin access - All toolkits available" : "Manage your purchased security toolkits"}
               </p>
             </div>
-            <Button asChild data-testid="button-browse-scripts">
-              <Link href="/">Browse Scripts</Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button asChild data-testid="button-browse-scripts">
+                <Link href="/">Browse Scripts</Link>
+              </Button>
+            </div>
           </div>
         </header>
 

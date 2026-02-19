@@ -54,6 +54,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Info, Globe, HelpCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SiLinux, SiVmware, SiDocker } from "react-icons/si";
 import { FaWindows } from "react-icons/fa";
 import {
@@ -1143,6 +1144,7 @@ export default function Suivi() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {(activeTab === "reports" || activeTab === "machines" || activeTab === "dashboard") && hasFullAccess && (
                 <>
                   <input

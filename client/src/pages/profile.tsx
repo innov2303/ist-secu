@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SEO } from "@/components/SEO";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Invoice, InvoiceItem, Team, TeamMember } from "@shared/schema";
 
 type ProfileSection = "personal" | "team" | "purchases";
@@ -458,11 +459,14 @@ export default function Profile() {
       <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
         {/* Header */}
         <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <User className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <h1 className="font-bold text-lg">My Account</h1>
             </div>
-            <h1 className="font-bold text-lg">My Account</h1>
+            <ThemeToggle />
           </div>
         </div>
 

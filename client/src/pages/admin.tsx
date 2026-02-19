@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@shared/models/auth";
 import type { Script, Invoice, InvoiceItem, AnnualBundle } from "@shared/schema";
 import { Link } from "wouter";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "overdue";
 
@@ -1037,11 +1038,14 @@ export default function AdminPage() {
       <aside className="w-64 bg-card border-r flex flex-col fixed h-screen z-50">
         {/* Header */}
         <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Settings className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Settings className="h-5 w-5 text-primary" />
+              </div>
+              <h1 className="font-bold text-lg">Admin Panel</h1>
             </div>
-            <h1 className="font-bold text-lg">Admin Panel</h1>
+            <ThemeToggle />
           </div>
         </div>
 
