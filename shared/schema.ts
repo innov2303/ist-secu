@@ -512,6 +512,30 @@ export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ i
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 
+// Visitor logs table for tracking site connections
+export const visitorLogs = pgTable("visitor_logs", {
+  id: serial("id").primaryKey(),
+  ipAddress: text("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  referer: text("referer"),
+  path: text("path").notNull(),
+  method: text("method").notNull().default("GET"),
+  country: text("country"),
+  city: text("city"),
+  browser: text("browser"),
+  os: text("os"),
+  device: text("device"),
+  statusCode: integer("status_code"),
+  responseTime: integer("response_time"),
+  userId: varchar("user_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertVisitorLogSchema = createInsertSchema(visitorLogs).omit({ id: true, createdAt: true });
+
+export type VisitorLog = typeof visitorLogs.$inferSelect;
+export type InsertVisitorLog = z.infer<typeof insertVisitorLogSchema>;
+
 // Support tickets table
 export const supportTickets = pgTable("support_tickets", {
   id: serial("id").primaryKey(),

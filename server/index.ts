@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync, isStripeAvailable } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { visitorTrackingMiddleware } from "./visitorTracking";
 
 const app = express();
 const httpServer = createServer(app);
@@ -154,6 +155,8 @@ async function initStripe() {
 
     next();
   });
+
+  app.use(visitorTrackingMiddleware);
 
   await registerRoutes(httpServer, app);
 

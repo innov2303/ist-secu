@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema, activityLogs, supportTickets, ticketMessages, insertSupportTicketSchema, insertTicketMessageSchema } from "@shared/schema";
+import { users, purchases, scripts, registerSchema, loginSchema, contactRequests, insertContactRequestSchema, scriptControls, invoices, invoiceItems, updateInvoiceSchema, updateAnnualBundleSchema, insertAnnualBundleSchema, annualBundles, scriptVersions, teams, teamMembers, insertTeamSchema, insertTeamMemberSchema, machines, auditReports, organizations, sites, machineGroups, insertOrganizationSchema, insertSiteSchema, insertMachineGroupSchema, controlCorrections, machineGroupPermissions, insertMachineGroupPermissionSchema, userGroups, userGroupMembers, insertUserGroupSchema, insertUserGroupMemberSchema, activityLogs, visitorLogs, supportTickets, ticketMessages, insertSupportTicketSchema, insertTicketMessageSchema } from "@shared/schema";
 import { logAuth, logPayment, logAdmin, logFleet, logSystem, logUser } from "./activityLog";
 import { db } from "./db";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
@@ -4460,6 +4460,154 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error clearing logs:", error);
       res.status(500).json({ message: "Error clearing logs" });
+    }
+  });
+
+  // ============================================
+  // Visitor Activity Tracking Routes
+  // ============================================
+
+  app.get("/api/admin/visitors", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { page = "1", limit = "30", path: pathFilter, browser, os, device } = req.query;
+      const pageNum = parseInt(page as string);
+      const limitNum = Math.min(parseInt(limit as string), 100);
+      const offset = (pageNum - 1) * limitNum;
+
+      const conditions: any[] = [];
+      if (pathFilter && pathFilter !== "all") {
+        conditions.push(eq(visitorLogs.path, pathFilter as string));
+      }
+      if (browser && browser !== "all") {
+        conditions.push(eq(visitorLogs.browser, browser as string));
+      }
+      if (os && os !== "all") {
+        conditions.push(eq(visitorLogs.os, os as string));
+      }
+      if (device && device !== "all") {
+        conditions.push(eq(visitorLogs.device, device as string));
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const countResult = await db.select({ count: sql<number>`count(*)` })
+        .from(visitorLogs)
+        .where(whereClause);
+      const total = Number(countResult[0]?.count || 0);
+
+      const visitors = await db.select()
+        .from(visitorLogs)
+        .where(whereClause)
+        .orderBy(desc(visitorLogs.createdAt))
+        .limit(limitNum)
+        .offset(offset);
+
+      res.json({
+        visitors,
+        pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) }
+      });
+    } catch (error) {
+      console.error("Error fetching visitors:", error);
+      res.status(500).json({ message: "Error fetching visitor logs" });
+    }
+  });
+
+  app.get("/api/admin/visitors/stats", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const totalVisits = await db.select({ count: sql<number>`count(*)` }).from(visitorLogs);
+      const last24h = await db.select({ count: sql<number>`count(*)` })
+        .from(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} > NOW() - INTERVAL '24 hours'`);
+      const last7d = await db.select({ count: sql<number>`count(*)` })
+        .from(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} > NOW() - INTERVAL '7 days'`);
+
+      const uniqueIPs = await db.select({ count: sql<number>`count(distinct ${visitorLogs.ipAddress})` }).from(visitorLogs);
+      const uniqueIPsToday = await db.select({ count: sql<number>`count(distinct ${visitorLogs.ipAddress})` })
+        .from(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} > NOW() - INTERVAL '24 hours'`);
+
+      const byBrowser = await db.select({
+        browser: visitorLogs.browser,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs).groupBy(visitorLogs.browser).orderBy(sql`count(*) DESC`).limit(10);
+
+      const byOS = await db.select({
+        os: visitorLogs.os,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs).groupBy(visitorLogs.os).orderBy(sql`count(*) DESC`).limit(10);
+
+      const byDevice = await db.select({
+        device: visitorLogs.device,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs).groupBy(visitorLogs.device).orderBy(sql`count(*) DESC`);
+
+      const topPages = await db.select({
+        path: visitorLogs.path,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs).groupBy(visitorLogs.path).orderBy(sql`count(*) DESC`).limit(15);
+
+      const topReferers = await db.select({
+        referer: visitorLogs.referer,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs)
+        .where(sql`${visitorLogs.referer} IS NOT NULL AND ${visitorLogs.referer} != ''`)
+        .groupBy(visitorLogs.referer).orderBy(sql`count(*) DESC`).limit(10);
+
+      const topIPs = await db.select({
+        ipAddress: visitorLogs.ipAddress,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs).groupBy(visitorLogs.ipAddress).orderBy(sql`count(*) DESC`).limit(15);
+
+      const hourlyActivity = await db.select({
+        hour: sql<string>`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD HH24:00')`,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} > NOW() - INTERVAL '24 hours'`)
+        .groupBy(sql`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD HH24:00')`)
+        .orderBy(sql`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD HH24:00')`);
+
+      const dailyActivity = await db.select({
+        day: sql<string>`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)`
+      }).from(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} > NOW() - INTERVAL '30 days'`)
+        .groupBy(sql`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${visitorLogs.createdAt}, 'YYYY-MM-DD')`);
+
+      res.json({
+        totalVisits: Number(totalVisits[0]?.count || 0),
+        last24h: Number(last24h[0]?.count || 0),
+        last7d: Number(last7d[0]?.count || 0),
+        uniqueVisitors: Number(uniqueIPs[0]?.count || 0),
+        uniqueVisitorsToday: Number(uniqueIPsToday[0]?.count || 0),
+        byBrowser,
+        byOS,
+        byDevice,
+        topPages,
+        topReferers,
+        topIPs,
+        hourlyActivity,
+        dailyActivity,
+      });
+    } catch (error) {
+      console.error("Error fetching visitor stats:", error);
+      res.status(500).json({ message: "Error fetching visitor stats" });
+    }
+  });
+
+  app.delete("/api/admin/visitors/clear", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const days = Math.max(1, Math.min(365, parseInt(req.body.olderThanDays) || 30));
+      await db.delete(visitorLogs)
+        .where(sql`${visitorLogs.createdAt} < NOW() - make_interval(days => ${days})`);
+      
+      await logAdmin("clear_visitors", `Visitor logs older than ${days} days cleared`, Number(req.user!.id), req.user!.email || undefined, req);
+      
+      res.json({ success: true, message: `Visitor logs older than ${days} days cleared` });
+    } catch (error) {
+      console.error("Error clearing visitor logs:", error);
+      res.status(500).json({ message: "Error clearing visitor logs" });
     }
   });
 

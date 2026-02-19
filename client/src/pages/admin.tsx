@@ -19,7 +19,8 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Package, Shield, Home, Settings, Pencil, Loader2,
   AlertTriangle, Power, Wrench, RefreshCw, Check, X, List, ToggleLeft, ToggleRight,
   FileText, Plus, Eye, Send, CreditCard, CalendarDays, User as UserIcon, KeyRound, Copy, FileCode,
-  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle, BarChart3, TrendingUp, DollarSign
+  Activity, LogIn, LogOut, ShoppingCart, Server, Database, UserCog, Info, AlertCircle, BarChart3, TrendingUp, DollarSign,
+  Globe, Monitor, Smartphone, Tablet, ExternalLink, MapPin
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +40,7 @@ const invoiceStatusLabels: Record<InvoiceStatus, { label: string; variant: "defa
 
 const ITEMS_PER_PAGE = 10;
 
-type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles" | "logs" | "stats";
+type AdminSection = "users" | "tickets" | "toolkits" | "invoices" | "bundles" | "logs" | "activity" | "stats";
 type ScriptStatus = "active" | "offline" | "maintenance" | "development";
 
 const statusLabels: Record<ScriptStatus, { label: string; variant: "default" | "secondary" | "destructive"; icon: typeof Power }> = {
@@ -213,6 +214,66 @@ export default function AdminPage() {
   }>({
     queryKey: ["/api/admin/logs/stats"],
     enabled: !!user?.isAdmin && activeSection === "logs",
+  });
+
+  // Visitor activity state
+  const [visitorPage, setVisitorPage] = useState(1);
+  const [visitorBrowser, setVisitorBrowser] = useState("all");
+  const [visitorOS, setVisitorOS] = useState("all");
+  const [visitorDevice, setVisitorDevice] = useState("all");
+
+  type VisitorLog = {
+    id: number;
+    ipAddress: string;
+    userAgent: string | null;
+    referer: string | null;
+    path: string;
+    method: string;
+    browser: string | null;
+    os: string | null;
+    device: string | null;
+    statusCode: number | null;
+    responseTime: number | null;
+    userId: string | null;
+    createdAt: string;
+  };
+
+  const { data: visitorsData, isLoading: visitorsLoading } = useQuery<{
+    visitors: VisitorLog[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }>({
+    queryKey: ["/api/admin/visitors", visitorPage, visitorBrowser, visitorOS, visitorDevice],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("page", visitorPage.toString());
+      params.set("limit", "30");
+      if (visitorBrowser !== "all") params.set("browser", visitorBrowser);
+      if (visitorOS !== "all") params.set("os", visitorOS);
+      if (visitorDevice !== "all") params.set("device", visitorDevice);
+      const res = await fetch(`/api/admin/visitors?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch visitors");
+      return res.json();
+    },
+    enabled: !!user?.isAdmin && activeSection === "activity",
+  });
+
+  const { data: visitorStats } = useQuery<{
+    totalVisits: number;
+    last24h: number;
+    last7d: number;
+    uniqueVisitors: number;
+    uniqueVisitorsToday: number;
+    byBrowser: { browser: string; count: number }[];
+    byOS: { os: string; count: number }[];
+    byDevice: { device: string; count: number }[];
+    topPages: { path: string; count: number }[];
+    topReferers: { referer: string; count: number }[];
+    topIPs: { ipAddress: string; count: number }[];
+    hourlyActivity: { hour: string; count: number }[];
+    dailyActivity: { day: string; count: number }[];
+  }>({
+    queryKey: ["/api/admin/visitors/stats"],
+    enabled: !!user?.isAdmin && activeSection === "activity",
   });
 
   // Statistics section state
@@ -1000,7 +1061,8 @@ export default function AdminPage() {
     { id: "toolkits" as AdminSection, label: "Toolkits", icon: Package, count: toolkitCount },
     { id: "bundles" as AdminSection, label: "Annual Bundles", icon: Shield, count: annualBundles?.length },
     { id: "invoices" as AdminSection, label: "Invoices", icon: FileText, count: allInvoices.length },
-    { id: "logs" as AdminSection, label: "Activity", icon: Activity, count: logStats?.last24h },
+    { id: "logs" as AdminSection, label: "System Logs", icon: List, count: logStats?.last24h },
+    { id: "activity" as AdminSection, label: "Activity", icon: Globe, count: visitorStats?.last24h },
     { id: "stats" as AdminSection, label: "Dashboard", icon: BarChart3, count: undefined },
   ];
 
@@ -2263,10 +2325,10 @@ export default function AdminPage() {
           {activeSection === "logs" && (
             <div className="space-y-6">
               <div className="flex items-center gap-3">
-                <Activity className="h-8 w-8 text-primary" />
+                <List className="h-8 w-8 text-primary" />
                 <div>
-                  <h2 className="text-2xl font-bold">Activity Log</h2>
-                  <p className="text-muted-foreground">Site activity journal</p>
+                  <h2 className="text-2xl font-bold">System Logs</h2>
+                  <p className="text-muted-foreground">System events and actions</p>
                 </div>
               </div>
 
@@ -2468,6 +2530,440 @@ export default function AdminPage() {
                         size="sm"
                         onClick={() => setLogPage(p => Math.min(logsData.pagination.totalPages, p + 1))}
                         disabled={logPage >= logsData.pagination.totalPages}
+                      >
+                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Activity Section - Visitor Tracking */}
+          {activeSection === "activity" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Globe className="h-8 w-8 text-primary" />
+                <div>
+                  <h2 className="text-2xl font-bold" data-testid="text-activity-title">Activity</h2>
+                  <p className="text-muted-foreground">Visitor connections and traffic sources</p>
+                </div>
+              </div>
+
+              {/* Stats Overview Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10">
+                        <Globe className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold" data-testid="text-total-visits">{visitorStats?.totalVisits || 0}</p>
+                        <p className="text-xs text-muted-foreground">Total Visits</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/10">
+                        <Activity className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{visitorStats?.last24h || 0}</p>
+                        <p className="text-xs text-muted-foreground">Last 24h</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-purple-500/10">
+                        <TrendingUp className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{visitorStats?.last7d || 0}</p>
+                        <p className="text-xs text-muted-foreground">Last 7 days</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-cyan-500/10">
+                        <Users className="h-5 w-5 text-cyan-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{visitorStats?.uniqueVisitors || 0}</p>
+                        <p className="text-xs text-muted-foreground">Unique Visitors</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-yellow-500/10">
+                        <Users className="h-5 w-5 text-yellow-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{visitorStats?.uniqueVisitorsToday || 0}</p>
+                        <p className="text-xs text-muted-foreground">Unique Today</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Hourly Activity Chart */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Hourly Activity (24h)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {visitorStats?.hourlyActivity?.length ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={visitorStats.hourlyActivity.map(h => ({
+                          hour: h.hour.split(" ")[1] || h.hour,
+                          visits: Number(h.count)
+                        }))}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                          <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip />
+                          <Bar dataKey="visits" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data yet</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Device Distribution */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      Devices
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {visitorStats?.byDevice?.length ? (
+                      <div className="space-y-3">
+                        {visitorStats.byDevice.map((d) => {
+                          const total = visitorStats.byDevice.reduce((sum, x) => sum + Number(x.count), 0);
+                          const pct = total > 0 ? Math.round((Number(d.count) / total) * 100) : 0;
+                          const DeviceIcon = d.device === "Mobile" ? Smartphone : d.device === "Tablet" ? Tablet : Monitor;
+                          return (
+                            <div key={d.device} className="flex items-center gap-3">
+                              <DeviceIcon className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium">{d.device || "Unknown"}</span>
+                                  <span className="text-sm text-muted-foreground">{Number(d.count)} ({pct}%)</span>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data yet</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Browser & OS Stats */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Browsers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {visitorStats?.byBrowser?.map((b) => (
+                        <div key={b.browser} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
+                          <span className="text-sm">{b.browser || "Unknown"}</span>
+                          <Badge variant="secondary">{Number(b.count)}</Badge>
+                        </div>
+                      ))}
+                      {!visitorStats?.byBrowser?.length && (
+                        <p className="text-center text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Server className="h-4 w-4" />
+                      Operating Systems
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {visitorStats?.byOS?.map((o) => (
+                        <div key={o.os} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
+                          <span className="text-sm">{o.os || "Unknown"}</span>
+                          <Badge variant="secondary">{Number(o.count)}</Badge>
+                        </div>
+                      ))}
+                      {!visitorStats?.byOS?.length && (
+                        <p className="text-center text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top Pages & Referers */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Top Pages
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {visitorStats?.topPages?.map((p, i) => (
+                        <div key={p.path} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
+                          <span className="text-sm font-mono truncate flex-1 mr-2">{p.path}</span>
+                          <Badge variant="outline">{Number(p.count)}</Badge>
+                        </div>
+                      ))}
+                      {!visitorStats?.topPages?.length && (
+                        <p className="text-center text-muted-foreground py-4">No data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Top Referers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {visitorStats?.topReferers?.map((r) => (
+                        <div key={r.referer} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
+                          <span className="text-sm truncate flex-1 mr-2">{r.referer || "Direct"}</span>
+                          <Badge variant="outline">{Number(r.count)}</Badge>
+                        </div>
+                      ))}
+                      {!visitorStats?.topReferers?.length && (
+                        <p className="text-center text-muted-foreground py-4">No referrer data yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top IPs */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Top IP Addresses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {visitorStats?.topIPs?.map((ip) => (
+                      <div key={ip.ipAddress} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
+                        <span className="text-sm font-mono">{ip.ipAddress}</span>
+                        <Badge variant="secondary">{Number(ip.count)} visits</Badge>
+                      </div>
+                    ))}
+                    {!visitorStats?.topIPs?.length && (
+                      <p className="text-center text-muted-foreground py-4">No data yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Filters */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Filters</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Browser:</Label>
+                      <Select value={visitorBrowser} onValueChange={(v) => { setVisitorBrowser(v); setVisitorPage(1); }}>
+                        <SelectTrigger className="w-[130px]" data-testid="select-visitor-browser">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="Chrome">Chrome</SelectItem>
+                          <SelectItem value="Firefox">Firefox</SelectItem>
+                          <SelectItem value="Safari">Safari</SelectItem>
+                          <SelectItem value="Edge">Edge</SelectItem>
+                          <SelectItem value="Bot">Bot</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">OS:</Label>
+                      <Select value={visitorOS} onValueChange={(v) => { setVisitorOS(v); setVisitorPage(1); }}>
+                        <SelectTrigger className="w-[140px]" data-testid="select-visitor-os">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="Windows 10/11">Windows</SelectItem>
+                          <SelectItem value="macOS">macOS</SelectItem>
+                          <SelectItem value="Linux">Linux</SelectItem>
+                          <SelectItem value="Android">Android</SelectItem>
+                          <SelectItem value="iOS">iOS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Device:</Label>
+                      <Select value={visitorDevice} onValueChange={(v) => { setVisitorDevice(v); setVisitorPage(1); }}>
+                        <SelectTrigger className="w-[120px]" data-testid="select-visitor-device">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="Desktop">Desktop</SelectItem>
+                          <SelectItem value="Mobile">Mobile</SelectItem>
+                          <SelectItem value="Tablet">Tablet</SelectItem>
+                          <SelectItem value="Bot">Bot</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Visitor Logs List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Connection Log
+                  </CardTitle>
+                  <CardDescription>
+                    {visitorsData?.pagination.total || 0} total connection(s)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {visitorsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : !visitorsData?.visitors.length ? (
+                    <p className="text-center text-muted-foreground py-8">No connections recorded yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {visitorsData.visitors.map((v) => (
+                        <div key={v.id} className="p-3 rounded-lg border bg-muted/30" data-testid={`row-visitor-${v.id}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className={`p-1.5 rounded mt-0.5 ${
+                                v.method === "GET" ? "bg-green-500/20" :
+                                v.method === "POST" ? "bg-blue-500/20" :
+                                v.method === "DELETE" ? "bg-red-500/20" :
+                                "bg-yellow-500/20"
+                              }`}>
+                                {v.device === "Mobile" ? <Smartphone className="h-4 w-4 text-muted-foreground" /> :
+                                 v.device === "Tablet" ? <Tablet className="h-4 w-4 text-muted-foreground" /> :
+                                 <Monitor className="h-4 w-4 text-muted-foreground" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant={
+                                    v.method === "GET" ? "outline" :
+                                    v.method === "POST" ? "default" :
+                                    v.method === "DELETE" ? "destructive" : "secondary"
+                                  } className="text-xs">
+                                    {v.method}
+                                  </Badge>
+                                  <span className="font-mono text-sm truncate">{v.path}</span>
+                                  {v.statusCode && (
+                                    <Badge variant={v.statusCode >= 400 ? "destructive" : "outline"} className="text-xs">
+                                      {v.statusCode}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                                  <span className="font-mono">{v.ipAddress}</span>
+                                  {v.browser && <span>{v.browser}</span>}
+                                  {v.os && <span>{v.os}</span>}
+                                  {v.responseTime && <span>{v.responseTime}ms</span>}
+                                </div>
+                                {v.referer && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                    <ExternalLink className="h-3 w-3 inline mr-1" />
+                                    {v.referer}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(v.createdAt).toLocaleString('en-US', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {visitorsData && visitorsData.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisitorPage(p => Math.max(1, p - 1))}
+                        disabled={visitorPage <= 1}
+                        data-testid="button-visitor-prev"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {visitorPage} of {visitorsData.pagination.totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisitorPage(p => Math.min(visitorsData.pagination.totalPages, p + 1))}
+                        disabled={visitorPage >= visitorsData.pagination.totalPages}
+                        data-testid="button-visitor-next"
                       >
                         Next <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
