@@ -13,12 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 
 function cleanDescription(description: string): string {
-  // Remove "[Controles ajoutes...]" section from the description
-  const controlsIndex = description.indexOf("[Controles ajoutes");
-  if (controlsIndex !== -1) {
-    return description.substring(0, controlsIndex).trim();
+  const patterns = ["[Controles ajoutes", "[Controls added", "[Contrôles ajoutés", "[Controls updated", "[Controles mis"];
+  let result = description;
+  for (const pattern of patterns) {
+    const idx = result.indexOf(pattern);
+    if (idx !== -1) {
+      result = result.substring(0, idx).trim();
+    }
   }
-  return description;
+  return result;
 }
 
 function extractBaseControlCount(description: string): number {
