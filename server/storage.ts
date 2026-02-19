@@ -466,7 +466,7 @@ export class DatabaseStorage implements IStorage {
     const defaultBundles: InsertAnnualBundle[] = [
       {
         name: "System Security Pack",
-        description: "Pack annuel Windows + Linux avec 10% de reduction. Ideal pour securiser vos systemes d'exploitation.",
+        description: "Annual Windows + Linux bundle with 10% discount. Ideal for securing your operating systems.",
         icon: "Shield",
         includedScriptIds: [windowsToolkit?.id, linuxToolkit?.id].filter(Boolean) as number[],
         discountPercent: 10,
@@ -474,7 +474,7 @@ export class DatabaseStorage implements IStorage {
       },
       {
         name: "Complete Security Pack",
-        description: "Pack annuel complet incluant tous les toolkits disponibles avec 20% de reduction. La solution ultime pour une securite complete.",
+        description: "Complete annual bundle including all available toolkits with 20% discount. The ultimate solution for comprehensive security.",
         icon: "ShieldCheck",
         includedScriptIds: allScripts.filter(s => !s.isHidden && s.status !== "offline").map(s => s.id),
         discountPercent: 20,
