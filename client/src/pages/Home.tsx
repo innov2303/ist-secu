@@ -173,30 +173,54 @@ export default function Home() {
               </div>
             )}
 
-            {!user && bundles && bundles.length > 0 && (
-              <div className="mt-12 text-center">
-                <div className="bg-card/50 backdrop-blur-sm border border-border/40 rounded-md p-8 max-w-2xl mx-auto">
-                  <h3 className="text-xl font-bold font-mono mb-3">Annual Packs Available</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Log in to discover our bundle offers and save up to 20% on your subscriptions.
-                  </p>
-                  <Button asChild data-testid="button-discover-packs">
-                    <Link href="/auth">
-                      Discover our packs
-                    </Link>
-                  </Button>
-                </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {bundles && bundles.length > 0 && (
+        <div className="relative w-full py-16 md:py-24">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/15 via-background to-background" />
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+            <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+            <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid-packs" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid-packs)" />
+            </svg>
+          </div>
+
+          <div className="relative z-10 max-w-6xl mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <div className="text-center mb-10">
+                <span className="inline-block text-xs font-bold uppercase tracking-[0.3em] text-emerald-400 mb-3">Bundle Offers</span>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2">Annual Packs</h2>
+                <p className="text-sm text-muted-foreground max-w-lg mx-auto">Save with our multi-toolkit annual subscription packs.</p>
               </div>
-            )}
 
-            {user && bundles && bundles.length > 0 && scripts && (
-              <div className="mt-12">
-                <div className="text-center mb-8">
-                  <span className="inline-block text-xs font-bold uppercase tracking-[0.3em] text-emerald-400 mb-3">Bundle Offers</span>
-                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Annual Packs</h2>
-                  <p className="text-sm text-muted-foreground max-w-lg mx-auto">Save with our multi-toolkit annual subscription packs.</p>
+              {!user && (
+                <div className="text-center">
+                  <div className="bg-card/50 backdrop-blur-sm border border-emerald-500/20 rounded-md p-8 max-w-2xl mx-auto">
+                    <p className="text-muted-foreground mb-6">
+                      Log in to discover our bundle offers and save up to 20% on your subscriptions.
+                    </p>
+                    <Button asChild data-testid="button-discover-packs">
+                      <Link href="/auth">
+                        Discover our packs
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
+              )}
 
+              {user && scripts && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {bundles
                     .filter(bundle => {
@@ -217,11 +241,11 @@ export default function Home() {
                     />
                   ))}
                 </div>
-              </div>
-            )}
-          </motion.div>
+              )}
+            </motion.div>
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Footer */}
       <footer className="border-t border-border/40 bg-card/30 mt-auto">
