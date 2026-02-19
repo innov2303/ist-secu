@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, ArrowLeft, Lock, CheckCircle, AlertCircle } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { apiRequest } from "@/lib/queryClient";
-import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
+import logoImg from "@assets/generated_images/ist_logo_white.png";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
 
 export default function ResetPasswordPage() {

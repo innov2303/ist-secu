@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Lock, FileText, FileCode, Activity } from "lucide-react";
 import bannerImg from "@assets/stock_images/cybersecurity_digita_51ae1fac.jpg";
-import logoImg from "@assets/generated_images/ist_shield_logo_tech_style.png";
+import logoImg from "@assets/generated_images/ist_logo_white.png";
 import featureAudit from "@assets/images/feature-audit.png";
 import featureRapport from "@assets/images/feature-rapport.png";
 import featureSecure from "@assets/images/feature-secure-v5.png";
